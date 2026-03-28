@@ -1,7 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class",
+  // Dark mode disabled for MVP — enable with darkMode: "class" when theme toggle is added
+  // darkMode: "class",
   theme: {
     extend: {
       colors: {
