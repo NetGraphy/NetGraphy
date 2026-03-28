@@ -1,0 +1,121 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Location
+  display_name: Location
+  description: "A physical location — site, building, floor, room, rack"
+  icon: map-pin
+  color: "#F59E0B"
+  category: Infrastructure
+  tags: [locations, physical]
+
+attributes:
+  name:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Location name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  location_type:
+    type: enum
+    enum_values: [region, site, building, floor, room, rack, row]
+    required: true
+    description: "Type of location in the hierarchy"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  status:
+    type: enum
+    enum_values: [active, planned, decommissioned]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      badge_colors:
+        active: green
+        planned: blue
+        decommissioned: red
+
+  address:
+    type: text
+    required: false
+    description: "Physical address"
+    ui:
+      form_order: 4
+
+  city:
+    type: string
+    required: false
+    indexed: true
+    ui:
+      form_order: 5
+      filter: true
+
+  state:
+    type: string
+    required: false
+    ui:
+      form_order: 6
+
+  country:
+    type: string
+    required: false
+    indexed: true
+    ui:
+      form_order: 7
+      filter: true
+
+  latitude:
+    type: float
+    required: false
+    description: "GPS latitude"
+    ui:
+      form_order: 8
+
+  longitude:
+    type: float
+    required: false
+    description: "GPS longitude"
+    ui:
+      form_order: 9
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, city, country, address]
+
+graph:
+  default_label_field: name
+  group_by: location_type
+
+api:
+  plural_name: locations
+  filterable_fields: [name, location_type, status, city, country]
+  sortable_fields: [name, location_type, status, city]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

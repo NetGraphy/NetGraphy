@@ -1,0 +1,37 @@
+---
+# --------------------------------------------------------------------------- #
+# HAS_INTERFACE — Device → Interface (one-to-many)                            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_INTERFACE
+  display_name: "Has Interface"
+  description: "A device has a physical or logical interface"
+  category: Infrastructure
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [Interface]
+
+cardinality: one_to_many
+inverse_name: INTERFACE_OF
+
+attributes:
+  slot_position:
+    type: integer
+    required: false
+    description: "Physical slot/bay position"
+
+constraints:
+  unique_target: true  # Each interface belongs to exactly one device
+
+graph:
+  style: solid
+  color: "#94A3B8"
+  show_label: false
+
+api:
+  exposed: true

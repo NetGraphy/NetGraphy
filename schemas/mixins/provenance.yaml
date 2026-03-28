@@ -1,0 +1,43 @@
+kind: Mixin
+version: v1
+metadata:
+  name: provenance_mixin
+  description: "Data provenance tracking — records how and when data was sourced"
+
+attributes:
+  source_type:
+    type: enum
+    enum_values: [manual, discovered, synced, imported]
+    default: manual
+    required: true
+    description: "How this data entered the system"
+    ui:
+      list_column: false
+      form_visible: false
+      badge_colors:
+        manual: blue
+        discovered: green
+        synced: purple
+        imported: yellow
+
+  source_id:
+    type: string
+    required: false
+    description: "Identifier of the source (job run ID, sync source ID, etc.)"
+    ui:
+      form_visible: false
+
+  last_verified_at:
+    type: datetime
+    required: false
+    description: "Timestamp when this data was last verified by collection"
+    ui:
+      form_visible: false
+
+  confidence_score:
+    type: float
+    required: false
+    default: 1.0
+    description: "Confidence in data accuracy (1.0 = direct parse, lower = inferred)"
+    ui:
+      form_visible: false

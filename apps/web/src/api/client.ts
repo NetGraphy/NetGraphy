@@ -1,0 +1,71 @@
+/**
+ * API client for the NetGraphy backend.
+ */
+
+import axios from "axios";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
+
+export const api = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Request interceptor: attach auth token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("netgraphy_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor: handle auth errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("netgraphy_token");
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  },
+);
+
+// --- Schema ---
+export const schemaApi = {
+  getUIMetadata: () => api.get("/schema/ui-metadata"),
+  getNodeType: (name: string) => api.get(`/schema/node-types/${name}`),
+  getEdgeType: (name: string) => api.get(`/schema/edge-types/${name}`),
+};
+
+// --- Nodes (dynamic) ---
+export const nodesApi = {
+  list: (nodeType: string, params?: Record<string, unknown>) =>
+    api.get(`/objects/${nodeType}`, { params }),
+  get: (nodeType: string, id: string) =>
+    api.get(`/objects/${nodeType}/${id}`),
+  create: (nodeType: string, data: Record<string, unknown>) =>
+    api.post(`/objects/${nodeType}`, data),
+  update: (nodeType: string, id: string, data: Record<string, unknown>) =>
+    api.patch(`/objects/${nodeType}/${id}`, data),
+  delete: (nodeType: string, id: string) =>
+    api.delete(`/objects/${nodeType}/${id}`),
+  relationships: (nodeType: string, id: string, edgeType?: string) =>
+    api.get(`/objects/${nodeType}/${id}/relationships`, {
+      params: edgeType ? { edge_type: edgeType } : undefined,
+    }),
+};
+
+// --- Query ---
+export const queryApi = {
+  executeCypher: (query: string, parameters?: Record<string, unknown>) =>
+    api.post("/query/cypher", { query, parameters }),
+  executeStructured: (query: Record<string, unknown>) =>
+    api.post("/query/structured", query),
+  listSaved: () => api.get("/query/saved"),
+  saveQuery: (data: Record<string, unknown>) =>
+    api.post("/query/saved", data),
+};

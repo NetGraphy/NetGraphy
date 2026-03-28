@@ -1,0 +1,92 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Service
+  display_name: Service
+  description: "A network service (e.g., DNS, DHCP, NTP, MPLS VPN, VXLAN fabric)"
+  icon: cloud
+  color: "#F97316"
+  category: Network
+  tags: [services, network]
+
+attributes:
+  name:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Service name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  service_type:
+    type: enum
+    enum_values: [infrastructure, overlay, underlay, application, monitoring, security, other]
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  protocol:
+    type: string
+    required: false
+    description: "Primary protocol (e.g., BGP, OSPF, VXLAN, DNS)"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  status:
+    type: enum
+    enum_values: [active, degraded, down, planned, maintenance]
+    default: planned
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 4
+      badge_colors:
+        active: green
+        degraded: yellow
+        down: red
+        planned: blue
+        maintenance: orange
+
+  criticality:
+    type: enum
+    enum_values: [critical, high, medium, low]
+    default: medium
+    required: true
+    ui:
+      form_order: 5
+      filter: true
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, protocol, description]
+
+graph:
+  default_label_field: name
+  group_by: service_type
+
+api:
+  plural_name: services
+  filterable_fields: [name, service_type, status, criticality, protocol]
+  sortable_fields: [name, service_type, status, criticality]
+  default_sort: name

@@ -1,0 +1,33 @@
+Cisco IOS Software, C3560CX Software (C3560CX-UNIVERSALK9-M), Version 15.2(7)E2, RELEASE SOFTWARE (fc3)
+Technical Support: http://www.cisco.com/techsupport
+Copyright (c) 1986-2020 by Cisco Systems, Inc.
+Compiled Thu 19-Nov-20 09:38 by prod_rel_team
+
+ROM: Bootstrap program is C3560CX boot loader
+BOOTLDR: C3560CX Boot Loader (C3560CX-HBOOT-M) Version 15.2(7r)E2, RELEASE SOFTWARE (fc1)
+
+core-sw-01 uptime is 2 years, 3 weeks, 5 days, 12 hours, 33 minutes
+System returned to ROM by power-on
+System image file is "flash:c3560cx-universalk9-mz.152-7.E2.bin"
+
+This product contains cryptographic features and is subject to United
+States and local country laws governing import, export, transfer and
+use. Delivery of Cisco cryptographic products does not imply
+third-party authority to import, export, distribute or use encryption.
+
+Processor board ID FCW2213L0PK
+Last reload reason: power-on
+
+512K bytes of flash-simulated non-volatile configuration memory.
+Base ethernet MAC Address       : 00:A3:D1:44:55:66
+Motherboard assembly number     : 73-18506-02
+Motherboard serial number       : FCW2213L0PM
+
+Cisco WS-C3560CX-8PC-S (APM86XXX) processor (revision A0) with 524288K bytes of memory.
+Processor board ID FCW2213L0PK
+
+24 Virtual Ethernet interfaces
+8 Gigabit Ethernet interfaces
+2 Ten Gigabit Ethernet interfaces
+
+Configuration register is 0xF

@@ -1,0 +1,140 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Device
+  display_name: Device
+  description: "A network device — router, switch, firewall, load balancer, access point, etc."
+  icon: server
+  color: "#3B82F6"
+  category: Infrastructure
+  tags: [network, inventory, core]
+
+attributes:
+  hostname:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "FQDN or hostname of the device"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  management_ip:
+    type: ip_address
+    required: false
+    indexed: true
+    description: "Primary management IP address"
+    ui:
+      list_column: true
+      list_column_order: 3
+      search_weight: 5
+      form_order: 3
+      filter: true
+
+  status:
+    type: enum
+    enum_values: [active, planned, staged, decommissioned, maintenance, offline]
+    default: planned
+    required: true
+    description: "Operational status of the device"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        staged: yellow
+        decommissioned: red
+        maintenance: orange
+        offline: gray
+
+  role:
+    type: enum
+    enum_values: [router, switch, firewall, load_balancer, wireless_ap, wireless_controller, server, virtual_machine, container_host, other]
+    required: true
+    description: "Primary functional role of the device"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  serial_number:
+    type: string
+    required: false
+    unique: true
+    indexed: true
+    description: "Hardware serial number"
+    ui:
+      form_order: 7
+      search_weight: 3
+
+  asset_tag:
+    type: string
+    required: false
+    indexed: true
+    description: "Asset management tag"
+    ui:
+      form_order: 8
+
+  fqdn:
+    type: string
+    required: false
+    description: "Fully qualified domain name"
+    ui:
+      form_order: 5
+
+  domain:
+    type: string
+    required: false
+    description: "DNS domain of the device"
+    ui:
+      form_order: 6
+
+  description:
+    type: text
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+  notes:
+    type: text
+    required: false
+    description: "Operational notes"
+    ui:
+      form_order: 21
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: hostname
+  search_fields: [hostname, management_ip, serial_number, asset_tag, fqdn, description]
+
+graph:
+  default_label_field: hostname
+  size_field: null
+  group_by: role
+
+api:
+  plural_name: devices
+  filterable_fields: [hostname, status, role, management_ip, serial_number, asset_tag]
+  sortable_fields: [hostname, status, role, created_at, updated_at]
+  default_sort: hostname
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

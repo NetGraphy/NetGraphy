@@ -1,0 +1,156 @@
+---
+# --------------------------------------------------------------------------- #
+# RUNS_VERSION — Device → SoftwareVersion (many-to-one)                       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: RUNS_VERSION
+  display_name: "Runs Version"
+  description: "Device is running a specific software version"
+  category: Software
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [SoftwareVersion]
+
+cardinality: many_to_one
+inverse_name: RUNNING_ON
+
+constraints:
+  unique_source: true  # Each device runs exactly one version
+
+graph:
+  style: solid
+  color: "#14B8A6"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# USES_IMAGE — SoftwareVersion → Image (many-to-one)                          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: USES_IMAGE
+  display_name: "Uses Image"
+  description: "Software version is delivered via a specific image file"
+  category: Software
+
+source:
+  node_types: [SoftwareVersion]
+
+target:
+  node_types: [Image]
+
+cardinality: many_to_one
+inverse_name: IMAGE_FOR
+
+graph:
+  style: dashed
+  color: "#06B6D4"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# RUNS_PLATFORM — Device → Platform (many-to-one)                             #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: RUNS_PLATFORM
+  display_name: "Runs Platform"
+  description: "Device runs a specific network OS platform"
+  category: Software
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [Platform]
+
+cardinality: many_to_one
+inverse_name: DEVICES_ON_PLATFORM
+
+constraints:
+  unique_source: true
+
+graph:
+  style: solid
+  color: "#EC4899"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# MANUFACTURED_BY — HardwareModel → Vendor (many-to-one)                      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: MANUFACTURED_BY
+  display_name: "Manufactured By"
+  description: "Hardware model is manufactured by a vendor"
+  category: Reference
+
+source:
+  node_types: [HardwareModel]
+
+target:
+  node_types: [Vendor]
+
+cardinality: many_to_one
+inverse_name: MANUFACTURES
+
+constraints:
+  unique_source: true
+
+graph:
+  style: solid
+  color: "#8B5CF6"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# HAS_MODEL — Device → HardwareModel (many-to-one)                            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_MODEL
+  display_name: "Has Model"
+  description: "Device is a specific hardware model"
+  category: Reference
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [HardwareModel]
+
+cardinality: many_to_one
+inverse_name: DEVICES_OF_MODEL
+
+constraints:
+  unique_source: true
+
+graph:
+  style: dashed
+  color: "#6366F1"
+  show_label: false
+
+api:
+  exposed: true

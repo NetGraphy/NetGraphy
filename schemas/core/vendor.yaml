@@ -1,0 +1,64 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Vendor
+  display_name: Vendor
+  description: "A hardware or software vendor/manufacturer"
+  icon: building
+  color: "#8B5CF6"
+  category: Reference
+  tags: [reference, vendors]
+
+attributes:
+  name:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Vendor name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    description: "URL-safe identifier"
+    ui:
+      form_order: 2
+
+  url:
+    type: url
+    required: false
+    description: "Vendor website"
+    ui:
+      form_order: 3
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 4
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug]
+
+graph:
+  default_label_field: name
+
+api:
+  plural_name: vendors
+  filterable_fields: [name]
+  sortable_fields: [name]
+  default_sort: name

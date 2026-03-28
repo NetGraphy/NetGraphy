@@ -1,0 +1,84 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Platform
+  display_name: Platform
+  description: "A network operating system platform (e.g., IOS-XE, NX-OS, EOS, JunOS)"
+  icon: terminal
+  color: "#EC4899"
+  category: Software
+  tags: [software, platform]
+
+attributes:
+  name:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Platform name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    ui:
+      form_order: 2
+
+  napalm_driver:
+    type: string
+    required: false
+    description: "NAPALM driver name for automation"
+    ui:
+      form_order: 3
+
+  netmiko_device_type:
+    type: string
+    required: false
+    description: "Netmiko device_type for SSH connections"
+    ui:
+      form_order: 4
+
+  ansible_network_os:
+    type: string
+    required: false
+    description: "Ansible network_os value"
+    ui:
+      form_order: 5
+
+  nornir_platform:
+    type: string
+    required: false
+    description: "Nornir platform identifier"
+    ui:
+      form_order: 6
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, napalm_driver, netmiko_device_type]
+
+graph:
+  default_label_field: name
+
+api:
+  plural_name: platforms
+  filterable_fields: [name]
+  sortable_fields: [name]
+  default_sort: name

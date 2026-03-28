@@ -1,0 +1,90 @@
+# Saved Cypher queries for common topology and inventory operations
+---
+kind: SavedQuery
+metadata:
+  name: all_active_devices
+  display_name: "All Active Devices"
+  description: "List all devices with active status"
+  tags: [inventory, basic]
+query: |
+  MATCH (d:Device {status: 'active'})
+  RETURN d.hostname AS hostname, d.management_ip AS ip, d.role AS role, d.serial_number AS serial
+  ORDER BY d.hostname
+parameters: {}
+
+---
+kind: SavedQuery
+metadata:
+  name: device_with_connections
+  display_name: "Device with All Connections"
+  description: "Show a device and all its physical connections (2 hops)"
+  tags: [topology, graph]
+query: |
+  MATCH path = (d:Device {hostname: $hostname})-[:HAS_INTERFACE]->(i:Interface)-[:CONNECTED_TO]-(ri:Interface)<-[:HAS_INTERFACE]-(rd:Device)
+  RETURN d, i, ri, rd
+parameters:
+  hostname:
+    type: string
+    description: "Device hostname to center the query on"
+    required: true
+
+---
+kind: SavedQuery
+metadata:
+  name: devices_by_software_version
+  display_name: "Devices by Software Version"
+  description: "List all devices running a specific software version"
+  tags: [software, compliance]
+query: |
+  MATCH (d:Device)-[:RUNS_VERSION]->(sv:SoftwareVersion {version_string: $version})
+  RETURN d.hostname AS hostname, d.management_ip AS ip, sv.version_string AS version
+  ORDER BY d.hostname
+parameters:
+  version:
+    type: string
+    description: "Software version string to search for"
+    required: true
+
+---
+kind: SavedQuery
+metadata:
+  name: eol_devices
+  display_name: "End-of-Life Devices"
+  description: "Devices running software past end-of-life"
+  tags: [compliance, lifecycle]
+query: |
+  MATCH (d:Device)-[:RUNS_VERSION]->(sv:SoftwareVersion)
+  WHERE sv.end_of_life IS NOT NULL AND sv.end_of_life < date()
+  RETURN d.hostname AS hostname, sv.version_string AS version, sv.end_of_life AS eol_date
+  ORDER BY sv.end_of_life
+
+---
+kind: SavedQuery
+metadata:
+  name: orphan_interfaces
+  display_name: "Unconnected Interfaces"
+  description: "Interfaces not connected to any other interface"
+  tags: [topology, audit]
+query: |
+  MATCH (d:Device)-[:HAS_INTERFACE]->(i:Interface)
+  WHERE NOT (i)-[:CONNECTED_TO]-()
+  AND i.interface_type = 'physical'
+  AND i.enabled = true
+  RETURN d.hostname AS device, i.name AS interface, i.oper_status AS status
+  ORDER BY d.hostname, i.name
+
+---
+kind: SavedQuery
+metadata:
+  name: service_impact_analysis
+  display_name: "Service Impact Analysis"
+  description: "Show all devices and dependencies for a service"
+  tags: [services, impact]
+query: |
+  MATCH path = (s:Service {name: $service_name})-[:HOSTED_ON|DEPENDS_ON*1..3]-(target)
+  RETURN path
+parameters:
+  service_name:
+    type: string
+    description: "Service name to analyze"
+    required: true

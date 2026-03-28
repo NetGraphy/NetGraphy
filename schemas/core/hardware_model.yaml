@@ -1,0 +1,91 @@
+kind: NodeType
+version: v1
+metadata:
+  name: HardwareModel
+  display_name: Hardware Model
+  description: "A specific hardware model from a vendor (e.g., Cisco Catalyst 9300)"
+  icon: cpu
+  color: "#6366F1"
+  category: Reference
+  tags: [reference, hardware]
+
+attributes:
+  model:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Model number/name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    ui:
+      form_order: 2
+
+  part_number:
+    type: string
+    required: false
+    indexed: true
+    description: "Part number / SKU"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  is_full_depth:
+    type: boolean
+    required: false
+    default: true
+    description: "Occupies full rack depth"
+    ui:
+      form_order: 6
+
+  u_height:
+    type: integer
+    required: false
+    default: 1
+    description: "Rack units height"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 5
+
+  interface_count:
+    type: integer
+    required: false
+    description: "Total number of interfaces"
+    ui:
+      form_order: 7
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: model
+  search_fields: [model, slug, part_number]
+
+graph:
+  default_label_field: model
+
+api:
+  plural_name: hardware-models
+  filterable_fields: [model, part_number, u_height]
+  sortable_fields: [model, u_height]
+  default_sort: model

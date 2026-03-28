@@ -1,0 +1,114 @@
+---
+# --------------------------------------------------------------------------- #
+# CONNECTED_TO — Interface → Interface (one-to-one, physical link)            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CONNECTED_TO
+  display_name: "Connected To"
+  description: "Physical cable connection between two interfaces"
+  category: Network
+
+source:
+  node_types: [Interface]
+
+target:
+  node_types: [Interface]
+
+cardinality: one_to_one
+inverse_name: CONNECTED_TO
+
+attributes:
+  cable_type:
+    type: enum
+    enum_values: [fiber_smf, fiber_mmf, cat5e, cat6, cat6a, dac, aoc, other]
+    required: false
+    description: "Physical cable type"
+  cable_id:
+    type: string
+    required: false
+    description: "Cable label or identifier"
+
+constraints:
+  unique_source: true
+  unique_target: true
+
+graph:
+  style: solid
+  color: "#3B82F6"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# DEPENDS_ON — Service → Service (many-to-many)                               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEPENDS_ON
+  display_name: "Depends On"
+  description: "Service dependency relationship"
+  category: Network
+
+source:
+  node_types: [Service]
+
+target:
+  node_types: [Service]
+
+cardinality: many_to_many
+
+attributes:
+  dependency_type:
+    type: enum
+    enum_values: [hard, soft]
+    default: hard
+    required: true
+    description: "Hard dependency = required for operation; Soft = degraded without"
+
+graph:
+  style: dashed
+  color: "#EF4444"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# HOSTED_ON — Service → Device (many-to-many)                                 #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: HOSTED_ON
+  display_name: "Hosted On"
+  description: "Service is hosted on one or more devices"
+  category: Network
+
+source:
+  node_types: [Service]
+
+target:
+  node_types: [Device]
+
+cardinality: many_to_many
+
+attributes:
+  role:
+    type: enum
+    enum_values: [primary, secondary, backup, member]
+    default: member
+    required: false
+
+graph:
+  style: solid
+  color: "#F97316"
+  show_label: false
+
+api:
+  exposed: true

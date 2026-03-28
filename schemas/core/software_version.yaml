@@ -1,0 +1,108 @@
+kind: NodeType
+version: v1
+metadata:
+  name: SoftwareVersion
+  display_name: Software Version
+  description: "A specific version of a network operating system"
+  icon: package
+  color: "#14B8A6"
+  category: Software
+  tags: [software, versions]
+
+attributes:
+  version_string:
+    type: string
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Version string as reported by the device (e.g., 17.06.05)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  major:
+    type: integer
+    required: false
+    description: "Major version number"
+    ui:
+      form_order: 2
+
+  minor:
+    type: integer
+    required: false
+    description: "Minor version number"
+    ui:
+      form_order: 3
+
+  patch:
+    type: string
+    required: false
+    description: "Patch version"
+    ui:
+      form_order: 4
+
+  release_date:
+    type: date
+    required: false
+    description: "Software release date"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 5
+
+  end_of_support:
+    type: date
+    required: false
+    description: "End of support date"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 6
+
+  end_of_life:
+    type: date
+    required: false
+    description: "End of life date"
+    ui:
+      form_order: 7
+
+  status:
+    type: enum
+    enum_values: [current, deprecated, end_of_support, end_of_life]
+    default: current
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+      badge_colors:
+        current: green
+        deprecated: yellow
+        end_of_support: orange
+        end_of_life: red
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: version_string
+  search_fields: [version_string]
+
+graph:
+  default_label_field: version_string
+
+api:
+  plural_name: software-versions
+  filterable_fields: [version_string, status]
+  sortable_fields: [version_string, release_date, end_of_support]
+  default_sort: version_string

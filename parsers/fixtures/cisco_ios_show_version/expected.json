@@ -1,0 +1,14 @@
+[
+  {
+    "VERSION": "15.2(7)E2",
+    "ROMMON": "C3560CX",
+    "HOSTNAME": "core-sw-01",
+    "UPTIME": "2 years, 3 weeks, 5 days, 12 hours, 33 minutes",
+    "RUNNING_IMAGE": "flash:c3560cx-universalk9-mz.152-7.E2.bin",
+    "HARDWARE": ["WS-C3560CX-8PC-S"],
+    "SERIAL": ["FCW2213L0PK", "FCW2213L0PK"],
+    "CONFIG_REGISTER": "0xF",
+    "MAC_ADDRESS": "00:A3:D1:44:55:66",
+    "RELOAD_REASON": "power-on"
+  }
+]

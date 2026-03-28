@@ -1,0 +1,145 @@
+version: "3.9"
+
+services:
+  # --- API Server ---
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../apps/api:/app/apps/api
+      - ../../packages:/app/packages
+      - ../../schemas:/app/schemas
+      - ../../parsers:/app/parsers
+      - ../../content:/app/content
+    environment:
+      NETGRAPHY_NEO4J_URI: bolt://neo4j:7687
+      NETGRAPHY_NEO4J_USER: neo4j
+      NETGRAPHY_NEO4J_PASSWORD: netgraphy
+      NETGRAPHY_REDIS_URL: redis://redis:6379/0
+      NETGRAPHY_NATS_URL: nats://nats:4222
+      NETGRAPHY_MINIO_ENDPOINT: minio:9000
+      NETGRAPHY_MINIO_ACCESS_KEY: netgraphy
+      NETGRAPHY_MINIO_SECRET_KEY: netgraphysecret
+      NETGRAPHY_CELERY_BROKER_URL: redis://redis:6379/1
+      NETGRAPHY_SCHEMA_DIRS: '["schemas/core", "schemas/mixins", "schemas/examples"]'
+      NETGRAPHY_DEBUG: "true"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Frontend ---
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/web.Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../../apps/web/src:/app/src
+      - ../../apps/web/public:/app/public
+    environment:
+      VITE_API_URL: http://localhost:8000/api/v1
+
+  # --- Celery Worker ---
+  worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api.Dockerfile
+    command: celery -A apps.worker.main worker --loglevel=info --concurrency=4
+    volumes:
+      - ../../apps:/app/apps
+      - ../../packages:/app/packages
+      - ../../schemas:/app/schemas
+      - ../../parsers:/app/parsers
+      - ../../jobs:/app/jobs
+    environment:
+      NETGRAPHY_NEO4J_URI: bolt://neo4j:7687
+      NETGRAPHY_NEO4J_USER: neo4j
+      NETGRAPHY_NEO4J_PASSWORD: netgraphy
+      NETGRAPHY_REDIS_URL: redis://redis:6379/0
+      NETGRAPHY_CELERY_BROKER_URL: redis://redis:6379/1
+      NETGRAPHY_CELERY_RESULT_BACKEND: redis://redis:6379/2
+      NETGRAPHY_MINIO_ENDPOINT: minio:9000
+      NETGRAPHY_NATS_URL: nats://nats:4222
+    depends_on:
+      - neo4j
+      - redis
+      - nats
+
+  # --- Neo4j ---
+  neo4j:
+    image: neo4j:5-community
+    ports:
+      - "7474:7474"  # HTTP browser
+      - "7687:7687"  # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/netgraphy
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 1G
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # --- Redis ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # --- NATS ---
+  nats:
+    image: nats:latest
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"  # Client
+      - "8222:8222"  # Monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # --- MinIO (S3-compatible object storage) ---
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: netgraphy
+      MINIO_ROOT_PASSWORD: netgraphysecret
+    volumes:
+      - minio_data:/data
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
+  minio_data:

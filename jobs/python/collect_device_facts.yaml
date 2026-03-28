@@ -1,0 +1,51 @@
+kind: Job
+version: v1
+metadata:
+  name: collect_device_facts
+  display_name: "Collect Device Facts"
+  description: "Collect base facts (hostname, version, serial, interfaces) from network devices using Nornir"
+  author: netgraphy
+  tags: [collection, discovery, nornir]
+
+runtime: python
+entrypoint: jobs.python.collect_device_facts:run
+
+parameters:
+  target_query:
+    type: cypher
+    description: "Cypher query to select target devices"
+    default: "MATCH (d:Device {status: 'active'}) RETURN d"
+    required: true
+  command_bundle:
+    type: string
+    description: "Command bundle to execute against each device"
+    default: "cisco_ios_base"
+    required: true
+  dry_run:
+    type: boolean
+    description: "Parse and map data but do not write to graph"
+    default: false
+  concurrency:
+    type: integer
+    description: "Maximum concurrent device connections"
+    default: 10
+    min_value: 1
+    max_value: 100
+
+schedule:
+  enabled: false
+  cron: "0 */6 * * *"
+
+execution:
+  timeout_seconds: 3600
+  max_retries: 2
+  retry_delay_seconds: 60
+  concurrency_limit: 50
+
+secrets:
+  - NETWORK_USERNAME
+  - NETWORK_PASSWORD
+  - NETWORK_ENABLE_SECRET
+
+permissions:
+  required_role: operator

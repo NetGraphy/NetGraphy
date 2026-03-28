@@ -1,0 +1,40 @@
+kind: Mixin
+version: v1
+metadata:
+  name: lifecycle_mixin
+  description: "Standard lifecycle tracking fields — automatically set on create/update"
+
+attributes:
+  created_at:
+    type: datetime
+    required: true
+    auto_set: create
+    description: "Timestamp when this object was created"
+    ui:
+      list_column: false
+      form_visible: false
+
+  updated_at:
+    type: datetime
+    required: true
+    auto_set: update
+    description: "Timestamp when this object was last updated"
+    ui:
+      list_column: false
+      form_visible: false
+
+  created_by:
+    type: string
+    required: true
+    auto_set: actor
+    description: "User or system that created this object"
+    ui:
+      form_visible: false
+
+  updated_by:
+    type: string
+    required: true
+    auto_set: actor
+    description: "User or system that last updated this object"
+    ui:
+      form_visible: false

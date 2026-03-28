@@ -1,0 +1,21 @@
+Value VERSION (.+?)
+Value ROMMON (\S+)
+Value HOSTNAME (\S+)
+Value UPTIME (.+)
+Value RUNNING_IMAGE (\S+)
+Value List HARDWARE (\S+\s\S+)
+Value List SERIAL (\S+)
+Value CONFIG_REGISTER (\S+)
+Value MAC_ADDRESS ([0-9a-fA-F]{4}\.[0-9a-fA-F]{4}\.[0-9a-fA-F]{4})
+Value RELOAD_REASON (.+?)
+
+Start
+  ^Cisco\s+IOS\s+Software.*Version\s+${VERSION} -> Continue
+  ^ROM:\s+${ROMMON}
+  ^${HOSTNAME}\s+uptime\s+is\s+${UPTIME}
+  ^System\s+image\s+file\s+is\s+"${RUNNING_IMAGE}"
+  ^[Pp]rocessor\s+board\s+ID\s+${SERIAL}
+  ^[Cc]isco\s+${HARDWARE}\s+
+  ^[Bb]ase\s+[Ee]thernet\s+MAC\s+[Aa]ddress.*:\s+${MAC_ADDRESS}
+  ^[Ll]ast\s+reload\s+reason:\s+${RELOAD_REASON}
+  ^[Cc]onfiguration\s+register\s+is\s+${CONFIG_REGISTER}

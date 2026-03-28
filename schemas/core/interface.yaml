@@ -1,0 +1,146 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Interface
+  display_name: Interface
+  description: "A physical or logical network interface on a device"
+  icon: ethernet
+  color: "#10B981"
+  category: Infrastructure
+  tags: [network, interfaces]
+
+attributes:
+  name:
+    type: string
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Interface name (e.g., GigabitEthernet0/0/1, Vlan100, Loopback0)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 8
+      form_order: 1
+
+  interface_type:
+    type: enum
+    enum_values: [physical, virtual, lag, loopback, tunnel, vlan, subinterface, management, other]
+    required: true
+    default: physical
+    description: "Type of interface"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 2
+      filter: true
+
+  enabled:
+    type: boolean
+    required: true
+    default: true
+    description: "Administrative state"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 3
+
+  oper_status:
+    type: enum
+    enum_values: [up, down, testing, unknown, dormant, not_present, lower_layer_down]
+    required: false
+    description: "Operational status from the device"
+    ui:
+      list_column: true
+      list_column_order: 5
+      badge_colors:
+        up: green
+        down: red
+        testing: yellow
+        unknown: gray
+        dormant: orange
+        not_present: gray
+        lower_layer_down: red
+
+  speed_mbps:
+    type: integer
+    required: false
+    description: "Interface speed in Mbps"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 5
+
+  mtu:
+    type: integer
+    required: false
+    default: 1500
+    description: "Maximum transmission unit"
+    ui:
+      form_order: 6
+
+  mac_address:
+    type: mac_address
+    required: false
+    indexed: true
+    description: "MAC address"
+    ui:
+      list_column: false
+      search_weight: 4
+      form_order: 7
+
+  ip_addresses:
+    type: list[string]
+    required: false
+    description: "IP addresses assigned to this interface (CIDR notation)"
+    ui:
+      form_order: 8
+
+  description:
+    type: string
+    required: false
+    description: "Interface description from device config"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 4
+      search_weight: 3
+
+  mode:
+    type: enum
+    enum_values: [access, trunk, routed, l3, tunnel, other]
+    required: false
+    description: "Switching/routing mode"
+    ui:
+      form_order: 9
+      filter: true
+
+  vlan_id:
+    type: integer
+    required: false
+    description: "Access VLAN ID"
+    ui:
+      form_order: 10
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description, mac_address]
+
+graph:
+  default_label_field: name
+  group_by: interface_type
+
+api:
+  plural_name: interfaces
+  filterable_fields: [name, interface_type, enabled, oper_status, speed_mbps, mode]
+  sortable_fields: [name, interface_type, speed_mbps, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

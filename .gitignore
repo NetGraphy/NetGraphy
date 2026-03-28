@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node
+node_modules/
+apps/web/dist/
+apps/web/.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Neo4j local data
+neo4j_data/
+
+# MinIO local data
+minio_data/
+
+# Test
+coverage/
+htmlcov/
+.coverage
+
+# Secrets
+*.pem
+*.key
+credentials.json
+secrets.yaml

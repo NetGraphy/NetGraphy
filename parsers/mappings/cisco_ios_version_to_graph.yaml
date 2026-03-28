@@ -1,0 +1,50 @@
+kind: MappingDefinition
+version: v1
+metadata:
+  name: cisco_ios_version_to_graph
+  description: "Maps 'show version' parsed output to Device and SoftwareVersion nodes"
+  parser: cisco_ios_show_version
+  platform: cisco_ios
+
+mappings:
+  # Upsert the Device node with hostname and serial
+  - target_node_type: Device
+    match_on: [hostname]
+    attributes:
+      hostname: "{{ parsed.HOSTNAME }}"
+      serial_number: "{{ parsed.SERIAL }}"
+
+  # Upsert the SoftwareVersion node
+  - target_node_type: SoftwareVersion
+    match_on: [version_string]
+    attributes:
+      version_string: "{{ parsed.VERSION }}"
+
+  # Upsert the Platform node
+  - target_node_type: Platform
+    match_on: [slug]
+    attributes:
+      slug: "cisco_ios"
+      name: "Cisco IOS"
+
+  # Create RUNS_VERSION edge: Device → SoftwareVersion
+  - target_edge_type: RUNS_VERSION
+    source:
+      node_type: Device
+      match_on:
+        hostname: "{{ parsed.HOSTNAME }}"
+    target:
+      node_type: SoftwareVersion
+      match_on:
+        version_string: "{{ parsed.VERSION }}"
+
+  # Create RUNS_PLATFORM edge: Device → Platform
+  - target_edge_type: RUNS_PLATFORM
+    source:
+      node_type: Device
+      match_on:
+        hostname: "{{ parsed.HOSTNAME }}"
+    target:
+      node_type: Platform
+      match_on:
+        slug: "cisco_ios"
