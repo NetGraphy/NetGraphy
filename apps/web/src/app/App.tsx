@@ -13,6 +13,10 @@ import { QueryWorkbench } from "@/components/query/QueryWorkbench";
 import { SchemaExplorer } from "@/components/pages/SchemaExplorer";
 import { AuditLogPage } from "@/components/pages/AuditLogPage";
 import { PlaceholderPage } from "@/components/pages/PlaceholderPage";
+import { ParserRegistryPage } from "@/components/pages/ParserRegistryPage";
+import { JobRegistryPage } from "@/components/pages/JobRegistryPage";
+import { GitSourcesPage } from "@/components/pages/GitSourcesPage";
+import { GraphExplorerPage } from "@/components/pages/GraphExplorerPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,17 +58,17 @@ export function App() {
                 <Route path="/schema" element={<SchemaExplorer />} />
 
                 {/* Automation */}
-                <Route path="/parsers" element={<PlaceholderPage title="Parsers" description="Configure and manage data parsers for network device output." />} />
-                <Route path="/jobs" element={<PlaceholderPage title="Jobs" description="View and manage scheduled and ad-hoc automation jobs." />} />
+                <Route path="/parsers" element={<ParserRegistryPage />} />
+                <Route path="/jobs" element={<JobRegistryPage />} />
                 <Route path="/ingestion" element={<PlaceholderPage title="Ingestion Runs" description="Monitor data ingestion pipeline runs and their results." />} />
 
                 {/* Administration */}
-                <Route path="/git-sources" element={<PlaceholderPage title="Git Sources" description="Manage Git repositories used as data sources for schemas and configs." />} />
+                <Route path="/git-sources" element={<GitSourcesPage />} />
                 <Route path="/admin/audit" element={<AuditLogPage />} />
                 <Route path="/admin/rbac" element={<PlaceholderPage title="RBAC Management" description="Configure roles, permissions, and access control policies." />} />
 
                 {/* Graph */}
-                <Route path="/graph" element={<PlaceholderPage title="Graph Explorer" description="Interactive graph visualization of the network topology." />} />
+                <Route path="/graph" element={<GraphExplorerPage />} />
               </Route>
             </Route>
           </Routes>

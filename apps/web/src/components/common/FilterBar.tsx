@@ -5,7 +5,7 @@
  * renders appropriate input widgets for each field based on its type.
  */
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useSchemaStore } from "@/stores/schemaStore";
 
 interface FilterBarProps {

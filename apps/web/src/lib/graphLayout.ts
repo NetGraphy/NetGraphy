@@ -75,16 +75,6 @@ export function applyForceLayout(nodes: Node[], edges: Edge[]): Node[] {
   const k = Math.sqrt(AREA / nodes.length); // ideal distance
   const COOLING_FACTOR = 0.95;
 
-  // Build adjacency for quick lookup
-  const adjacency = new Map<string, Set<string>>();
-  for (const node of nodes) {
-    adjacency.set(node.id, new Set());
-  }
-  for (const edge of edges) {
-    adjacency.get(edge.source)?.add(edge.target);
-    adjacency.get(edge.target)?.add(edge.source);
-  }
-
   // Initialize positions in a circle to avoid overlaps at start
   const positions = new Map<string, { x: number; y: number }>();
   const radius = Math.max(200, nodes.length * 15);
