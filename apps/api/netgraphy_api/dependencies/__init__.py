@@ -155,18 +155,26 @@ def get_node_service(
 
 def get_edge_service(
     repo: EdgeRepository = Depends(get_edge_repository),
+    node_repo: NodeRepository = Depends(get_node_repository),
     registry: SchemaRegistry = Depends(get_schema_registry),
     events: EventBus = Depends(get_event_bus),
     rbac: PermissionChecker = Depends(get_rbac),
 ):
     """Build an EdgeService for the current request.
 
+    The edge service requires a :class:`NodeRepository` to validate
+    that source/target nodes exist and match the allowed types for the
+    edge definition.
+
     Returns:
         A fully-wired :class:`EdgeService` instance.
     """
     from netgraphy_api.services.edge_service import EdgeService
 
-    return EdgeService(repo=repo, registry=registry, events=events, rbac=rbac)
+    return EdgeService(
+        repo=repo, node_repo=node_repo, registry=registry,
+        events=events, rbac=rbac,
+    )
 
 
 def get_query_service(
