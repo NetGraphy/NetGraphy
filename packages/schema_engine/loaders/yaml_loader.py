@@ -21,10 +21,11 @@ from packages.schema_engine.models import (
 )
 
 
-def load_schema_file(path: Path) -> dict[str, Any]:
-    """Load and parse a single YAML schema file."""
+def load_schema_file(path: Path) -> list[dict[str, Any]]:
+    """Load and parse a YAML schema file, supporting multi-document files."""
     with open(path) as f:
-        return yaml.safe_load(f)
+        docs = list(yaml.safe_load_all(f))
+    return [doc for doc in docs if doc is not None]
 
 
 def parse_attributes(raw_attrs: dict[str, Any]) -> dict[str, AttributeDefinition]:
@@ -102,12 +103,14 @@ def load_directory(directory: str | Path) -> list:
 
     definitions = []
     for yaml_file in sorted(path.rglob("*.yaml")):
-        raw = load_schema_file(yaml_file)
-        if raw and "kind" in raw:
-            definitions.append(parse_schema_object(raw))
+        docs = load_schema_file(yaml_file)
+        for raw in docs:
+            if raw and "kind" in raw:
+                definitions.append(parse_schema_object(raw))
     for yml_file in sorted(path.rglob("*.yml")):
-        raw = load_schema_file(yml_file)
-        if raw and "kind" in raw:
-            definitions.append(parse_schema_object(raw))
+        docs = load_schema_file(yml_file)
+        for raw in docs:
+            if raw and "kind" in raw:
+                definitions.append(parse_schema_object(raw))
 
     return definitions
