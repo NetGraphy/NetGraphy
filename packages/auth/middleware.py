@@ -71,6 +71,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
     ) -> Response:
         """Extract and validate the JWT, then forward the request."""
 
+        # Always allow CORS preflight (OPTIONS) through — CORSMiddleware handles these.
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Allow public endpoints through without authentication.
         if self._is_public(request.url.path):
             return await call_next(request)
