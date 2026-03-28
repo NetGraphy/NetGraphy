@@ -78,7 +78,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!refreshToken) return;
 
     try {
-      const response = await api.post("/auth/refresh", {
+      const response = await api.post("/auth/token", {
         refresh_token: refreshToken,
       });
       const { access_token, refresh_token } = response.data.data;

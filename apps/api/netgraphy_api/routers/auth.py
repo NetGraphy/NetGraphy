@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from netgraphy_api.config import settings
@@ -21,7 +21,7 @@ from netgraphy_api.dependencies import (
     get_graph_driver,
     get_rbac,
 )
-from netgraphy_api.exceptions import AuthenticationError, AuthorizationError
+from netgraphy_api.exceptions import AuthenticationError
 from packages.auth.jwt import (
     create_token_pair,
     decode_token,
@@ -157,7 +157,7 @@ async def _get_or_create_admin_user(driver: Neo4jDriver) -> dict[str, Any] | Non
         user_id=str(uuid.uuid4()),
         username="admin",
         email="admin@netgraphy.local",
-        password_hash=hash_password("netgraphy-admin"),
+        password_hash=hash_password("admin"),
         role="admin",
     )
     logger.info("Default admin user created", user_id=admin["id"])
@@ -194,11 +194,11 @@ def _sanitize_user(user: dict[str, Any]) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post("/login")
 async def login(
     body: LoginRequest,
     driver: Neo4jDriver = Depends(get_graph_driver),
-) -> TokenPair:
+):
     """Authenticate with username and password and receive a token pair.
 
     On first startup (no users exist) a default ``admin`` account is
@@ -218,14 +218,15 @@ async def login(
         raise AuthenticationError("Invalid username or password")
 
     logger.info("auth.login_success", username=body.username, user_id=user["id"])
-    return _build_token_pair(user)
+    pair = _build_token_pair(user)
+    return {"data": pair.model_dump()}
 
 
-@router.post("/token", response_model=TokenPair)
+@router.post("/token")
 async def refresh_token(
     body: RefreshRequest,
     driver: Neo4jDriver = Depends(get_graph_driver),
-) -> TokenPair:
+):
     """Exchange a valid refresh token for a new access + refresh pair.
 
     The old refresh token is consumed (single-use by convention).
@@ -248,7 +249,8 @@ async def refresh_token(
         raise AuthenticationError("Account is disabled")
 
     logger.info("auth.token_refreshed", user_id=payload.sub)
-    return _build_token_pair(user)
+    pair = _build_token_pair(user)
+    return {"data": pair.model_dump()}
 
 
 @router.get("/me")

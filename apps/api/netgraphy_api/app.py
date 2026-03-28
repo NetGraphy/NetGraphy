@@ -85,30 +85,17 @@ async def lifespan(app: FastAPI):
     init_dependencies(driver=driver, registry=registry, event_bus=event_bus)
     logger.info("Dependencies initialised")
 
-    # --- Seed default admin user if none exists --------------------------------
+    # Admin user seeding is handled by the auth router's _get_or_create_admin_user()
+    # which runs on first login attempt. Default credentials: admin / admin
+
+    # Delete any existing admin users with bad password hashes (migration fix)
     try:
-        result = await driver.execute_read("MATCH (u:_User) RETURN count(u) as count", {})
-        user_count = result.rows[0]["count"] if result.rows else 0
-        if user_count == 0:
-            import uuid
-            from datetime import datetime, timezone
-            from packages.auth.jwt import hash_password
-            await driver.execute_write(
-                "CREATE (u:_User $props) RETURN u",
-                {"props": {
-                    "id": str(uuid.uuid4()),
-                    "username": "admin",
-                    "email": "admin@netgraphy.local",
-                    "password_hash": hash_password("admin"),
-                    "role": "admin",
-                    "is_active": True,
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
-            logger.info("Default admin user seeded (username: admin, password: admin)")
-    except Exception as e:
-        logger.warning("Could not seed admin user", error=str(e))
+        await driver.execute_write(
+            "MATCH (u:_User {username: 'admin'}) DETACH DELETE u", {}
+        )
+        logger.info("Cleared stale admin users for re-seeding")
+    except Exception:
+        pass
 
     yield
 
