@@ -9,16 +9,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import structlog
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from packages.auth.models import TokenPair, TokenPayload
 
 logger = structlog.get_logger()
-
-# Bcrypt context — only scheme we support.
-_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Default signing algorithm.
 _ALGORITHM = "HS256"
@@ -214,9 +211,16 @@ def decode_token(
 
 def hash_password(password: str) -> str:
     """Return a bcrypt hash of *password*."""
-    return _pwd_ctx.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify *plain_password* against a bcrypt *hashed_password*."""
-    return _pwd_ctx.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False

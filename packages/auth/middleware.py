@@ -31,6 +31,7 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/api/v1/docs",
     "/api/v1/redoc",
     "/api/v1/openapi.json",
+    "/api/v1/schema",  # Schema metadata must be public for dynamic UI
 )
 
 

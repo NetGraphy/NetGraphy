@@ -73,9 +73,13 @@ _STREAM_CONFIGS: list[dict[str, Any]] = [
 # ---------------------------------------------------------------------------
 
 
-def _nanoseconds(days: int) -> int:
-    """Convert days to nanoseconds (NATS max_age unit)."""
-    return int(timedelta(days=days).total_seconds() * 1_000_000_000)
+def _seconds(days: int) -> float:
+    """Convert days to seconds for NATS StreamConfig max_age.
+
+    The nats-py client handles the nanosecond conversion internally,
+    so we pass seconds as a float.
+    """
+    return timedelta(days=days).total_seconds()
 
 
 def _serialize_datetime(obj: Any) -> Any:
@@ -278,7 +282,7 @@ class EventBus:
                 name=cfg["name"],
                 subjects=cfg["subjects"],
                 retention=RetentionPolicy.LIMITS,
-                max_age=_nanoseconds(cfg["max_age_days"]),
+                max_age=_seconds(cfg["max_age_days"]),
                 description=cfg["description"],
             )
             try:
