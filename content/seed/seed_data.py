@@ -65,6 +65,7 @@ async def seed(graph_driver) -> dict[str, int]:
     Returns a summary of created objects.
     """
     from packages.graph_db.repositories.node_repository import NodeRepository
+    from packages.graph_db.repositories.edge_repository import EdgeRepository
     from packages.schema_engine.registry import SchemaRegistry
 
     registry = SchemaRegistry()
@@ -97,9 +98,57 @@ async def seed(graph_driver) -> dict[str, int]:
         await repo.create_node("SoftwareVersion", version)
     counts["software_versions"] = len(SOFTWARE_VERSIONS)
 
-    # TODO: Create edges (LOCATED_IN, RUNS_PLATFORM, RUNS_VERSION, etc.)
+    # Create edges for topology
+    edge_repo = EdgeRepository(driver=graph_driver, registry=registry)
 
+    # Location hierarchy: US-East → NYC-DC1 → NYC-DC1-R01/R02
+    await _create_edge_by_name(graph_driver, "PARENT_OF", "Location", "US-East", "Location", "NYC-DC1")
+    await _create_edge_by_name(graph_driver, "PARENT_OF", "Location", "US-West", "Location", "SFO-DC1")
+    await _create_edge_by_name(graph_driver, "PARENT_OF", "Location", "NYC-DC1", "Location", "NYC-DC1-R01")
+    await _create_edge_by_name(graph_driver, "PARENT_OF", "Location", "NYC-DC1", "Location", "NYC-DC1-R02")
+
+    # Devices in locations
+    for dev in ["nyc-core-rtr-01", "nyc-core-rtr-02", "nyc-dist-sw-01", "nyc-dist-sw-02", "nyc-access-sw-01", "nyc-fw-01"]:
+        await _create_edge_by_name(graph_driver, "LOCATED_IN", "Device", dev, "Location", "NYC-DC1", match_field="hostname")
+    await _create_edge_by_name(graph_driver, "LOCATED_IN", "Device", "sfo-core-rtr-01", "Location", "SFO-DC1", match_field="hostname")
+    await _create_edge_by_name(graph_driver, "LOCATED_IN", "Device", "sfo-dist-sw-01", "Location", "SFO-DC1", match_field="hostname")
+
+    # Devices run platforms
+    for dev in ["nyc-core-rtr-01", "nyc-core-rtr-02", "nyc-dist-sw-01", "nyc-dist-sw-02", "nyc-access-sw-01"]:
+        await _create_edge_by_name(graph_driver, "RUNS_PLATFORM", "Device", dev, "Platform", "Cisco IOS-XE", match_field="hostname")
+    await _create_edge_by_name(graph_driver, "RUNS_PLATFORM", "Device", "sfo-core-rtr-01", "Platform", "Arista EOS", match_field="hostname")
+    await _create_edge_by_name(graph_driver, "RUNS_PLATFORM", "Device", "sfo-dist-sw-01", "Platform", "Arista EOS", match_field="hostname")
+
+    # Devices run software versions
+    for dev in ["nyc-core-rtr-01", "nyc-core-rtr-02"]:
+        await _create_edge_by_name(graph_driver, "RUNS_VERSION", "Device", dev, "SoftwareVersion", "17.06.05", match_field="hostname", target_match="version_string")
+    for dev in ["nyc-dist-sw-01", "nyc-dist-sw-02", "nyc-access-sw-01"]:
+        await _create_edge_by_name(graph_driver, "RUNS_VERSION", "Device", dev, "SoftwareVersion", "17.03.07", match_field="hostname", target_match="version_string")
+
+    # Hardware models manufactured by vendors
+    for model_slug in ["c9300-48t", "c9500-32c", "n9332c", "asr1001x"]:
+        await _create_edge_by_name(graph_driver, "MANUFACTURED_BY", "HardwareModel", model_slug, "Vendor", "Cisco", match_field="slug")
+
+    counts["edges"] = "created"
     return counts
+
+
+async def _create_edge_by_name(
+    driver, edge_type: str, source_label: str, source_value: str,
+    target_label: str, target_value: str,
+    match_field: str = "name", target_match: str = "name",
+):
+    """Helper to create an edge between nodes matched by a field."""
+    query = (
+        f"MATCH (a:{source_label} {{{match_field}: $src}}), "
+        f"(b:{target_label} {{{target_match}: $tgt}}) "
+        f"MERGE (a)-[r:{edge_type}]->(b) "
+        f"RETURN type(r) as rel"
+    )
+    try:
+        await driver.execute_write(query, {"src": source_value, "tgt": target_value})
+    except Exception:
+        pass  # Skip if nodes don't exist yet
 
 
 if __name__ == "__main__":

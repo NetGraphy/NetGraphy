@@ -1,12 +1,18 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useAuthStore } from "@/stores/authStore";
 import { AppShell } from "@/components/layout/AppShell";
+import { ProtectedRoute } from "@/components/common/ProtectedRoute";
+import { LoginPage } from "@/components/pages/LoginPage";
 import { Dashboard } from "@/components/pages/Dashboard";
 import { DynamicListPage } from "@/components/dynamic/DynamicListPage";
 import { DynamicDetailPage } from "@/components/dynamic/DynamicDetailPage";
 import { DynamicFormPage } from "@/components/dynamic/DynamicFormPage";
 import { QueryWorkbench } from "@/components/query/QueryWorkbench";
 import { SchemaExplorer } from "@/components/pages/SchemaExplorer";
+import { AuditLogPage } from "@/components/pages/AuditLogPage";
+import { PlaceholderPage } from "@/components/pages/PlaceholderPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,22 +23,52 @@ const queryClient = new QueryClient({
   },
 });
 
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const { loadFromStorage } = useAuthStore();
+
+  useEffect(() => {
+    loadFromStorage();
+  }, [loadFromStorage]);
+
+  return <>{children}</>;
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/objects/:nodeType" element={<DynamicListPage />} />
-            <Route path="/objects/:nodeType/new" element={<DynamicFormPage />} />
-            <Route path="/objects/:nodeType/:id" element={<DynamicDetailPage />} />
-            <Route path="/objects/:nodeType/:id/edit" element={<DynamicFormPage />} />
-            <Route path="/query" element={<QueryWorkbench />} />
-            <Route path="/schema" element={<SchemaExplorer />} />
-            {/* TODO: Add routes for parsers, jobs, git-sources, admin */}
-          </Route>
-        </Routes>
+        <AuthInitializer>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AppShell />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/objects/:nodeType" element={<DynamicListPage />} />
+                <Route path="/objects/:nodeType/new" element={<DynamicFormPage />} />
+                <Route path="/objects/:nodeType/:id" element={<DynamicDetailPage />} />
+                <Route path="/objects/:nodeType/:id/edit" element={<DynamicFormPage />} />
+                <Route path="/query" element={<QueryWorkbench />} />
+                <Route path="/schema" element={<SchemaExplorer />} />
+
+                {/* Automation */}
+                <Route path="/parsers" element={<PlaceholderPage title="Parsers" description="Configure and manage data parsers for network device output." />} />
+                <Route path="/jobs" element={<PlaceholderPage title="Jobs" description="View and manage scheduled and ad-hoc automation jobs." />} />
+                <Route path="/ingestion" element={<PlaceholderPage title="Ingestion Runs" description="Monitor data ingestion pipeline runs and their results." />} />
+
+                {/* Administration */}
+                <Route path="/git-sources" element={<PlaceholderPage title="Git Sources" description="Manage Git repositories used as data sources for schemas and configs." />} />
+                <Route path="/admin/audit" element={<AuditLogPage />} />
+                <Route path="/admin/rbac" element={<PlaceholderPage title="RBAC Management" description="Configure roles, permissions, and access control policies." />} />
+
+                {/* Graph */}
+                <Route path="/graph" element={<PlaceholderPage title="Graph Explorer" description="Interactive graph visualization of the network topology." />} />
+              </Route>
+            </Route>
+          </Routes>
+        </AuthInitializer>
       </BrowserRouter>
     </QueryClientProvider>
   );
