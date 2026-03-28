@@ -7,11 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Python dependencies
-COPY apps/api/pyproject.toml apps/api/pyproject.toml
-RUN pip install --no-cache-dir -e apps/api
-
-# Copy application code
+# Copy all application code first (needed for hatchling to find packages)
 COPY apps/api/ apps/api/
 COPY apps/worker/ apps/worker/
 COPY packages/ packages/
@@ -19,6 +15,9 @@ COPY schemas/ schemas/
 COPY parsers/ parsers/
 COPY content/ content/
 COPY jobs/ jobs/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir apps/api
 
 # Set Python path to find packages
 ENV PYTHONPATH=/app
