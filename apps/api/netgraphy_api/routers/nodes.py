@@ -3,52 +3,51 @@
 Routes are parameterized by {node_type} and validated against the schema registry
 at runtime. This allows any schema-defined node type to be managed without
 writing type-specific code.
+
+All operations go through NodeService which enforces:
+  validate → authorize → execute → audit → emit
 """
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query, Request
 
-from netgraphy_api.dependencies import get_graph_driver, get_schema_registry
-from packages.graph_db.driver import Neo4jDriver
-from packages.graph_db.repositories.node_repository import NodeRepository
-from packages.schema_engine.registry import SchemaRegistry
+from netgraphy_api.dependencies import get_node_service, get_auth_context
+from netgraphy_api.services.node_service import NodeService
+from packages.auth.models import AuthContext
 
 router = APIRouter()
 
 
-def _get_node_repo(
-    driver: Neo4jDriver = Depends(get_graph_driver),
-    registry: SchemaRegistry = Depends(get_schema_registry),
-) -> NodeRepository:
-    return NodeRepository(driver=driver, registry=registry)
-
-
 @router.get("/{node_type}")
 async def list_nodes(
+    request: Request,
     node_type: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     sort: str | None = None,
-    fields: str | None = None,
-    repo: NodeRepository = Depends(_get_node_repo),
-    registry: SchemaRegistry = Depends(get_schema_registry),
+    svc: NodeService = Depends(get_node_service),
+    actor: AuthContext = Depends(get_auth_context),
 ):
     """List nodes of a given type with filtering and pagination.
 
-    Supports query parameters for filtering based on the node type's
-    filterable_fields defined in the schema.
+    Filter params are extracted from query string based on schema filterable_fields.
+    Use `field=value` or `field__operator=value` syntax.
     """
-    if not registry.get_node_type(node_type):
-        raise HTTPException(status_code=404, detail=f"Node type '{node_type}' not found")
+    # Extract filter params from query string (exclude known pagination params)
+    reserved = {"page", "page_size", "sort", "fields", "include"}
+    filters = {
+        k: v for k, v in request.query_params.items()
+        if k not in reserved
+    }
 
-    # TODO: Parse filter params from query string based on schema filterable_fields
-    result = await repo.list_nodes(
+    result = await svc.list(
         node_type=node_type,
-        filters={},
+        filters=filters,
         page=page,
         page_size=page_size,
         sort=sort,
+        actor=actor,
     )
     return {
         "data": result["items"],
@@ -64,19 +63,14 @@ async def list_nodes(
 async def create_node(
     node_type: str,
     body: dict[str, Any],
-    repo: NodeRepository = Depends(_get_node_repo),
-    registry: SchemaRegistry = Depends(get_schema_registry),
+    svc: NodeService = Depends(get_node_service),
+    actor: AuthContext = Depends(get_auth_context),
 ):
     """Create a new node of the given type.
 
-    Request body is validated against the schema-defined attributes
-    for this node type.
+    Request body is validated against the schema-defined attributes.
     """
-    if not registry.get_node_type(node_type):
-        raise HTTPException(status_code=404, detail=f"Node type '{node_type}' not found")
-
-    # TODO: Validate body against schema, emit audit event
-    node = await repo.create_node(node_type=node_type, properties=body)
+    node = await svc.create(node_type=node_type, properties=body, actor=actor)
     return {"data": node}
 
 
@@ -84,16 +78,11 @@ async def create_node(
 async def get_node(
     node_type: str,
     node_id: str,
-    repo: NodeRepository = Depends(_get_node_repo),
-    registry: SchemaRegistry = Depends(get_schema_registry),
+    svc: NodeService = Depends(get_node_service),
+    actor: AuthContext = Depends(get_auth_context),
 ):
     """Get a node by ID."""
-    if not registry.get_node_type(node_type):
-        raise HTTPException(status_code=404, detail=f"Node type '{node_type}' not found")
-
-    node = await repo.get_node(node_type=node_type, node_id=node_id)
-    if not node:
-        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found")
+    node = await svc.get(node_type=node_type, node_id=node_id, actor=actor)
     return {"data": node}
 
 
@@ -102,17 +91,13 @@ async def update_node(
     node_type: str,
     node_id: str,
     body: dict[str, Any],
-    repo: NodeRepository = Depends(_get_node_repo),
-    registry: SchemaRegistry = Depends(get_schema_registry),
+    svc: NodeService = Depends(get_node_service),
+    actor: AuthContext = Depends(get_auth_context),
 ):
     """Partial update of a node's properties."""
-    if not registry.get_node_type(node_type):
-        raise HTTPException(status_code=404, detail=f"Node type '{node_type}' not found")
-
-    # TODO: Validate body against schema, compute diff, emit audit event
-    node = await repo.update_node(node_type=node_type, node_id=node_id, properties=body)
-    if not node:
-        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found")
+    node = await svc.update(
+        node_type=node_type, node_id=node_id, properties=body, actor=actor,
+    )
     return {"data": node}
 
 
@@ -120,17 +105,11 @@ async def update_node(
 async def delete_node(
     node_type: str,
     node_id: str,
-    repo: NodeRepository = Depends(_get_node_repo),
-    registry: SchemaRegistry = Depends(get_schema_registry),
+    svc: NodeService = Depends(get_node_service),
+    actor: AuthContext = Depends(get_auth_context),
 ):
     """Delete a node and its relationships."""
-    if not registry.get_node_type(node_type):
-        raise HTTPException(status_code=404, detail=f"Node type '{node_type}' not found")
-
-    # TODO: Check for dependent edges, emit audit event
-    deleted = await repo.delete_node(node_type=node_type, node_id=node_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found")
+    await svc.delete(node_type=node_type, node_id=node_id, actor=actor)
 
 
 @router.get("/{node_type}/{node_id}/relationships")
@@ -138,13 +117,11 @@ async def list_relationships(
     node_type: str,
     node_id: str,
     edge_type: str | None = None,
-    repo: NodeRepository = Depends(_get_node_repo),
-    registry: SchemaRegistry = Depends(get_schema_registry),
+    svc: NodeService = Depends(get_node_service),
+    actor: AuthContext = Depends(get_auth_context),
 ):
     """List all relationships for a node, optionally filtered by edge type."""
-    if not registry.get_node_type(node_type):
-        raise HTTPException(status_code=404, detail=f"Node type '{node_type}' not found")
-
-    # TODO: Implement relationship listing via graph traversal
-    edges = await repo.get_relationships(node_id=node_id, edge_type=edge_type)
+    edges = await svc.get_relationships(
+        node_type=node_type, node_id=node_id, edge_type=edge_type, actor=actor,
+    )
     return {"data": edges}

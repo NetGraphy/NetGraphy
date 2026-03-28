@@ -93,21 +93,22 @@ class Neo4jDriver:
         """Execute a read-only Cypher query."""
         async with self.session() as session:
             result = await session.run(query, parameters or {})
-            records = [record.data() async for record in result]
+            raw_records = [record async for record in result]
             summary = await result.consume()
 
-            columns = list(records[0].keys()) if records else []
-            nodes, edges = self._extract_graph_elements(records)
+            rows = [record.data() for record in raw_records]
+            columns = list(rows[0].keys()) if rows else []
+            nodes, edges = self._extract_graph_elements(raw_records)
 
             return QueryResult(
                 columns=columns,
-                rows=records,
+                rows=rows,
                 nodes=nodes,
                 edges=edges,
                 metadata={
                     "result_available_after": summary.result_available_after,
                     "result_consumed_after": summary.result_consumed_after,
-                    "row_count": len(records),
+                    "row_count": len(rows),
                 },
             )
 
@@ -121,17 +122,18 @@ class Neo4jDriver:
 
             async def _tx_work(tx):
                 result = await tx.run(query, parameters or {})
-                records = [record.data() async for record in result]
+                raw_records = [record async for record in result]
                 summary = await result.consume()
-                return records, summary
+                return raw_records, summary
 
-            records, summary = await session.execute_write(_tx_work)
-            columns = list(records[0].keys()) if records else []
-            nodes, edges = self._extract_graph_elements(records)
+            raw_records, summary = await session.execute_write(_tx_work)
+            rows = [record.data() for record in raw_records]
+            columns = list(rows[0].keys()) if rows else []
+            nodes, edges = self._extract_graph_elements(raw_records)
 
             return QueryResult(
                 columns=columns,
-                rows=records,
+                rows=rows,
                 nodes=nodes,
                 edges=edges,
                 metadata={
@@ -146,18 +148,73 @@ class Neo4jDriver:
             )
 
     def _extract_graph_elements(
-        self, records: list[dict]
+        self, raw_records: list,
     ) -> tuple[list[dict], list[dict]]:
         """Extract distinct nodes and edges from query results for graph rendering.
 
-        Inspects record values for Neo4j Node and Relationship types
-        and converts them to simple dicts with id, type, and properties.
+        Inspects record values for Neo4j Node and Relationship objects
+        and converts them to simple dicts. Deduplicates by element ID.
         """
-        # TODO: Implement extraction of Neo4j Node/Relationship objects
-        # from records. For now, return empty lists — the table view
-        # always works, and graph extraction will be added when we
-        # integrate the graph visualization layer.
-        return [], []
+        from neo4j.graph import Node, Relationship, Path
+
+        seen_node_ids: set[str] = set()
+        seen_edge_ids: set[str] = set()
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
+
+        def _process_node(node: Node) -> None:
+            eid = str(node.element_id)
+            if eid in seen_node_ids:
+                return
+            seen_node_ids.add(eid)
+            labels = list(node.labels)
+            props = dict(node)
+            nodes.append({
+                "id": props.get("id", eid),
+                "element_id": eid,
+                "node_type": labels[0] if labels else "Unknown",
+                "labels": labels,
+                "label": props.get("hostname") or props.get("name") or props.get("id", eid),
+                "properties": props,
+            })
+
+        def _process_relationship(rel: Relationship) -> None:
+            eid = str(rel.element_id)
+            if eid in seen_edge_ids:
+                return
+            seen_edge_ids.add(eid)
+            edges.append({
+                "id": dict(rel).get("id", eid),
+                "element_id": eid,
+                "edge_type": rel.type,
+                "source_id": str(rel.start_node.element_id) if rel.start_node else "",
+                "target_id": str(rel.end_node.element_id) if rel.end_node else "",
+                "properties": dict(rel),
+            })
+
+        def _process_value(value: Any) -> None:
+            if isinstance(value, Node):
+                _process_node(value)
+            elif isinstance(value, Relationship):
+                _process_relationship(value)
+                if value.start_node:
+                    _process_node(value.start_node)
+                if value.end_node:
+                    _process_node(value.end_node)
+            elif isinstance(value, Path):
+                for node in value.nodes:
+                    _process_node(node)
+                for rel in value.relationships:
+                    _process_relationship(rel)
+            elif isinstance(value, list):
+                for item in value:
+                    _process_value(item)
+
+        for record in raw_records:
+            for value in record.values():
+                _process_value(value)
+
+        return nodes, edges
 
     async def execute_query_plan(
         self,
