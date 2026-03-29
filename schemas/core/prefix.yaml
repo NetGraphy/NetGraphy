@@ -1,0 +1,127 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Prefix
+  display_name: Prefix
+  description: "An IP prefix (subnet) — the fundamental building block of IPAM"
+  icon: network
+  color: "#0891B2"
+  category: IPAM
+  tags: [ipam, prefix, subnet]
+
+attributes:
+  prefix:
+    type: cidr
+    display_name: Prefix
+    required: true
+    unique: true
+    indexed: true
+    description: "CIDR notation (e.g. 10.0.0.0/8, 2001:db8::/32)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, reserved, deprecated, container]
+    default: active
+    required: true
+    description: "container = aggregate that holds child prefixes; active = in use; reserved = allocated but not deployed"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        active: green
+        reserved: blue
+        deprecated: red
+        container: gray
+
+  ip_version:
+    type: enum
+    display_name: IP Version
+    enum_values: ["4", "6"]
+    required: true
+    description: "IPv4 or IPv6"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  vlan_id:
+    type: integer
+    display_name: VLAN ID
+    required: false
+    description: "Associated VLAN ID"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      filter: true
+
+  is_pool:
+    type: boolean
+    display_name: Pool
+    default: false
+    description: "Addresses can be auto-assigned from this prefix"
+    ui:
+      form_order: 6
+
+  utilization:
+    type: float
+    display_name: Utilization
+    required: false
+    description: "Percentage of addresses in use (0.0 to 1.0)"
+    ui:
+      list_column: true
+      list_column_order: 6
+
+  name:
+    type: string
+    display_name: Name
+    required: false
+    indexed: true
+    max_length: 255
+    description: "Human-friendly name for this prefix"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 8
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: prefix
+  search_fields: [prefix, name, description]
+
+graph:
+  default_label_field: prefix
+  group_by: ip_version
+
+api:
+  plural_name: prefixes
+  filterable_fields: [prefix, status, ip_version, vlan_id, is_pool, name]
+  sortable_fields: [prefix, status, ip_version, name, created_at]
+  default_sort: prefix
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

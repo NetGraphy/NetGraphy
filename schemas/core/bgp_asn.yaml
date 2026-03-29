@@ -1,0 +1,105 @@
+kind: NodeType
+version: v1
+metadata:
+  name: BGPASN
+  display_name: BGP ASN
+  description: "A BGP Autonomous System Number — identifies a routing domain"
+  icon: globe
+  color: "#DC2626"
+  category: IPAM
+  tags: [ipam, bgp, asn, routing]
+
+attributes:
+  asn:
+    type: integer
+    display_name: ASN
+    required: true
+    unique: true
+    indexed: true
+    description: "Autonomous System Number (supports 4-byte ASNs)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  name:
+    type: string
+    display_name: Name
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Human-friendly name (e.g. company name, provider name)"
+    ui:
+      list_column: true
+      list_column_order: 2
+      search_weight: 8
+      form_order: 2
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, reserved, deprecated]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        reserved: blue
+        deprecated: red
+
+  asn_type:
+    type: enum
+    display_name: Type
+    enum_values: [public, private]
+    required: true
+    description: "Public (globally routable) or private (RFC 6996)"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  rir:
+    type: enum
+    display_name: RIR
+    enum_values: [ARIN, RIPE, APNIC, LACNIC, AFRINIC, private]
+    required: false
+    description: "Regional Internet Registry"
+    ui:
+      form_order: 5
+      filter: true
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: asn
+  search_fields: [asn, name, description]
+
+graph:
+  default_label_field: asn
+
+api:
+  plural_name: bgp-asns
+  filterable_fields: [asn, name, status, asn_type, rir]
+  sortable_fields: [asn, name, status, asn_type]
+  default_sort: asn
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

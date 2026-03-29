@@ -1,0 +1,401 @@
+---
+# --------------------------------------------------------------------------- #
+# IP_IN_PREFIX — IPAddress → Prefix (many-to-one)                            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: IP_IN_PREFIX
+  display_name: "In Prefix"
+  description: "IP address belongs to a prefix"
+  category: IPAM
+
+source:
+  node_types: [IPAddress]
+
+target:
+  node_types: [Prefix]
+
+cardinality: many_to_one
+inverse_name: HAS_IP
+
+constraints:
+  unique_source: true  # Each IP belongs to exactly one prefix
+
+graph:
+  style: solid
+  color: "#0D9488"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# PREFIX_PARENT_OF — Prefix → Prefix (one-to-many, hierarchical)             #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: PREFIX_PARENT_OF
+  display_name: "Parent Prefix"
+  description: "Prefix hierarchy — aggregate contains more-specific prefixes"
+  category: IPAM
+
+source:
+  node_types: [Prefix]
+
+target:
+  node_types: [Prefix]
+
+cardinality: one_to_many
+inverse_name: PREFIX_CHILD_OF
+
+constraints:
+  unique_target: true  # Each prefix has at most one parent prefix
+
+graph:
+  style: solid
+  color: "#0891B2"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# IP_ON_INTERFACE — IPAddress → Interface (many-to-one)                      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: IP_ON_INTERFACE
+  display_name: "On Interface"
+  description: "IP address is assigned to an interface"
+  category: IPAM
+
+source:
+  node_types: [IPAddress]
+
+target:
+  node_types: [Interface]
+
+cardinality: many_to_one
+inverse_name: HAS_IP
+
+attributes:
+  is_primary:
+    type: boolean
+    default: false
+    description: "Whether this is the primary IP on the interface"
+
+graph:
+  style: solid
+  color: "#0D9488"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_MANAGEMENT_IP — Device → IPAddress (many-to-one)                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_MANAGEMENT_IP
+  display_name: "Management IP"
+  description: "Device's primary management IP address"
+  category: IPAM
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [IPAddress]
+
+cardinality: many_to_one
+inverse_name: MANAGES_DEVICE
+
+constraints:
+  unique_source: true  # Each device has one management IP
+
+graph:
+  style: dashed
+  color: "#3B82F6"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# MAC_ON_INTERFACE — MACAddress → Interface (many-to-one)                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: MAC_ON_INTERFACE
+  display_name: "On Interface"
+  description: "MAC address is associated with an interface (burned-in or configured)"
+  category: IPAM
+
+source:
+  node_types: [MACAddress]
+
+target:
+  node_types: [Interface]
+
+cardinality: many_to_one
+inverse_name: HAS_MAC
+
+attributes:
+  mac_role:
+    type: enum
+    enum_values: [bia, configured, virtual, learned]
+    default: bia
+    description: "bia = burned-in address; configured = manually set; virtual = VRRP/HSRP; learned = from MAC table"
+
+graph:
+  style: solid
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# MAC_HAS_IP — MACAddress → IPAddress (many-to-many)                        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: MAC_HAS_IP
+  display_name: "Resolves To"
+  description: "ARP/ND mapping between MAC address and IP address"
+  category: IPAM
+
+source:
+  node_types: [MACAddress]
+
+target:
+  node_types: [IPAddress]
+
+cardinality: many_to_many
+inverse_name: RESOLVED_BY_MAC
+
+attributes:
+  learned_at:
+    type: datetime
+    required: false
+    description: "When this ARP/ND entry was last seen"
+  source_table:
+    type: enum
+    enum_values: [arp, nd, static, dhcp]
+    default: arp
+    description: "How this mapping was learned"
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ASN_ORIGINATES_PREFIX — BGPASN → Prefix (many-to-many)                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ASN_ORIGINATES_PREFIX
+  display_name: "Originates"
+  description: "ASN originates (announces) a prefix via BGP"
+  category: IPAM
+
+source:
+  node_types: [BGPASN]
+
+target:
+  node_types: [Prefix]
+
+cardinality: many_to_many
+inverse_name: ORIGINATED_BY
+
+attributes:
+  origin_type:
+    type: enum
+    enum_values: [igp, egp, incomplete]
+    default: igp
+    description: "BGP origin attribute"
+
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ASN_ASSIGNED_TO_DEVICE — BGPASN → Device (many-to-many)                   #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ASN_ASSIGNED_TO_DEVICE
+  display_name: "Assigned to Device"
+  description: "Device runs BGP with this ASN"
+  category: IPAM
+
+source:
+  node_types: [BGPASN]
+
+target:
+  node_types: [Device]
+
+cardinality: many_to_many
+inverse_name: HAS_ASN
+
+attributes:
+  bgp_role:
+    type: enum
+    enum_values: [speaker, route_reflector, route_reflector_client, confederation_member]
+    default: speaker
+    description: "BGP role on this device"
+
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ASN_PEERS_WITH — BGPASN → BGPASN (many-to-many, bidirectional)            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ASN_PEERS_WITH
+  display_name: "Peers With"
+  description: "BGP peering relationship between autonomous systems"
+  category: IPAM
+
+source:
+  node_types: [BGPASN]
+
+target:
+  node_types: [BGPASN]
+
+cardinality: many_to_many
+inverse_name: ASN_PEERS_WITH
+
+attributes:
+  peering_type:
+    type: enum
+    enum_values: [transit, peer, customer, ixp]
+    required: true
+    description: "Peering relationship type"
+
+graph:
+  style: dashed
+  color: "#DC2626"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# PREFIX_IN_VPC — Prefix → VPC (many-to-one)                                #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: PREFIX_IN_VPC
+  display_name: "In VPC"
+  description: "Prefix is used within a VPC"
+  category: IPAM
+
+source:
+  node_types: [Prefix]
+
+target:
+  node_types: [VPC]
+
+cardinality: many_to_one
+inverse_name: HAS_PREFIX
+
+graph:
+  style: dashed
+  color: "#6366F1"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# PREFIX_ASSIGNED_TO_TENANT — Prefix → Tenant (many-to-one)                  #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: PREFIX_ASSIGNED_TO_TENANT
+  display_name: "Assigned to Tenant"
+  description: "Prefix is allocated to a tenant"
+  category: IPAM
+
+source:
+  node_types: [Prefix]
+
+target:
+  node_types: [Tenant]
+
+cardinality: many_to_one
+inverse_name: HAS_PREFIX
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ASN_OWNED_BY_TENANT — BGPASN → Tenant (many-to-one)                       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ASN_OWNED_BY_TENANT
+  display_name: "Owned by Tenant"
+  description: "ASN is assigned to a tenant"
+  category: IPAM
+
+source:
+  node_types: [BGPASN]
+
+target:
+  node_types: [Tenant]
+
+cardinality: many_to_one
+inverse_name: HAS_ASN
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true

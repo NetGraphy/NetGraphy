@@ -1,0 +1,96 @@
+kind: NodeType
+version: v1
+metadata:
+  name: MACAddress
+  display_name: MAC Address
+  description: "A Layer 2 MAC address — links to interfaces and IP addresses via ARP/ND"
+  icon: fingerprint
+  color: "#7C3AED"
+  category: IPAM
+  tags: [ipam, mac, layer2]
+
+attributes:
+  address:
+    type: mac_address
+    display_name: Address
+    required: true
+    unique: true
+    indexed: true
+    description: "MAC address (e.g. AA:BB:CC:DD:EE:FF)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  vendor_oui:
+    type: string
+    display_name: Vendor (OUI)
+    required: false
+    indexed: true
+    description: "Vendor name derived from the OUI (first 3 octets)"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      search_weight: 5
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, inactive, duplicate]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        inactive: gray
+        duplicate: red
+
+  mac_type:
+    type: enum
+    display_name: Type
+    enum_values: [unicast, multicast, broadcast, virtual]
+    default: unicast
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: address
+  search_fields: [address, vendor_oui, description]
+
+graph:
+  default_label_field: address
+  group_by: mac_type
+
+api:
+  plural_name: mac-addresses
+  filterable_fields: [address, vendor_oui, status, mac_type]
+  sortable_fields: [address, vendor_oui, status, mac_type, created_at]
+  default_sort: address
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
