@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSchemaStore } from "@/stores/schemaStore";
 import { nodesApi, api } from "@/api/client";
 import { FieldRenderer } from "./FieldRenderer";
+import { AddRelatedPanel } from "./AddRelatedPanel";
 import type { DetailTabDefinition } from "@/types/schema";
 
 export function DynamicDetailPage() {
@@ -255,11 +256,13 @@ function RelationshipPanel({
 
   const relationships = data?.data?.data || [];
   const edgeName = edgeType.metadata.display_name || edgeType.metadata.name;
+  const [showAdd, setShowAdd] = useState(false);
 
-  // Determine direction label
+  // Determine direction label and target type for linking
   const isSource = edgeType.source.node_types.includes(nodeType);
   const isTarget = edgeType.target.node_types.includes(nodeType);
   let directionLabel = "";
+  const targetTypes = isSource ? edgeType.target.node_types : edgeType.source.node_types;
   if (isSource && !isTarget) {
     directionLabel = `\u2192 ${edgeType.target.node_types.join(", ")}`;
   } else if (isTarget && !isSource) {
@@ -279,10 +282,31 @@ function RelationshipPanel({
             {directionLabel}
           </p>
         </div>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-          {isLoading ? "..." : relationships.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-600 hover:bg-brand-100"
+          >
+            + Add
+          </button>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+            {isLoading ? "..." : relationships.length}
+          </span>
+        </div>
       </div>
+
+      {showAdd && targetTypes.length > 0 && (
+        <div className="border-b border-gray-200 p-3">
+          <AddRelatedPanel
+            sourceNodeType={nodeType}
+            sourceNodeId={nodeId}
+            edgeType={edgeType.metadata.name}
+            targetType={targetTypes[0]}
+            label={edgeName}
+            onClose={() => setShowAdd(false)}
+          />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="px-4 py-4 text-sm text-gray-500">Loading...</div>
@@ -365,6 +389,7 @@ function CustomRelatedTab({
   const { getNodeType } = useSchemaStore();
   const targetSchema = getNodeType(tabDef.target_type);
   const [filters, setFilters] = useState<Record<string, string>>({});
+  const [showAdd, setShowAdd] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["relationships", nodeType, nodeId, tabDef.edge_type],
@@ -394,6 +419,29 @@ function CustomRelatedTab({
 
   return (
     <div>
+      {/* Add button + panel */}
+      <div className="mb-4 flex items-center justify-between">
+        <div />
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          + Add {tabDef.label}
+        </button>
+      </div>
+      {showAdd && (
+        <div className="mb-4">
+          <AddRelatedPanel
+            sourceNodeType={nodeType}
+            sourceNodeId={nodeId}
+            edgeType={tabDef.edge_type}
+            targetType={tabDef.target_type}
+            label={tabDef.label}
+            onClose={() => setShowAdd(false)}
+          />
+        </div>
+      )}
+
       {/* Filters */}
       {tabDef.filters.length > 0 && (
         <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
