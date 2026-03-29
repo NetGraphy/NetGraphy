@@ -207,14 +207,38 @@ export function GraphExplorerPage() {
           </div>
 
           {/* Autocomplete dropdown */}
-          {showDropdown && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-              {suggestions
-                .filter((s) => !selectedItems.find((sel) => sel.id === s.id))
-                .map((item) => (
+          {showDropdown && suggestions.length > 0 && (() => {
+            const unselected = suggestions.filter(
+              (s) => !selectedItems.find((sel) => sel.id === s.id),
+            );
+            if (unselected.length === 0) return null;
+            return (
+              <div className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                {unselected.length > 1 && (
+                  <button
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      for (const item of unselected) {
+                        if (!selectedItems.find((s) => s.id === item.id)) {
+                          setSelectedItems((prev) => [...prev, item]);
+                        }
+                      }
+                      setSearch("");
+                      setSuggestions([]);
+                      setShowDropdown(false);
+                    }}
+                    className="flex w-full items-center gap-2 border-b border-gray-100 px-3 py-2 text-left text-xs font-medium text-brand-600 hover:bg-brand-50"
+                  >
+                    + Add all {unselected.length} results
+                  </button>
+                )}
+                {unselected.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => addSelectedItem(item)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      addSelectedItem(item);
+                    }}
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
                   >
                     <span className="font-medium text-gray-900">{item.label}</span>
@@ -223,8 +247,9 @@ export function GraphExplorerPage() {
                     </span>
                   </button>
                 ))}
-            </div>
-          )}
+              </div>
+            );
+          })()}
         </div>
         <button
           onClick={handleSearch}
