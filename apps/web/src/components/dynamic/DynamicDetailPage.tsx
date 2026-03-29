@@ -287,32 +287,43 @@ function RelationshipPanel({
               },
               idx: number,
             ) => {
+              // Filter out system/internal fields from edge properties
+              const HIDDEN = new Set([
+                "id", "_source", "_created_by", "_created_at", "_updated_by",
+                "_updated_at", "created_by", "created_at", "updated_by",
+                "updated_at", "source_type", "confidence_score",
+              ]);
+              const visibleProps = rel.edge_properties
+                ? Object.entries(rel.edge_properties).filter(
+                    ([k]) => !HIDDEN.has(k) && !k.startsWith("_"),
+                  )
+                : [];
+
               return (
                 <li key={rel.related_id || idx} className="px-4 py-2">
                   <Link
                     to={`/objects/${rel.related_type}/${rel.related_id}`}
-                    className="text-sm text-brand-600 hover:text-brand-700"
+                    className="text-sm font-medium text-brand-600 hover:text-brand-700"
                   >
                     {rel.label || rel.related_id}
                   </Link>
                   {rel.related_type && (
-                    <span className="ml-2 text-xs text-gray-400">
+                    <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
                       {rel.related_type}
                     </span>
                   )}
-                  {rel.edge_properties &&
-                    Object.keys(rel.edge_properties).length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        {Object.entries(rel.edge_properties).map(([k, v]) => (
-                          <span
-                            key={k}
-                            className="text-xs text-gray-400"
-                          >
-                            {k}: {String(v)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                  {visibleProps.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {visibleProps.map(([k, v]) => (
+                        <span
+                          key={k}
+                          className="rounded bg-gray-50 px-1.5 py-0.5 text-xs text-gray-500"
+                        >
+                          {k}: {String(v)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </li>
               );
             },
