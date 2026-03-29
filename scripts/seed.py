@@ -714,6 +714,167 @@ def seed_services():
                 {"dependency_type": "hard"})
 
 
+def seed_architectures():
+    """Create architecture zones and wire them to devices, services, and locations."""
+    print("\n=== Architectures ===")
+
+    archs = [
+        # (name, type, status, standard_name, standard_url, compliance, security, description)
+        ("WAN Backbone", "backbone", "active", "SD-WAN / MPLS Reference", None, "compliant", None,
+         "Global MPLS/SD-WAN backbone interconnecting all sites"),
+        ("DC IP Fabric — DAL", "fabric", "active", "EVPN-VXLAN RFC 7348", "https://datatracker.ietf.org/doc/html/rfc7348", "compliant", None,
+         "Spine-leaf EVPN-VXLAN fabric in Dallas data center"),
+        ("DC IP Fabric — NYC", "fabric", "active", "EVPN-VXLAN RFC 7348", "https://datatracker.ietf.org/doc/html/rfc7348", "compliant", None,
+         "Spine-leaf EVPN-VXLAN fabric in NYC data center"),
+        ("DMZ", "zone", "active", "NIST SP 800-41", "https://csrc.nist.gov/pubs/sp/800/41/r1/final", "compliant", "low",
+         "Demilitarized zone for public-facing services"),
+        ("B2B Gateway", "zone", "active", "PCI DSS 4.0", None, "partial", "high",
+         "Business-to-business interconnect zone for partner connectivity"),
+        ("Campus Core — LON", "campus", "active", "Cisco SAFE Architecture", "https://www.cisco.com/c/en/us/solutions/enterprise/design-zone-security/index.html", "compliant", "medium",
+         "London campus core switching and routing layer"),
+        ("Branch WAN Edge", "edge", "active", "SD-WAN Reference Architecture", None, "compliant", None,
+         "Branch office WAN edge routers and local switching"),
+        ("Internet Edge", "edge", "active", "NIST SP 800-41", "https://csrc.nist.gov/pubs/sp/800/41/r1/final", "compliant", "untrusted",
+         "Internet peering and transit edge — firewalled ingress/egress"),
+        ("Cloud Transit", "cloud", "active", "AWS Transit Gateway Best Practices", None, "compliant", "medium",
+         "Hub-and-spoke transit architecture connecting VPCs"),
+        ("Server Zone — DAL", "zone", "active", None, None, "not_assessed", "high",
+         "Trusted server zone behind DC firewall in Dallas"),
+        ("Server Zone — NYC", "zone", "active", None, None, "not_assessed", "high",
+         "Trusted server zone behind DC firewall in NYC"),
+        ("Management Plane", "zone", "active", "CIS Benchmarks", None, "partial", "restricted",
+         "Out-of-band management network for device access"),
+    ]
+
+    for name, atype, status, std_name, std_url, compliance, security, desc in archs:
+        props: dict[str, Any] = {
+            "name": name, "architecture_type": atype, "status": status,
+            "compliance_level": compliance, "description": desc,
+        }
+        if std_name:
+            props["standard_name"] = std_name
+        if std_url:
+            props["standard_url"] = std_url
+        if security:
+            props["security_level"] = security
+        create_node("Architecture", props)
+
+    # --- Architecture hierarchy (ARCHITECTURE_CONTAINS) ---
+    hierarchy = [
+        # parent → child
+        ("DC IP Fabric — DAL", "Server Zone — DAL"),
+        ("DC IP Fabric — NYC", "Server Zone — NYC"),
+        ("Internet Edge", "DMZ"),
+    ]
+    for parent, child in hierarchy:
+        create_edge("ARCHITECTURE_CONTAINS", n("Architecture", parent), n("Architecture", child))
+
+    # --- Architecture ↔ Architecture connections ---
+    connections = [
+        ("DMZ", "Internet Edge", "filtered", "NGFW inbound policy"),
+        ("DMZ", "Server Zone — DAL", "filtered", "App-tier firewall rules"),
+        ("B2B Gateway", "WAN Backbone", "routed", "BGP partner peering policy"),
+        ("WAN Backbone", "DC IP Fabric — DAL", "routed", None),
+        ("WAN Backbone", "DC IP Fabric — NYC", "routed", None),
+        ("WAN Backbone", "Campus Core — LON", "routed", None),
+        ("WAN Backbone", "Branch WAN Edge", "tunneled", "SD-WAN overlay"),
+        ("Cloud Transit", "DC IP Fabric — DAL", "tunneled", "Site-to-site VPN"),
+        ("Management Plane", "DC IP Fabric — DAL", "filtered", "OOB access ACLs"),
+        ("Management Plane", "DC IP Fabric — NYC", "filtered", "OOB access ACLs"),
+    ]
+    for src, tgt, ctype, policy in connections:
+        props: dict[str, Any] = {"connection_type": ctype}
+        if policy:
+            props["policy"] = policy
+        create_edge("ARCHITECTURE_CONNECTS_TO", n("Architecture", src), n("Architecture", tgt), props)
+
+    # --- Device → Architecture ---
+    device_arch = {
+        "DC IP Fabric — DAL": [
+            ("DAL-SPN01", "spine"), ("DAL-SPN02", "spine"),
+            ("DAL-LEAF01", "leaf"), ("DAL-LEAF02", "leaf"),
+            ("DAL-LEAF03", "leaf"), ("DAL-LEAF04", "leaf"),
+        ],
+        "DC IP Fabric — NYC": [
+            ("NYC-SPN01", "spine"), ("NYC-SPN02", "spine"),
+            ("NYC-LEAF01", "leaf"), ("NYC-LEAF02", "leaf"),
+            ("NYC-LEAF03", "leaf"), ("NYC-LEAF04", "leaf"),
+        ],
+        "WAN Backbone": [
+            ("DAL-COR-RTR01", "core"), ("DAL-COR-RTR02", "core"),
+            ("NYC-COR-RTR01", "core"), ("NYC-COR-RTR02", "core"),
+            ("LON-COR-RTR01", "core"), ("LON-COR-RTR02", "core"),
+            ("FRA-COR-RTR01", "core"),
+        ],
+        "DMZ": [
+            ("DAL-FW01", "firewall"), ("NYC-FW01", "firewall"),
+        ],
+        "Internet Edge": [
+            ("DAL-COR-RTR01", "border"), ("NYC-COR-RTR01", "border"),
+        ],
+        "Campus Core — LON": [
+            ("LON-COR-RTR01", "core"), ("LON-COR-RTR02", "core"),
+            ("LON-SPN01", "distribution"), ("LON-SPN02", "distribution"),
+            ("LON-LEAF01", "access"), ("LON-LEAF02", "access"),
+        ],
+        "Branch WAN Edge": [
+            ("MEX-BR-RTR01", "edge"), ("CHI-BR-RTR01", "edge"), ("SEA-BR-RTR01", "edge"),
+        ],
+        "Management Plane": [
+            ("DAL-COR-RTR01", "gateway"), ("NYC-COR-RTR01", "gateway"),
+        ],
+    }
+    for arch_name, devices in device_arch.items():
+        arch_id = n("Architecture", arch_name)
+        for hostname, role in devices:
+            did = n("Device", hostname)
+            if arch_id and did:
+                create_edge("DEVICE_IN_ARCHITECTURE", did, arch_id, {"device_role": role})
+
+    # --- Service → Architecture ---
+    svc_arch = {
+        "VXLAN-EVPN DC Fabric — DAL": "DC IP Fabric — DAL",
+        "VXLAN-EVPN DC Fabric — NYC": "DC IP Fabric — NYC",
+        "OSPF Underlay — DAL": "DC IP Fabric — DAL",
+        "OSPF Underlay — NYC": "DC IP Fabric — NYC",
+        "MPLS WAN Backbone": "WAN Backbone",
+        "Corporate DNS": "Management Plane",
+        "NTP Service": "Management Plane",
+    }
+    for svc_name, arch_name in svc_arch.items():
+        create_edge("SERVICE_IN_ARCHITECTURE", n("Service", svc_name), n("Architecture", arch_name))
+
+    # --- Architecture → Location ---
+    arch_loc = {
+        "DC IP Fabric — DAL": ["DAL-DC1"],
+        "DC IP Fabric — NYC": ["NYC-DC1"],
+        "Server Zone — DAL": ["DAL-DC1"],
+        "Server Zone — NYC": ["NYC-DC1"],
+        "Campus Core — LON": ["LON-DC1"],
+        "WAN Backbone": ["DAL-DC1", "NYC-DC1", "LON-DC1", "FRA-DC1"],
+        "DMZ": ["DAL-DC1", "NYC-DC1"],
+        "Branch WAN Edge": ["MEX-BR1", "CHI-BR1", "SEA-BR1"],
+        "Management Plane": ["DAL-DC1", "NYC-DC1"],
+    }
+    for arch_name, locs in arch_loc.items():
+        arch_id = n("Architecture", arch_name)
+        for loc_name in locs:
+            lid = n("Location", loc_name)
+            if arch_id and lid:
+                create_edge("ARCHITECTURE_AT_LOCATION", arch_id, lid)
+
+    # --- VPC → Architecture ---
+    create_edge("VPC_IN_ARCHITECTURE", n("VPC", "acme-prod-east"), n("Architecture", "Cloud Transit"))
+    create_edge("VPC_IN_ARCHITECTURE", n("VPC", "acme-prod-west"), n("Architecture", "Cloud Transit"))
+    create_edge("VPC_IN_ARCHITECTURE", n("VPC", "shared-svc"), n("Architecture", "Cloud Transit"))
+
+    # --- Architecture → Tenant ---
+    for arch in ["DC IP Fabric — DAL", "DC IP Fabric — NYC", "WAN Backbone", "DMZ", "Internet Edge"]:
+        create_edge("ARCHITECTURE_OWNED_BY_TENANT", n("Architecture", arch), n("Tenant", "Acme Corp"))
+    create_edge("ARCHITECTURE_OWNED_BY_TENANT", n("Architecture", "Campus Core — LON"), n("Tenant", "GlobalBank"))
+    create_edge("ARCHITECTURE_OWNED_BY_TENANT", n("Architecture", "Management Plane"), n("Tenant", "Internal IT"))
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -736,6 +897,7 @@ def main():
     seed_ipam()
     seed_cloud()
     seed_services()
+    seed_architectures()
 
     print("\n" + "=" * 60)
     print(f"  Done! Created {len(IDS)} objects.")

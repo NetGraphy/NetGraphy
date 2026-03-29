@@ -1,0 +1,156 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Architecture
+  display_name: Architecture
+  description: "A network architecture pattern or zone — DMZ, IP Fabric, WAN Backbone, B2B, Campus Core, etc."
+  icon: layers
+  color: "#2563EB"
+  category: Network
+  tags: [architecture, design, zone]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Architecture name (e.g. DMZ, IP Fabric, WAN Backbone)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  architecture_type:
+    type: enum
+    display_name: Type
+    enum_values:
+      - zone
+      - fabric
+      - backbone
+      - overlay
+      - underlay
+      - edge
+      - campus
+      - branch
+      - cloud
+      - security
+      - other
+    required: true
+    description: "Classification of the architecture pattern"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, planned, deprecated, decommissioned]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        deprecated: orange
+        decommissioned: red
+
+  standard_url:
+    type: url
+    display_name: Standard
+    required: false
+    description: "Link to the design standard or reference architecture document"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  standard_name:
+    type: string
+    display_name: Standard Name
+    required: false
+    max_length: 255
+    description: "Name of the design standard (e.g. NIST SP 800-41, Cisco SAFE, EVPN-VXLAN RFC 7348)"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      search_weight: 5
+
+  compliance_level:
+    type: enum
+    display_name: Compliance
+    enum_values: [compliant, partial, non_compliant, waived, not_assessed]
+    default: not_assessed
+    required: true
+    description: "Current compliance with the referenced standard"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 6
+      filter: true
+      badge_colors:
+        compliant: green
+        partial: yellow
+        non_compliant: red
+        waived: gray
+        not_assessed: blue
+
+  security_level:
+    type: enum
+    display_name: Security Level
+    enum_values: [untrusted, low, medium, high, restricted]
+    required: false
+    description: "Trust/security zone level for this architecture segment"
+    ui:
+      form_order: 7
+      filter: true
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+  design_notes:
+    type: text
+    display_name: Design Notes
+    required: false
+    description: "Implementation notes, constraints, and design decisions"
+    ui:
+      form_order: 11
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, standard_name, description, design_notes]
+
+graph:
+  default_label_field: name
+  group_by: architecture_type
+
+api:
+  plural_name: architectures
+  filterable_fields: [name, architecture_type, status, compliance_level, security_level]
+  sortable_fields: [name, architecture_type, status, compliance_level]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

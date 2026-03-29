@@ -1,0 +1,252 @@
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_IN_ARCHITECTURE — Device → Architecture (many-to-many)              #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_IN_ARCHITECTURE
+  display_name: "In Architecture"
+  description: "Device participates in an architecture zone or pattern"
+  category: Network
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [Architecture]
+
+cardinality: many_to_many
+inverse_name: HAS_DEVICE
+
+attributes:
+  device_role:
+    type: enum
+    enum_values: [core, distribution, access, edge, border, spine, leaf, firewall, load_balancer, gateway, other]
+    required: false
+    description: "The device's role within this specific architecture"
+
+graph:
+  style: solid
+  color: "#2563EB"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ARCHITECTURE_CONTAINS — Architecture → Architecture (one-to-many)          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ARCHITECTURE_CONTAINS
+  display_name: "Contains"
+  description: "Architecture hierarchy — e.g. Campus Core contains IP Fabric underlay"
+  category: Network
+
+source:
+  node_types: [Architecture]
+
+target:
+  node_types: [Architecture]
+
+cardinality: one_to_many
+inverse_name: PART_OF
+
+constraints:
+  unique_target: true  # Each architecture has at most one parent
+
+graph:
+  style: solid
+  color: "#2563EB"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ARCHITECTURE_CONNECTS_TO — Architecture → Architecture (many-to-many)      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ARCHITECTURE_CONNECTS_TO
+  display_name: "Connects To"
+  description: "Traffic flow or adjacency between architecture zones (e.g. DMZ connects to WAN Edge)"
+  category: Network
+
+source:
+  node_types: [Architecture]
+
+target:
+  node_types: [Architecture]
+
+cardinality: many_to_many
+inverse_name: ARCHITECTURE_CONNECTS_TO
+
+attributes:
+  connection_type:
+    type: enum
+    enum_values: [routed, filtered, tunneled, peered, nat, proxy]
+    required: false
+    description: "How traffic flows between these architectures"
+  policy:
+    type: string
+    required: false
+    description: "Firewall or routing policy governing this connection"
+
+graph:
+  style: dashed
+  color: "#2563EB"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# SERVICE_IN_ARCHITECTURE — Service → Architecture (many-to-many)            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: SERVICE_IN_ARCHITECTURE
+  display_name: "In Architecture"
+  description: "Service operates within an architecture zone"
+  category: Network
+
+source:
+  node_types: [Service]
+
+target:
+  node_types: [Architecture]
+
+cardinality: many_to_many
+inverse_name: HAS_SERVICE
+
+graph:
+  style: dashed
+  color: "#F97316"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ARCHITECTURE_AT_LOCATION — Architecture → Location (many-to-many)          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ARCHITECTURE_AT_LOCATION
+  display_name: "At Location"
+  description: "Architecture is deployed at a physical location"
+  category: Network
+
+source:
+  node_types: [Architecture]
+
+target:
+  node_types: [Location]
+
+cardinality: many_to_many
+inverse_name: HAS_ARCHITECTURE
+
+graph:
+  style: dashed
+  color: "#F59E0B"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# VPC_IN_ARCHITECTURE — VPC → Architecture (many-to-many)                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPC_IN_ARCHITECTURE
+  display_name: "In Architecture"
+  description: "VPC belongs to an architecture zone (e.g. DMZ VPC, Transit VPC)"
+  category: Network
+
+source:
+  node_types: [VPC]
+
+target:
+  node_types: [Architecture]
+
+cardinality: many_to_many
+inverse_name: HAS_VPC
+
+graph:
+  style: dashed
+  color: "#6366F1"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# PREFIX_IN_ARCHITECTURE — Prefix → Architecture (many-to-many)              #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: PREFIX_IN_ARCHITECTURE
+  display_name: "In Architecture"
+  description: "Prefix is allocated to an architecture zone"
+  category: Network
+
+source:
+  node_types: [Prefix]
+
+target:
+  node_types: [Architecture]
+
+cardinality: many_to_many
+inverse_name: HAS_PREFIX
+
+graph:
+  style: dashed
+  color: "#0891B2"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# ARCHITECTURE_OWNED_BY_TENANT — Architecture → Tenant (many-to-one)         #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ARCHITECTURE_OWNED_BY_TENANT
+  display_name: "Owned by Tenant"
+  description: "Architecture is owned or managed by a tenant"
+  category: Network
+
+source:
+  node_types: [Architecture]
+
+target:
+  node_types: [Tenant]
+
+cardinality: many_to_one
+inverse_name: HAS_ARCHITECTURE
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
