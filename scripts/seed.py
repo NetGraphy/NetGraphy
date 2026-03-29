@@ -68,9 +68,9 @@ def wait_for_api(retries: int = 15, delay: int = 3):
 IDS: dict[str, str] = {}  # "NodeType:unique_value" → id
 
 
-def create_node(node_type: str, props: dict[str, Any], key_field: str = "name") -> str | None:
-    """Create a node, return its id. Idempotent via key_field dedup."""
-    tag = f"{node_type}:{props.get(key_field, '?')}"
+def create_node(node_type: str, props: dict[str, Any], key_field: str = "name", dedup_key: str | None = None) -> str | None:
+    """Create a node, return its id. Idempotent via dedup_key or key_field."""
+    tag = dedup_key or f"{node_type}:{props.get(key_field, '?')}"
     if tag in IDS:
         return IDS[tag]
 
@@ -352,14 +352,14 @@ def seed_devices():
         if tid:
             create_edge("ASSIGNED_TO_TENANT", did, tid)
 
-        # Create interfaces
+        # Create interfaces (scoped to device — interface names repeat across devices)
         ifaces = _interfaces_for(hostname, role)
         for ifname, iftype, speed, enabled in ifaces:
             iid = create_node("Interface", {
                 "name": ifname, "interface_type": iftype,
                 "speed_mbps": speed, "enabled": enabled,
                 "oper_status": "up" if enabled else "down",
-            })
+            }, dedup_key=f"Interface:{hostname}:{ifname}")
             if iid:
                 create_edge("HAS_INTERFACE", did, iid)
 
