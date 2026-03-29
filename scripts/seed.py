@@ -186,8 +186,8 @@ def seed_software_versions():
             "version_string": ver, "major": major, "minor": minor, "status": status,
         }, key_field="version_string")
         pid = n("Platform", platform)
-        if vid and pid:
-            create_edge("USES_IMAGE", vid, pid)  # links version → platform chain
+        # SoftwareVersion doesn't directly link to Platform via edge in this seed;
+        # the Device → Platform and Device → SoftwareVersion edges handle the chain.
 
 
 def seed_tenants():
