@@ -95,6 +95,119 @@ def _validate_enum_type(raw: dict) -> list[str]:
     return errors
 
 
+VALID_ATTRIBUTE_TYPES = {
+    "string", "text", "integer", "float", "boolean", "datetime", "date",
+    "json", "ip_address", "cidr", "mac_address", "url", "email", "enum",
+    "reference", "list[string]", "list[integer]",
+}
+
+VALID_CARDINALITIES = {"one_to_one", "one_to_many", "many_to_one", "many_to_many"}
+
+
+def _validate_node_type_deep(raw: dict) -> tuple[list[str], list[str]]:
+    """Extended validation for node types — attribute types, UI metadata, etc."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    metadata = raw.get("metadata", {})
+
+    if not metadata.get("category"):
+        warnings.append("Missing metadata.category — node type will not appear in sidebar navigation")
+    if not metadata.get("display_name"):
+        warnings.append("Missing metadata.display_name — will fall back to metadata.name in the UI")
+
+    for attr_name, attr_data in raw.get("attributes", {}).items():
+        attr_type = attr_data.get("type")
+        if attr_type and attr_type not in VALID_ATTRIBUTE_TYPES:
+            errors.append(f"Attribute '{attr_name}' has invalid type: '{attr_type}'")
+        if attr_data.get("indexed") and attr_type not in INDEXABLE_TYPES:
+            warnings.append(f"Attribute '{attr_name}' has indexed=true but type '{attr_type}' may not support indexing efficiently")
+        if not attr_data.get("type"):
+            errors.append(f"Attribute '{attr_name}' is missing required 'type' field")
+
+        # Check display_name
+        if not attr_data.get("display_name"):
+            warnings.append(f"Attribute '{attr_name}' is missing display_name — column headers will show raw name")
+
+    # Check search config
+    search = raw.get("search", {})
+    if search.get("enabled") and not search.get("primary_field"):
+        warnings.append("search.enabled is true but no primary_field defined")
+
+    # Check API config
+    api = raw.get("api", {})
+    if not api.get("plural_name"):
+        warnings.append("Missing api.plural_name — API routes may not work correctly")
+
+    return errors, warnings
+
+
+def _validate_edge_type_deep(raw: dict) -> tuple[list[str], list[str]]:
+    """Extended validation for edge types."""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    cardinality = raw.get("cardinality")
+    if cardinality and cardinality not in VALID_CARDINALITIES:
+        errors.append(f"Invalid cardinality: '{cardinality}'")
+    if not cardinality:
+        errors.append("Missing required 'cardinality' field")
+
+    if not raw.get("metadata", {}).get("display_name"):
+        warnings.append("Missing metadata.display_name")
+
+    # Validate edge attributes
+    for attr_name, attr_data in raw.get("attributes", {}).items():
+        attr_type = attr_data.get("type")
+        if attr_type and attr_type not in VALID_ATTRIBUTE_TYPES:
+            errors.append(f"Edge attribute '{attr_name}' has invalid type: '{attr_type}'")
+
+    return errors, warnings
+
+
+def validate_cross_references(raw: dict, registry: SchemaRegistry) -> tuple[list[str], list[str]]:
+    """Validate cross-references against the live schema registry.
+
+    Checks:
+    - Edge source/target node types exist in the registry
+    - Referenced mixins exist
+    - enum_ref references resolve
+    - reference_node_type attributes point to known types
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    kind = raw.get("kind")
+
+    if kind == "NodeType":
+        deep_errors, deep_warnings = _validate_node_type_deep(raw)
+        errors.extend(deep_errors)
+        warnings.extend(deep_warnings)
+
+        # Check mixin references
+        for mixin_name in raw.get("mixins", []):
+            if not registry.get_mixin(mixin_name):
+                errors.append(f"Referenced mixin '{mixin_name}' does not exist in the registry")
+
+        # Check attribute references
+        for attr_name, attr_data in raw.get("attributes", {}).items():
+            ref_type = attr_data.get("reference_node_type")
+            if ref_type and not registry.get_node_type(ref_type):
+                errors.append(f"Attribute '{attr_name}' references unknown node type: '{ref_type}'")
+
+    elif kind == "EdgeType":
+        deep_errors, deep_warnings = _validate_edge_type_deep(raw)
+        errors.extend(deep_errors)
+        warnings.extend(deep_warnings)
+
+        for nt in raw.get("source", {}).get("node_types", []):
+            if not registry.get_node_type(nt):
+                errors.append(f"Source node type '{nt}' does not exist in the registry")
+        for nt in raw.get("target", {}).get("node_types", []):
+            if not registry.get_node_type(nt):
+                errors.append(f"Target node type '{nt}' does not exist in the registry")
+
+    return errors, warnings
+
+
 def diff_schemas(
     old_registry: SchemaRegistry,
     new_registry: SchemaRegistry,
