@@ -7,6 +7,8 @@ Creates a realistic multi-site enterprise network with:
   - IPAM: Prefixes, IP Addresses, BGP ASNs, MAC Addresses
   - Clouds: Cloud providers, VPCs, Subnets, Gateways
   - Network: Services
+  - Cabling: Physical cables with endpoint connections for spine-leaf fabrics
+  - Circuits: Providers, circuit types, circuits with A/Z terminations
   - Full relationship wiring between all objects
 
 Usage:
@@ -1019,6 +1021,230 @@ def seed_architectures():
     create_edge("ARCHITECTURE_OWNED_BY_TENANT", n("Architecture", "Management Plane"), n("Tenant", "Internal IT"))
 
 
+def seed_cables_and_connections():
+    """Create cables between interfaces and CONNECTED_TO edges for spine-leaf fabrics."""
+    print("\n=== Cables & Connections ===")
+
+    def _cable(label: str, cable_type: str, color: str, length_m: float,
+               host_a: str, if_a: str, host_b: str, if_b: str):
+        """Create a cable node, CABLE_ENDPOINT edges, and CONNECTED_TO edge."""
+        cable_id = create_node("Cable", {
+            "label": label, "cable_type": cable_type, "color": color,
+            "status": "connected", "length_m": length_m,
+        }, key_field="label")
+
+        iface_a = n("Interface", f"{host_a}:{if_a}")
+        iface_b = n("Interface", f"{host_b}:{if_b}")
+
+        if cable_id and iface_a:
+            create_edge("CABLE_ENDPOINT_A", cable_id, iface_a)
+        if cable_id and iface_b:
+            create_edge("CABLE_ENDPOINT_B", cable_id, iface_b)
+        if iface_a and iface_b:
+            create_edge("CONNECTED_TO", iface_a, iface_b,
+                        {"cable_type": cable_type, "cable_id": label})
+
+    # ----- Dallas spine-leaf full mesh (2 spines x 4 leaves = 8 cables) -----
+    dal_leaves = ["DAL-LEAF01", "DAL-LEAF02", "DAL-LEAF03", "DAL-LEAF04"]
+    for spine_idx, spine in enumerate(["DAL-SPN01", "DAL-SPN02"], start=0):
+        for leaf_idx, leaf in enumerate(dal_leaves, start=1):
+            cab_num = spine_idx * len(dal_leaves) + leaf_idx
+            _cable(
+                label=f"DAL-CAB-{cab_num:03d}",
+                cable_type="fiber_smf", color="aqua",
+                length_m=round(random.uniform(1, 15), 1),
+                host_a=spine, if_a=f"Ethernet{leaf_idx}/1",
+                host_b=leaf, if_b=f"Ethernet{spine_idx + 1}/1",
+            )
+
+    # ----- NYC spine-leaf full mesh (2 spines x 4 leaves = 8 cables) -----
+    nyc_leaves = ["NYC-LEAF01", "NYC-LEAF02", "NYC-LEAF03", "NYC-LEAF04"]
+    for spine_idx, spine in enumerate(["NYC-SPN01", "NYC-SPN02"], start=0):
+        for leaf_idx, leaf in enumerate(nyc_leaves, start=1):
+            cab_num = spine_idx * len(nyc_leaves) + leaf_idx
+            _cable(
+                label=f"NYC-CAB-{cab_num:03d}",
+                cable_type="fiber_smf", color="aqua",
+                length_m=round(random.uniform(1, 15), 1),
+                host_a=spine, if_a=f"Ethernet{leaf_idx}/1",
+                host_b=leaf, if_b=f"Ethernet{spine_idx + 1}/1",
+            )
+
+    # ----- London spine-leaf full mesh (2 spines x 2 leaves = 4 cables) -----
+    lon_leaves = ["LON-LEAF01", "LON-LEAF02"]
+    for spine_idx, spine in enumerate(["LON-SPN01", "LON-SPN02"], start=0):
+        for leaf_idx, leaf in enumerate(lon_leaves, start=1):
+            cab_num = spine_idx * len(lon_leaves) + leaf_idx
+            _cable(
+                label=f"LON-CAB-{cab_num:03d}",
+                cable_type="fiber_smf", color="aqua",
+                length_m=round(random.uniform(1, 15), 1),
+                host_a=spine, if_a=f"Ethernet{leaf_idx}/1",
+                host_b=leaf, if_b=f"Ethernet{spine_idx + 1}/1",
+            )
+
+    # ----- Core router to firewall uplinks -----
+    # Dallas: COR-RTR → FW
+    _cable("DAL-CAB-RTR-FW01", "cat6a", "blue", round(random.uniform(1, 15), 1),
+           "DAL-COR-RTR01", "GigabitEthernet0/0/0", "DAL-FW01", "ethernet1/1")
+    _cable("DAL-CAB-RTR-FW02", "cat6a", "blue", round(random.uniform(1, 15), 1),
+           "DAL-COR-RTR02", "GigabitEthernet0/0/0", "DAL-FW01", "ethernet1/2")
+
+    # NYC: COR-RTR → FW
+    _cable("NYC-CAB-RTR-FW01", "cat6a", "blue", round(random.uniform(1, 15), 1),
+           "NYC-COR-RTR01", "GigabitEthernet0/0/0", "NYC-FW01", "ethernet1/1")
+    _cable("NYC-CAB-RTR-FW02", "cat6a", "blue", round(random.uniform(1, 15), 1),
+           "NYC-COR-RTR02", "GigabitEthernet0/0/0", "NYC-FW01", "ethernet1/2")
+
+    # ----- Branch router to switch links -----
+    branch_links = [
+        ("MEX-BR-RTR01", "MEX-BR-SW01", "MEX-CAB-BR01"),
+        ("CHI-BR-RTR01", "CHI-BR-SW01", "CHI-CAB-BR01"),
+        ("SEA-BR-RTR01", "SEA-BR-SW01", "SEA-CAB-BR01"),
+    ]
+    for rtr, sw, label in branch_links:
+        _cable(label, "cat6a", "green", round(random.uniform(2, 50), 1),
+               rtr, "GigabitEthernet0/0/1", sw, "GigabitEthernet1/0/1")
+
+
+def seed_circuits():
+    """Create providers, circuit types, circuits with A/Z terminations."""
+    print("\n=== Circuits ===")
+
+    # ----- Providers -----
+    providers = [
+        ("Lumen Technologies", "lumen", 3356),
+        ("Zayo Group", "zayo", 6461),
+        ("Equinix", "equinix", None),
+        ("Megaport", "megaport", None),
+    ]
+    for pname, slug, asn in providers:
+        props: dict[str, Any] = {"name": pname, "slug": slug}
+        if asn is not None:
+            props["asn"] = asn
+        create_node("Provider", props)
+
+    # ----- Circuit Types -----
+    circuit_types = [
+        ("Internet Transit", "internet-transit"),
+        ("MPLS VPN", "mpls-vpn"),
+        ("Dark Fiber", "dark-fiber"),
+        ("Cross Connect", "cross-connect"),
+        ("Cloud On-Ramp", "cloud-on-ramp"),
+    ]
+    for ct_name, ct_slug in circuit_types:
+        create_node("CircuitType", {"name": ct_name, "slug": ct_slug})
+
+    # ----- Provider presence at locations -----
+    provider_locations = {
+        "Lumen Technologies": ["DAL-DC1", "NYC-DC1", "LON-DC1", "FRA-DC1", "SIN-DC1", "MEX-BR1", "CHI-BR1"],
+        "Zayo Group": ["NYC-DC1", "LON-DC1", "SEA-BR1"],
+        "Equinix": ["DAL-DC1", "NYC-DC1"],
+        "Megaport": ["DAL-DC1", "NYC-DC1"],
+    }
+    for pname, locs in provider_locations.items():
+        prov_id = n("Provider", pname)
+        for loc_name in locs:
+            loc_id = n("Location", loc_name)
+            if prov_id and loc_id:
+                create_edge("PROVIDER_IN_LOCATION", prov_id, loc_id)
+
+    # ----- Helper to create a circuit with terminations -----
+    def _circuit(cid: str, provider: str, ctype: str, status: str,
+                 bandwidth_kbps: int | None, commit_rate_kbps: int | None,
+                 a_location: str, z_location: str | None = None,
+                 xconnect_id: str | None = None, patch_panel: str | None = None):
+        """Create a circuit, its type/provider edges, and A/Z terminations."""
+        props: dict[str, Any] = {"cid": cid, "status": status}
+        if bandwidth_kbps is not None:
+            props["bandwidth_kbps"] = bandwidth_kbps
+        if commit_rate_kbps is not None:
+            props["commit_rate_kbps"] = commit_rate_kbps
+
+        ckt_id = create_node("Circuit", props, key_field="cid")
+        if not ckt_id:
+            return
+
+        # Wire to type and provider
+        ct_id = n("CircuitType", ctype)
+        if ct_id:
+            create_edge("CIRCUIT_HAS_TYPE", ckt_id, ct_id)
+        prov_id = n("Provider", provider)
+        if prov_id:
+            create_edge("CIRCUIT_FROM_PROVIDER", ckt_id, prov_id)
+
+        # A-side termination
+        a_props: dict[str, Any] = {"term_side": "A"}
+        if bandwidth_kbps:
+            a_props["port_speed_kbps"] = bandwidth_kbps
+        if xconnect_id:
+            a_props["xconnect_id"] = xconnect_id
+        if patch_panel:
+            a_props["patch_panel"] = patch_panel
+        term_a = create_node("CircuitTermination", a_props,
+                             dedup_key=f"CircuitTermination:{cid}:A")
+        if term_a:
+            create_edge("CIRCUIT_HAS_TERMINATION", ckt_id, term_a)
+            a_loc = n("Location", a_location)
+            if a_loc:
+                create_edge("TERMINATION_AT_LOCATION", term_a, a_loc)
+
+        # Z-side termination (if applicable)
+        if z_location:
+            z_props: dict[str, Any] = {"term_side": "Z"}
+            if bandwidth_kbps:
+                z_props["port_speed_kbps"] = bandwidth_kbps
+            term_z = create_node("CircuitTermination", z_props,
+                                 dedup_key=f"CircuitTermination:{cid}:Z")
+            if term_z:
+                create_edge("CIRCUIT_HAS_TERMINATION", ckt_id, term_z)
+                z_loc = n("Location", z_location)
+                if z_loc:
+                    create_edge("TERMINATION_AT_LOCATION", term_z, z_loc)
+
+    # ----- Internet Transit circuits -----
+    _circuit("CKT-LUMEN-DAL-INT01", "Lumen Technologies", "Internet Transit",
+             "active", 1_000_000, 1_000_000, "DAL-DC1")
+    _circuit("CKT-ZAYO-NYC-INT01", "Zayo Group", "Internet Transit",
+             "active", 1_000_000, 1_000_000, "NYC-DC1")
+    _circuit("CKT-LUMEN-LON-INT01", "Lumen Technologies", "Internet Transit",
+             "active", 500_000, 500_000, "LON-DC1")
+
+    # ----- MPLS VPN circuits (site-to-site) -----
+    _circuit("CKT-LUMEN-MPLS-DAL-NYC", "Lumen Technologies", "MPLS VPN",
+             "active", 10_000_000, 10_000_000, "DAL-DC1", "NYC-DC1")
+    _circuit("CKT-LUMEN-MPLS-DAL-LON", "Lumen Technologies", "MPLS VPN",
+             "active", 1_000_000, 1_000_000, "DAL-DC1", "LON-DC1")
+    _circuit("CKT-ZAYO-MPLS-NYC-LON", "Zayo Group", "MPLS VPN",
+             "active", 1_000_000, 1_000_000, "NYC-DC1", "LON-DC1")
+    _circuit("CKT-LUMEN-MPLS-DAL-FRA", "Lumen Technologies", "MPLS VPN",
+             "active", 500_000, 500_000, "DAL-DC1", "FRA-DC1")
+    _circuit("CKT-LUMEN-MPLS-DAL-SIN", "Lumen Technologies", "MPLS VPN",
+             "planned", 500_000, 500_000, "DAL-DC1", "SIN-DC1")
+
+    # ----- Cross Connects -----
+    _circuit("CKT-EQX-DAL-XCON01", "Equinix", "Cross Connect",
+             "active", None, None, "DAL-DC1",
+             xconnect_id="EQX-DAL-XCON-4412", patch_panel="PP-A-12")
+    _circuit("CKT-EQX-NYC-XCON01", "Equinix", "Cross Connect",
+             "active", None, None, "NYC-DC1",
+             xconnect_id="EQX-NYC-XCON-7801", patch_panel="PP-B-03")
+
+    # ----- Cloud On-Ramp -----
+    _circuit("CKT-MEGA-DAL-AWS01", "Megaport", "Cloud On-Ramp",
+             "active", 1_000_000, 1_000_000, "DAL-DC1")
+    _circuit("CKT-MEGA-NYC-AZR01", "Megaport", "Cloud On-Ramp",
+             "active", 1_000_000, 1_000_000, "NYC-DC1")
+
+    # ----- Branch Internet -----
+    _circuit("CKT-LUMEN-MEX-INT01", "Lumen Technologies", "Internet Transit",
+             "active", 100_000, 100_000, "MEX-BR1")
+    _circuit("CKT-LUMEN-CHI-INT01", "Lumen Technologies", "Internet Transit",
+             "active", 100_000, 100_000, "CHI-BR1")
+    _circuit("CKT-ZAYO-SEA-INT01", "Zayo Group", "Internet Transit",
+             "active", 100_000, 100_000, "SEA-BR1")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -1044,6 +1270,8 @@ def main():
     seed_cloud()
     seed_services()
     seed_architectures()
+    seed_cables_and_connections()
+    seed_circuits()
 
     print("\n" + "=" * 60)
     print(f"  Done! Created {len(IDS)} objects.")
