@@ -1,0 +1,68 @@
+kind: NodeType
+version: v1
+metadata:
+  name: CircuitType
+  display_name: Circuit Type
+  description: "A classification for circuits — e.g., Internet, MPLS, dark fiber, point-to-point"
+  icon: tag
+  color: "#A855F7"
+  category: Circuits
+  tags: [circuits, reference]
+
+attributes:
+  name:
+    type: string
+    display_name: "Name"
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Circuit type name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    display_name: "Slug"
+    required: true
+    unique: true
+    indexed: true
+    description: "URL-safe identifier"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  description:
+    type: text
+    display_name: "Description"
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, description]
+
+graph:
+  default_label_field: name
+
+api:
+  plural_name: circuit_types
+  filterable_fields: [name, slug]
+  sortable_fields: [name, slug, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

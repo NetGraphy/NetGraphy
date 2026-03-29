@@ -124,6 +124,18 @@ def _validate_node_type_deep(raw: dict) -> tuple[list[str], list[str]]:
         if not attr_data.get("type"):
             errors.append(f"Attribute '{attr_name}' is missing required 'type' field")
 
+    # Validate detail_tabs
+    for tab in raw.get("detail_tabs", []):
+        if not isinstance(tab, dict):
+            errors.append("detail_tabs entries must be objects")
+            continue
+        if not tab.get("label"):
+            errors.append("detail_tab is missing required 'label' field")
+        if not tab.get("edge_type"):
+            errors.append(f"detail_tab '{tab.get('label', '?')}' is missing required 'edge_type' field")
+        if not tab.get("target_type"):
+            errors.append(f"detail_tab '{tab.get('label', '?')}' is missing required 'target_type' field")
+
         # Check display_name
         if not attr_data.get("display_name"):
             warnings.append(f"Attribute '{attr_name}' is missing display_name — column headers will show raw name")
@@ -192,6 +204,25 @@ def validate_cross_references(raw: dict, registry: SchemaRegistry) -> tuple[list
             ref_type = attr_data.get("reference_node_type")
             if ref_type and not registry.get_node_type(ref_type):
                 errors.append(f"Attribute '{attr_name}' references unknown node type: '{ref_type}'")
+
+        # Check detail_tabs cross-references
+        for tab in raw.get("detail_tabs", []):
+            if not isinstance(tab, dict):
+                continue
+            edge_type = tab.get("edge_type")
+            target_type = tab.get("target_type")
+            label = tab.get("label", "?")
+            if edge_type and not registry.get_edge_type(edge_type):
+                warnings.append(f"detail_tab '{label}' references edge type '{edge_type}' not yet in registry")
+            if target_type and not registry.get_node_type(target_type):
+                warnings.append(f"detail_tab '{label}' references target type '{target_type}' not yet in registry")
+            # Validate columns exist on target type
+            if target_type:
+                target_def = registry.get_node_type(target_type)
+                if target_def:
+                    for col in tab.get("columns", []):
+                        if col not in target_def.attributes:
+                            warnings.append(f"detail_tab '{label}' column '{col}' not found in {target_type} attributes")
 
     elif kind == "EdgeType":
         deep_errors, deep_warnings = _validate_edge_type_deep(raw)

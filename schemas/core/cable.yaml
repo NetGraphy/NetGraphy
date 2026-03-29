@@ -1,0 +1,119 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Cable
+  display_name: Cable
+  description: "A physical cable connecting two endpoints — copper, fiber, DAC, power, etc."
+  icon: link
+  color: "#EF4444"
+  category: Infrastructure
+  tags: [infrastructure, cabling, physical]
+
+attributes:
+  label:
+    type: string
+    display_name: "Label"
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Cable ID or label (e.g., CAB-001, P1-A12)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  cable_type:
+    type: enum
+    display_name: "Type"
+    enum_values: [cat5e, cat6, cat6a, cat7, fiber_smf, fiber_mmf, dac, aoc, coax, power, serial, other]
+    required: true
+    description: "Physical cable type"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  status:
+    type: enum
+    display_name: "Status"
+    enum_values: [connected, planned, decommissioned]
+    default: connected
+    required: true
+    description: "Operational status of the cable"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        connected: green
+        planned: blue
+        decommissioned: red
+
+  color:
+    type: enum
+    display_name: "Color"
+    enum_values: [black, white, red, blue, green, yellow, orange, purple, pink, gray, brown, aqua, other]
+    required: false
+    description: "Physical cable color"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  length_m:
+    type: float
+    display_name: "Length (m)"
+    required: false
+    description: "Cable length in meters"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+
+  length_type:
+    type: enum
+    display_name: "Length Type"
+    enum_values: [measured, estimated]
+    required: false
+    description: "How the length was determined"
+    ui:
+      form_order: 6
+
+  description:
+    type: text
+    display_name: "Description"
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: label
+  search_fields: [label, description]
+
+graph:
+  default_label_field: label
+  group_by: cable_type
+
+api:
+  plural_name: cables
+  filterable_fields: [label, cable_type, status, color, length_type]
+  sortable_fields: [label, cable_type, status, length_m, created_at]
+  default_sort: label
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

@@ -1,0 +1,114 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Provider
+  display_name: Provider
+  description: "A circuit provider or carrier — ISP, transit provider, IX, etc."
+  icon: building-2
+  color: "#7C3AED"
+  category: Circuits
+  tags: [circuits, providers]
+
+attributes:
+  name:
+    type: string
+    display_name: "Name"
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Provider name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    display_name: "Slug"
+    required: true
+    unique: true
+    indexed: true
+    description: "URL-safe identifier"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  asn:
+    type: integer
+    display_name: "ASN"
+    required: false
+    indexed: true
+    description: "Provider's autonomous system number"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      search_weight: 5
+
+  account_number:
+    type: string
+    display_name: "Account Number"
+    required: false
+    description: "Customer account number with the provider"
+    ui:
+      form_order: 4
+
+  portal_url:
+    type: url
+    display_name: "Portal URL"
+    required: false
+    description: "Customer portal URL"
+    ui:
+      form_order: 5
+
+  noc_contact:
+    type: string
+    display_name: "NOC Contact"
+    required: false
+    description: "NOC email or phone"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 6
+
+  admin_contact:
+    type: string
+    display_name: "Admin Contact"
+    required: false
+    description: "Administrative contact email or phone"
+    ui:
+      form_order: 7
+
+  description:
+    type: text
+    display_name: "Description"
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, asn, account_number, noc_contact, description]
+
+graph:
+  default_label_field: name
+
+api:
+  plural_name: providers
+  filterable_fields: [name, slug, asn]
+  sortable_fields: [name, slug, asn, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

@@ -85,11 +85,21 @@ export interface APIMetadata {
   exposed: boolean;
 }
 
+export interface DetailTabDefinition {
+  label: string;
+  edge_type: string;
+  target_type: string;
+  columns: string[];
+  filters: string[];
+  default_sort: string | null;
+}
+
 export interface NodeTypeDefinition {
   kind: "NodeType";
   version: string;
   metadata: SchemaMetadata;
   attributes: Record<string, AttributeDefinition>;
+  detail_tabs: DetailTabDefinition[];
   search: SearchMetadata;
   graph: GraphMetadata;
   api: APIMetadata;

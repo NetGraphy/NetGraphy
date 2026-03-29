@@ -1,0 +1,106 @@
+kind: NodeType
+version: v1
+metadata:
+  name: CircuitTermination
+  display_name: Circuit Termination
+  description: "A termination point of a circuit — represents the A-side or Z-side physical handoff"
+  icon: plug
+  color: "#6D28D9"
+  category: Circuits
+  tags: [circuits, terminations]
+
+attributes:
+  term_side:
+    type: enum
+    display_name: "Side"
+    enum_values: [A, Z]
+    required: true
+    description: "A-side or Z-side of the circuit"
+    ui:
+      list_column: true
+      list_column_order: 1
+      form_order: 1
+      filter: true
+      badge_colors:
+        A: blue
+        Z: green
+
+  port_speed_kbps:
+    type: integer
+    display_name: "Port Speed (Kbps)"
+    required: false
+    description: "Physical port speed in Kbps"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  upstream_speed_kbps:
+    type: integer
+    display_name: "Upstream Speed (Kbps)"
+    required: false
+    description: "Upstream speed in Kbps"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  xconnect_id:
+    type: string
+    display_name: "Cross-Connect ID"
+    required: false
+    indexed: true
+    description: "Cross-connect identifier in the data center"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 5
+
+  patch_panel:
+    type: string
+    display_name: "Patch Panel"
+    required: false
+    description: "Patch panel identifier"
+    ui:
+      form_order: 5
+
+  patch_panel_port:
+    type: string
+    display_name: "Patch Panel Port"
+    required: false
+    description: "Patch panel port identifier"
+    ui:
+      form_order: 6
+
+  description:
+    type: text
+    display_name: "Description"
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: term_side
+  search_fields: [term_side, xconnect_id, patch_panel, description]
+
+graph:
+  default_label_field: term_side
+  group_by: term_side
+
+api:
+  plural_name: circuit_terminations
+  filterable_fields: [term_side, port_speed_kbps, upstream_speed_kbps, xconnect_id]
+  sortable_fields: [term_side, port_speed_kbps, created_at]
+  default_sort: term_side
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

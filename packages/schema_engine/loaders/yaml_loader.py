@@ -50,6 +50,7 @@ def parse_schema_object(raw: dict[str, Any]) -> NodeTypeDefinition | EdgeTypeDef
             metadata=metadata,
             attributes=parse_attributes(raw.get("attributes", {})),
             mixins=raw.get("mixins", []),
+            detail_tabs=raw.get("detail_tabs", []),
             search=raw.get("search", {}),
             graph=raw.get("graph", {}),
             api=raw.get("api", {}),

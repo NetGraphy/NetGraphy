@@ -1,0 +1,108 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Circuit
+  display_name: Circuit
+  description: "A communications circuit — Internet, MPLS, point-to-point, dark fiber, etc."
+  icon: cable
+  color: "#8B5CF6"
+  category: Circuits
+  tags: [circuits, connectivity]
+
+attributes:
+  cid:
+    type: string
+    display_name: "Circuit ID"
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Carrier circuit identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  status:
+    type: enum
+    display_name: "Status"
+    enum_values: [active, planned, provisioning, deprovisioning, decommissioned, offline]
+    default: planned
+    required: true
+    description: "Operational status of the circuit"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        provisioning: yellow
+        deprovisioning: orange
+        decommissioned: red
+        offline: gray
+
+  install_date:
+    type: date
+    display_name: "Install Date"
+    required: false
+    description: "Date the circuit was installed"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  commit_rate_kbps:
+    type: integer
+    display_name: "Commit Rate (Kbps)"
+    required: false
+    description: "Committed information rate in Kbps"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  bandwidth_kbps:
+    type: integer
+    display_name: "Bandwidth (Kbps)"
+    required: false
+    description: "Total bandwidth in Kbps"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+
+  description:
+    type: text
+    display_name: "Description"
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: cid
+  search_fields: [cid, description]
+
+graph:
+  default_label_field: cid
+  group_by: status
+
+api:
+  plural_name: circuits
+  filterable_fields: [cid, status, install_date, commit_rate_kbps, bandwidth_kbps]
+  sortable_fields: [cid, status, install_date, bandwidth_kbps, created_at]
+  default_sort: cid
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

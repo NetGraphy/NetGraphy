@@ -7,28 +7,33 @@
  * - History: audit trail for this node
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSchemaStore } from "@/stores/schemaStore";
 import { nodesApi, api } from "@/api/client";
 import { FieldRenderer } from "./FieldRenderer";
-
-type TabId = "overview" | "relationships" | "history";
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "relationships", label: "Relationships" },
-  { id: "history", label: "History" },
-];
+import type { DetailTabDefinition } from "@/types/schema";
 
 export function DynamicDetailPage() {
   const { nodeType, id } = useParams<{ nodeType: string; id: string }>();
   const { getNodeType, getEdgesForNodeType } = useSchemaStore();
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [activeTab, setActiveTab] = useState("overview");
 
   const typeDef = nodeType ? getNodeType(nodeType) : undefined;
   const edgeTypes = nodeType ? getEdgesForNodeType(nodeType) : [];
+
+  // Build dynamic tabs: overview + schema-defined custom tabs + relationships + history
+  const detailTabs = typeDef?.detail_tabs || [];
+  const tabs = useMemo(() => {
+    const t: { id: string; label: string }[] = [{ id: "overview", label: "Overview" }];
+    for (const dt of detailTabs) {
+      t.push({ id: `custom:${dt.edge_type}`, label: dt.label });
+    }
+    t.push({ id: "relationships", label: "Relationships" });
+    t.push({ id: "history", label: "History" });
+    return t;
+  }, [detailTabs]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["node", nodeType, id],
@@ -84,7 +89,7 @@ export function DynamicDetailPage() {
       {/* Tab navigation */}
       <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex gap-6">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -113,6 +118,18 @@ export function DynamicDetailPage() {
               autoAttributes={autoAttributes}
             />
           )}
+          {activeTab.startsWith("custom:") && (() => {
+            const edgeType = activeTab.replace("custom:", "");
+            const tabDef = detailTabs.find((dt) => dt.edge_type === edgeType);
+            if (!tabDef) return null;
+            return (
+              <CustomRelatedTab
+                nodeType={nodeType!}
+                nodeId={id!}
+                tabDef={tabDef}
+              />
+            );
+          })()}
           {activeTab === "relationships" && (
             <RelationshipsTab
               nodeType={nodeType!}
@@ -330,6 +347,165 @@ function RelationshipPanel({
           )}
         </ul>
       )}
+    </div>
+  );
+}
+
+// --- Custom Related Tab (schema-driven table view) ---
+
+function CustomRelatedTab({
+  nodeType,
+  nodeId,
+  tabDef,
+}: {
+  nodeType: string;
+  nodeId: string;
+  tabDef: DetailTabDefinition;
+}) {
+  const { getNodeType } = useSchemaStore();
+  const targetSchema = getNodeType(tabDef.target_type);
+  const [filters, setFilters] = useState<Record<string, string>>({});
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["relationships", nodeType, nodeId, tabDef.edge_type],
+    queryFn: () => nodesApi.relationships(nodeType, nodeId, tabDef.edge_type),
+  });
+
+  const allRows: Record<string, unknown>[] = (data?.data?.data || []).map(
+    (rel: { related_node?: Record<string, unknown>; related_id?: string; related_type?: string }) => ({
+      ...rel.related_node,
+      _related_id: rel.related_id,
+      _related_type: rel.related_type,
+    }),
+  );
+
+  // Apply filters
+  const rows = allRows.filter((row) =>
+    Object.entries(filters).every(([k, v]) => {
+      if (!v) return true;
+      return String(row[k] ?? "").toLowerCase().includes(v.toLowerCase());
+    }),
+  );
+
+  // Resolve column display names from target schema
+  const columns = tabDef.columns.length > 0
+    ? tabDef.columns
+    : Object.keys(targetSchema?.attributes || {}).slice(0, 6);
+
+  return (
+    <div>
+      {/* Filters */}
+      {tabDef.filters.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
+          {tabDef.filters.map((filterKey) => {
+            const attrDef = targetSchema?.attributes[filterKey];
+            const label = attrDef?.display_name || filterKey;
+            const enumValues = attrDef?.enum_values;
+            return (
+              <div key={filterKey} className="flex flex-col">
+                <label className="mb-1 text-xs font-medium text-gray-500">{label}</label>
+                {enumValues ? (
+                  <select
+                    value={filters[filterKey] || ""}
+                    onChange={(e) => setFilters((f) => ({ ...f, [filterKey]: e.target.value }))}
+                    className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                  >
+                    <option value="">All</option>
+                    {enumValues.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={filters[filterKey] || ""}
+                    onChange={(e) => setFilters((f) => ({ ...f, [filterKey]: e.target.value }))}
+                    placeholder="Filter..."
+                    className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                  />
+                )}
+              </div>
+            );
+          })}
+          {Object.values(filters).some(Boolean) && (
+            <button
+              onClick={() => setFilters({})}
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              {columns.map((col) => {
+                const attrDef = targetSchema?.attributes[col];
+                return (
+                  <th
+                    key={col}
+                    title={attrDef?.description || undefined}
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                  >
+                    {attrDef?.display_name || col}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-4 text-sm text-gray-500">
+                  Loading...
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-4 text-center text-sm text-gray-400">
+                  No {tabDef.label.toLowerCase()} found.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => (
+                <tr key={(row._related_id as string) || idx} className="hover:bg-gray-50">
+                  {columns.map((col, ci) => {
+                    const attrDef = targetSchema?.attributes[col];
+                    const value = row[col];
+                    return (
+                      <td key={col} className="px-4 py-2 text-sm">
+                        {ci === 0 ? (
+                          <Link
+                            to={`/objects/${row._related_type || tabDef.target_type}/${row._related_id}`}
+                            className="font-medium text-brand-600 hover:text-brand-700"
+                          >
+                            {attrDef ? (
+                              <FieldRenderer value={value} attribute={attrDef} mode="display" />
+                            ) : (
+                              String(value ?? "—")
+                            )}
+                          </Link>
+                        ) : attrDef ? (
+                          <FieldRenderer value={value} attribute={attrDef} mode="display" />
+                        ) : (
+                          String(value ?? "—")
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        <div className="border-t border-gray-200 px-4 py-2 text-xs text-gray-500">
+          {rows.length} {tabDef.label.toLowerCase()}{allRows.length !== rows.length ? ` (${allRows.length} total, ${allRows.length - rows.length} filtered)` : ""}
+        </div>
+      </div>
     </div>
   );
 }

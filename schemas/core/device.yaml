@@ -128,6 +128,21 @@ mixins:
   - lifecycle_mixin
   - provenance_mixin
 
+detail_tabs:
+  - label: Interfaces
+    edge_type: HAS_INTERFACE
+    target_type: Interface
+    columns: [name, interface_type, enabled, oper_status, speed_mbps, mac_address, mode, vlan_id]
+    filters: [interface_type, enabled, oper_status, mode]
+    default_sort: name
+
+  - label: Inventory
+    edge_type: HAS_INVENTORY_ITEM
+    target_type: InventoryItem
+    columns: [name, item_type, status, part_number, serial_number, slot_position, firmware_version]
+    filters: [item_type, status]
+    default_sort: slot_position
+
 search:
   enabled: true
   primary_field: hostname

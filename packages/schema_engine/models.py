@@ -102,6 +102,30 @@ class PermissionsMetadata(BaseModel):
     default_delete: str = "admin"
 
 
+class DetailTabDefinition(BaseModel):
+    """Custom tab on the detail page for a node type.
+
+    Allows the schema to define dedicated tabs that show related nodes
+    via a specific edge type in a table view with filterable columns.
+
+    Example YAML::
+
+        detail_tabs:
+          - label: Interfaces
+            edge_type: HAS_INTERFACE
+            target_type: Interface
+            columns: [name, interface_type, enabled, oper_status, speed_mbps, ip_addresses]
+            filters: [interface_type, enabled, oper_status]
+            default_sort: name
+    """
+    label: str
+    edge_type: str
+    target_type: str
+    columns: list[str] = Field(default_factory=list)
+    filters: list[str] = Field(default_factory=list)
+    default_sort: str | None = None
+
+
 # --------------------------------------------------------------------------- #
 #  Core Definitions                                                            #
 # --------------------------------------------------------------------------- #
@@ -145,6 +169,7 @@ class NodeTypeDefinition(BaseModel):
     metadata: SchemaMetadata
     attributes: dict[str, AttributeDefinition] = Field(default_factory=dict)
     mixins: list[str] = Field(default_factory=list)
+    detail_tabs: list[DetailTabDefinition] = Field(default_factory=list)
     search: SearchMetadata = Field(default_factory=SearchMetadata)
     graph: GraphMetadata = Field(default_factory=GraphMetadata)
     api: APIMetadata = Field(default_factory=APIMetadata)

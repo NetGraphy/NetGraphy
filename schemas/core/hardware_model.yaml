@@ -126,6 +126,21 @@ attributes:
 mixins:
   - lifecycle_mixin
 
+detail_tabs:
+  - label: Interface Templates
+    edge_type: HAS_INTERFACE_TEMPLATE
+    target_type: InterfaceTemplate
+    columns: [name, interface_type, speed_mbps, form_factor, slot_position, mgmt_only, poe_capable]
+    filters: [interface_type, form_factor]
+    default_sort: slot_position
+
+  - label: Inventory Templates
+    edge_type: HAS_INVENTORY_TEMPLATE
+    target_type: InventoryItemTemplate
+    columns: [name, item_type, slot_position, required]
+    filters: [item_type, required]
+    default_sort: slot_position
+
 search:
   enabled: true
   primary_field: model

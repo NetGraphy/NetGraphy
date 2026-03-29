@@ -1,0 +1,302 @@
+---
+# --------------------------------------------------------------------------- #
+# CIRCUIT_HAS_TYPE — Circuit → CircuitType (many-to-one)                      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CIRCUIT_HAS_TYPE
+  display_name: "Has Type"
+  description: "Circuit is classified by a circuit type"
+  category: Circuits
+
+source:
+  node_types: [Circuit]
+
+target:
+  node_types: [CircuitType]
+
+cardinality: many_to_one
+inverse_name: CIRCUITS_OF_TYPE
+
+constraints:
+  unique_source: true  # Each circuit has exactly one type
+
+graph:
+  style: solid
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# CIRCUIT_FROM_PROVIDER — Circuit → Provider (many-to-one)                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CIRCUIT_FROM_PROVIDER
+  display_name: "From Provider"
+  description: "Circuit is provided by a service provider"
+  category: Circuits
+
+source:
+  node_types: [Circuit]
+
+target:
+  node_types: [Provider]
+
+cardinality: many_to_one
+inverse_name: PROVIDES_CIRCUIT
+
+constraints:
+  unique_source: true  # Each circuit has exactly one provider
+
+graph:
+  style: solid
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# CIRCUIT_HAS_TERMINATION — Circuit → CircuitTermination (one-to-many)        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CIRCUIT_HAS_TERMINATION
+  display_name: "Has Termination"
+  description: "Circuit has a termination point (A or Z side)"
+  category: Circuits
+
+source:
+  node_types: [Circuit]
+
+target:
+  node_types: [CircuitTermination]
+
+cardinality: one_to_many
+inverse_name: TERMINATION_OF
+
+constraints:
+  unique_target: true  # Each termination belongs to exactly one circuit
+
+graph:
+  style: solid
+  color: "#8B5CF6"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# TERMINATION_AT_LOCATION — CircuitTermination → Location (many-to-one)       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TERMINATION_AT_LOCATION
+  display_name: "At Location"
+  description: "Circuit termination is physically located at a site"
+  category: Circuits
+
+source:
+  node_types: [CircuitTermination]
+
+target:
+  node_types: [Location]
+
+cardinality: many_to_one
+inverse_name: HAS_TERMINATION
+
+graph:
+  style: solid
+  color: "#8B5CF6"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# TERMINATION_CONNECTED_TO — CircuitTermination → Interface (one-to-one)      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TERMINATION_CONNECTED_TO
+  display_name: "Connected To"
+  description: "The physical interface the circuit terminates on"
+  category: Circuits
+
+source:
+  node_types: [CircuitTermination]
+
+target:
+  node_types: [Interface]
+
+cardinality: one_to_one
+inverse_name: CIRCUIT_TERMINATION
+
+constraints:
+  unique_source: true   # Each termination connects to at most one interface
+  unique_target: true   # Each interface has at most one circuit termination
+
+graph:
+  style: solid
+  color: "#9333EA"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# CABLE_ENDPOINT_A — Cable → Interface (many-to-one)                         #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CABLE_ENDPOINT_A
+  display_name: "Endpoint A"
+  description: "The A-side endpoint of the cable"
+  category: Circuits
+
+source:
+  node_types: [Cable]
+
+target:
+  node_types: [Interface]
+
+cardinality: many_to_one
+inverse_name: CABLE_A
+
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# CABLE_ENDPOINT_B — Cable → Interface (many-to-one)                         #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CABLE_ENDPOINT_B
+  display_name: "Endpoint B"
+  description: "The B-side endpoint of the cable"
+  category: Circuits
+
+source:
+  node_types: [Cable]
+
+target:
+  node_types: [Interface]
+
+cardinality: many_to_one
+inverse_name: CABLE_B
+
+graph:
+  style: solid
+  color: "#EF4444"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# CABLE_TO_TERMINATION_A — Cable → CircuitTermination (many-to-one)           #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CABLE_TO_TERMINATION_A
+  display_name: "To Termination A"
+  description: "Cable connects to a circuit termination (A side)"
+  category: Circuits
+
+source:
+  node_types: [Cable]
+
+target:
+  node_types: [CircuitTermination]
+
+cardinality: many_to_one
+inverse_name: CABLE_A
+
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# CABLE_TO_TERMINATION_B — Cable → CircuitTermination (many-to-one)           #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CABLE_TO_TERMINATION_B
+  display_name: "To Termination B"
+  description: "Cable connects to a circuit termination (B side)"
+  category: Circuits
+
+source:
+  node_types: [Cable]
+
+target:
+  node_types: [CircuitTermination]
+
+cardinality: many_to_one
+inverse_name: CABLE_B
+
+graph:
+  style: solid
+  color: "#EF4444"
+  show_label: true
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# PROVIDER_IN_LOCATION — Provider → Location (many-to-many)                   #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: PROVIDER_IN_LOCATION
+  display_name: "In Location"
+  description: "Provider has presence at locations"
+  category: Circuits
+
+source:
+  node_types: [Provider]
+
+target:
+  node_types: [Location]
+
+cardinality: many_to_many
+inverse_name: HAS_PROVIDER
+
+graph:
+  style: dashed
+  color: "#A855F7"
+  show_label: false
+
+api:
+  exposed: true
