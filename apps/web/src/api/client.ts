@@ -22,14 +22,62 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor: handle auth errors
+// Response interceptor: attempt token refresh on 401, then redirect if that fails
+let isRefreshing = false;
+let pendingRequests: ((token: string) => void)[] = [];
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("netgraphy_token");
-      window.location.href = "/login";
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem("netgraphy_refresh_token");
+
+      if (!refreshToken) {
+        localStorage.removeItem("netgraphy_token");
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue this request until the refresh completes
+        return new Promise((resolve) => {
+          pendingRequests.push((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const resp = await api.post("/auth/token", { refresh_token: refreshToken });
+        const { access_token, refresh_token: newRefresh } = resp.data.data;
+
+        localStorage.setItem("netgraphy_token", access_token);
+        localStorage.setItem("netgraphy_refresh_token", newRefresh);
+        api.defaults.headers.common.Authorization = `Bearer ${access_token}`;
+
+        // Replay queued requests
+        pendingRequests.forEach((cb) => cb(access_token));
+        pendingRequests = [];
+
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        return api(originalRequest);
+      } catch {
+        // Refresh failed — force login
+        localStorage.removeItem("netgraphy_token");
+        localStorage.removeItem("netgraphy_refresh_token");
+        window.location.href = "/login";
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   },
 );

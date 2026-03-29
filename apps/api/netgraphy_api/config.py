@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # --- Auth ---
     secret_key: str = "CHANGE-ME-IN-PRODUCTION"
-    access_token_expire_minutes: int = 60
+    access_token_expire_minutes: int = 1440  # 24 hours
     algorithm: str = "HS256"
 
     # --- Workers ---
