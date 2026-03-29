@@ -1,0 +1,128 @@
+kind: NodeType
+version: v1
+metadata:
+  name: InterfaceTemplate
+  display_name: Interface Template
+  description: "A template interface defined on a hardware model — used to pre-populate interfaces when a device is created from this model"
+  icon: list
+  color: "#10B981"
+  category: Reference
+  tags: [reference, hardware, template]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Interface name pattern (e.g. GigabitEthernet0/0/{i}, Ethernet{i}/1)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  interface_type:
+    type: enum
+    display_name: Type
+    enum_values: [physical, virtual, lag, loopback, tunnel, vlan, subinterface, management, other]
+    required: true
+    default: physical
+    description: "Type of interface"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  speed_mbps:
+    type: integer
+    display_name: Speed (Mbps)
+    required: false
+    description: "Interface speed in Mbps"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  form_factor:
+    type: enum
+    display_name: Form Factor
+    enum_values:
+      - rj45
+      - sfp
+      - sfp_plus
+      - sfp28
+      - qsfp_plus
+      - qsfp28
+      - qsfp_dd
+      - cfp
+      - cfp2
+      - cfp4
+      - osfp
+      - console
+      - usb
+      - other
+    required: false
+    description: "Physical connector form factor"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  slot_position:
+    type: integer
+    display_name: Position
+    required: false
+    description: "Slot or port position number within the module/chassis"
+    ui:
+      form_order: 5
+
+  mgmt_only:
+    type: boolean
+    display_name: Mgmt Only
+    default: false
+    description: "Interface is for management traffic only (e.g. console, dedicated mgmt port)"
+    ui:
+      form_order: 6
+
+  poe_capable:
+    type: boolean
+    display_name: PoE Capable
+    default: false
+    description: "Port supports Power over Ethernet"
+    ui:
+      form_order: 7
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: interface_type
+
+api:
+  plural_name: interface-templates
+  filterable_fields: [name, interface_type, speed_mbps, form_factor, mgmt_only, poe_capable]
+  sortable_fields: [name, interface_type, speed_mbps, slot_position]
+  default_sort: slot_position
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

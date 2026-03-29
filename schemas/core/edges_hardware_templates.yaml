@@ -1,0 +1,244 @@
+---
+# --------------------------------------------------------------------------- #
+# HAS_INTERFACE_TEMPLATE — HardwareModel → InterfaceTemplate (one-to-many)   #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_INTERFACE_TEMPLATE
+  display_name: "Has Interface Template"
+  description: "Hardware model defines a set of interface templates that are instantiated when a device of this model is created"
+  category: Reference
+
+source:
+  node_types: [HardwareModel]
+
+target:
+  node_types: [InterfaceTemplate]
+
+cardinality: one_to_many
+inverse_name: TEMPLATE_OF_MODEL
+
+constraints:
+  unique_target: true  # Each interface template belongs to exactly one model
+
+graph:
+  style: solid
+  color: "#10B981"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# HAS_INVENTORY_TEMPLATE — HardwareModel → InventoryItemTemplate            #
+# (one-to-many)                                                               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_INVENTORY_TEMPLATE
+  display_name: "Has Inventory Template"
+  description: "Hardware model defines inventory slots/bays (PSU bays, fan trays, module bays, SFP slots)"
+  category: Reference
+
+source:
+  node_types: [HardwareModel]
+
+target:
+  node_types: [InventoryItemTemplate]
+
+cardinality: one_to_many
+inverse_name: TEMPLATE_OF_MODEL
+
+constraints:
+  unique_target: true  # Each inventory template belongs to exactly one model
+
+graph:
+  style: solid
+  color: "#A855F7"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# HAS_INVENTORY_ITEM — Device → InventoryItem (one-to-many)                  #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_INVENTORY_ITEM
+  display_name: "Has Inventory Item"
+  description: "Device has a physical component installed (module, PSU, SFP, fan, etc.)"
+  category: Infrastructure
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [InventoryItem]
+
+cardinality: one_to_many
+inverse_name: INSTALLED_IN
+
+constraints:
+  unique_target: true  # Each inventory item is installed in exactly one device
+
+graph:
+  style: solid
+  color: "#D946EF"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# INVENTORY_ITEM_PARENT — InventoryItem → InventoryItem (one-to-many)        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: INVENTORY_ITEM_PARENT
+  display_name: "Parent Component"
+  description: "Inventory item hierarchy — e.g. SFP inserted into a line card module"
+  category: Infrastructure
+
+source:
+  node_types: [InventoryItem]
+
+target:
+  node_types: [InventoryItem]
+
+cardinality: one_to_many
+inverse_name: CHILD_OF
+
+constraints:
+  unique_target: true  # Each item has at most one parent
+
+graph:
+  style: solid
+  color: "#D946EF"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# INSTANTIATED_FROM — InventoryItem → InventoryItemTemplate (many-to-one)    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: INSTANTIATED_FROM
+  display_name: "Instantiated From"
+  description: "Inventory item was created from a hardware model template slot"
+  category: Reference
+
+source:
+  node_types: [InventoryItem]
+
+target:
+  node_types: [InventoryItemTemplate]
+
+cardinality: many_to_one
+inverse_name: INSTANCES
+
+graph:
+  style: dashed
+  color: "#A855F7"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# INTERFACE_INSTANTIATED_FROM — Interface → InterfaceTemplate (many-to-one)  #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: INTERFACE_INSTANTIATED_FROM
+  display_name: "Instantiated From"
+  description: "Interface was created from a hardware model interface template"
+  category: Reference
+
+source:
+  node_types: [Interface]
+
+target:
+  node_types: [InterfaceTemplate]
+
+cardinality: many_to_one
+inverse_name: INSTANCES
+
+graph:
+  style: dashed
+  color: "#10B981"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# IMAGE_FOR_PLATFORM — Image → Platform (many-to-many)                       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: IMAGE_FOR_PLATFORM
+  display_name: "For Platform"
+  description: "Software image is compatible with a platform"
+  category: Software
+
+source:
+  node_types: [Image]
+
+target:
+  node_types: [Platform]
+
+cardinality: many_to_many
+inverse_name: HAS_IMAGE
+
+graph:
+  style: dashed
+  color: "#EC4899"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# IMAGE_FOR_MODEL — Image → HardwareModel (many-to-many)                     #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: IMAGE_FOR_MODEL
+  display_name: "For Model"
+  description: "Software image is compatible with a hardware model"
+  category: Software
+
+source:
+  node_types: [Image]
+
+target:
+  node_types: [HardwareModel]
+
+cardinality: many_to_many
+inverse_name: COMPATIBLE_IMAGES
+
+graph:
+  style: dashed
+  color: "#6366F1"
+  show_label: false
+
+api:
+  exposed: true

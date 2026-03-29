@@ -150,6 +150,150 @@ def seed_vendors_and_models():
             create_edge("MANUFACTURED_BY", mid, vid)
 
 
+def seed_hardware_templates():
+    """Create interface templates and inventory templates for hardware models."""
+    print("\n=== Hardware Templates ===")
+
+    # Interface templates per model: (model, name, type, speed, form_factor, position, mgmt, poe)
+    iface_templates = {
+        "Catalyst 9300-48P": [
+            *[(f"GigabitEthernet1/0/{i}", "physical", 1000, "rj45", i, False, True) for i in range(1, 49)],
+            ("TenGigabitEthernet1/1/1", "physical", 10000, "sfp_plus", 49, False, False),
+            ("TenGigabitEthernet1/1/2", "physical", 10000, "sfp_plus", 50, False, False),
+            ("GigabitEthernet0/0", "management", 1000, "rj45", 0, True, False),
+        ],
+        "DCS-7050SX3-48YC12": [
+            *[(f"Ethernet{i}/1", "physical", 25000, "sfp28", i, False, False) for i in range(1, 49)],
+            *[(f"Ethernet{i}/1", "physical", 100000, "qsfp28", i, False, False) for i in range(49, 61)],
+            ("Management1", "management", 1000, "rj45", 0, True, False),
+        ],
+        "ISR 4321": [
+            ("GigabitEthernet0/0/0", "physical", 1000, "rj45", 1, False, False),
+            ("GigabitEthernet0/0/1", "physical", 1000, "rj45", 2, False, False),
+            ("GigabitEthernet0/0/2", "physical", 1000, "rj45", 3, False, False),
+            ("GigabitEthernet0/0/3", "physical", 1000, "rj45", 4, False, False),
+            ("GigabitEthernet0", "management", 1000, "rj45", 0, True, False),
+        ],
+        "PA-5220": [
+            *[(f"ethernet1/{i}", "physical", 10000, "sfp_plus", i, False, False) for i in range(1, 17)],
+            ("management", "management", 1000, "rj45", 0, True, False),
+        ],
+    }
+
+    for model_name, templates in iface_templates.items():
+        model_id = n("HardwareModel", model_name)
+        if not model_id:
+            continue
+        for t in templates:
+            ifname, iftype, speed, ff, pos, mgmt, poe = t
+            tid = create_node("InterfaceTemplate", {
+                "name": ifname, "interface_type": iftype, "speed_mbps": speed,
+                "form_factor": ff, "slot_position": pos, "mgmt_only": mgmt, "poe_capable": poe,
+            }, dedup_key=f"InterfaceTemplate:{model_name}:{ifname}")
+            if tid:
+                create_edge("HAS_INTERFACE_TEMPLATE", model_id, tid)
+
+    # Inventory item templates per model: (model, name, item_type, position, required)
+    inv_templates = {
+        "Catalyst 9300-48P": [
+            ("PSU-1", "power_supply_bay", 1, True),
+            ("PSU-2", "power_supply_bay", 2, False),
+            ("FAN-1", "fan_bay", 1, True),
+            ("FAN-2", "fan_bay", 2, True),
+            ("FAN-3", "fan_bay", 3, True),
+            ("Module Bay 1", "module_bay", 1, False),
+        ],
+        "DCS-7050SX3-48YC12": [
+            ("PSU-1", "power_supply_bay", 1, True),
+            ("PSU-2", "power_supply_bay", 2, True),
+            ("FAN-1", "fan_bay", 1, True),
+            ("FAN-2", "fan_bay", 2, True),
+            ("FAN-3", "fan_bay", 3, True),
+            ("FAN-4", "fan_bay", 4, True),
+        ],
+        "ISR 4321": [
+            ("PSU-1", "power_supply_bay", 1, True),
+            ("NIM Bay 0", "module_bay", 0, False),
+            ("NIM Bay 1", "module_bay", 1, False),
+            ("FAN-1", "fan_bay", 1, True),
+        ],
+        "PA-5220": [
+            ("PSU-1", "power_supply_bay", 1, True),
+            ("PSU-2", "power_supply_bay", 2, True),
+            ("FAN-1", "fan_bay", 1, True),
+            ("FAN-2", "fan_bay", 2, True),
+        ],
+        "DCS-7280CR3-32P4": [
+            ("PSU-1", "power_supply_bay", 1, True),
+            ("PSU-2", "power_supply_bay", 2, True),
+            ("FAN-1", "fan_bay", 1, True),
+            ("FAN-2", "fan_bay", 2, True),
+            ("FAN-3", "fan_bay", 3, True),
+            ("FAN-4", "fan_bay", 4, True),
+            ("FAN-5", "fan_bay", 5, True),
+        ],
+    }
+
+    for model_name, templates in inv_templates.items():
+        model_id = n("HardwareModel", model_name)
+        if not model_id:
+            continue
+        for tname, ttype, pos, req in templates:
+            tid = create_node("InventoryItemTemplate", {
+                "name": tname, "item_type": ttype, "slot_position": pos, "required": req,
+            }, dedup_key=f"InventoryItemTemplate:{model_name}:{tname}")
+            if tid:
+                create_edge("HAS_INVENTORY_TEMPLATE", model_id, tid)
+
+
+def seed_inventory():
+    """Create inventory items installed in devices."""
+    print("\n=== Inventory Items ===")
+
+    # Sample inventory for a few devices
+    device_inventory = {
+        "DAL-SPN01": [
+            ("PSU-1", "power_supply", "installed", "PWR-2900-AC", "FOC2234N0P1", "1"),
+            ("PSU-2", "power_supply", "installed", "PWR-2900-AC", "FOC2234N0P2", "2"),
+            ("FAN-1", "fan", "installed", "FAN-7050SX3", "FOC2234F001", "1"),
+            ("FAN-2", "fan", "installed", "FAN-7050SX3", "FOC2234F002", "2"),
+            ("FAN-3", "fan", "installed", "FAN-7050SX3", "FOC2234F003", "3"),
+            ("FAN-4", "fan", "installed", "FAN-7050SX3", "FOC2234F004", "4"),
+        ],
+        "DAL-LEAF01": [
+            ("PSU-1", "power_supply", "installed", "PWR-1100-AC", "FOC2245P001", "1"),
+            ("PSU-2", "power_supply", "installed", "PWR-1100-AC", "FOC2245P002", "2"),
+            ("SFP Eth49/1", "qsfp28", "installed", "QSFP-100G-SR4", "AVR2245Q001", "49"),
+            ("SFP Eth50/1", "qsfp28", "installed", "QSFP-100G-SR4", "AVR2245Q002", "50"),
+            ("SFP Eth51/1", "qsfp28", "installed", "QSFP-100G-SR4", "AVR2245Q003", "51"),
+            ("SFP Eth52/1", "qsfp28", "installed", "QSFP-100G-SR4", "AVR2245Q004", "52"),
+        ],
+        "DAL-COR-RTR01": [
+            ("PSU-1", "power_supply", "installed", "PWR-4320-AC", "FDO2234P001", "1"),
+            ("NIM-2GE-CU-SFP", "module", "installed", "NIM-2GE-CU-SFP", "FOC2134M001", "0"),
+            ("FAN-1", "fan", "installed", "ACS-4320-FAN", "FOC2234F001", "1"),
+        ],
+        "DAL-FW01": [
+            ("PSU-1", "power_supply", "installed", "PAN-PSU-740W-AC", "PAL2234P001", "1"),
+            ("PSU-2", "power_supply", "installed", "PAN-PSU-740W-AC", "PAL2234P002", "2"),
+            ("SFP eth1/1", "sfp_plus", "installed", "SFP-10G-SR", "PAL2234S001", "1"),
+            ("SFP eth1/2", "sfp_plus", "installed", "SFP-10G-SR", "PAL2234S002", "2"),
+        ],
+    }
+
+    for hostname, items in device_inventory.items():
+        dev_id = n("Device", hostname)
+        if not dev_id:
+            continue
+        for iname, itype, status, pn, sn, slot in items:
+            iid = create_node("InventoryItem", {
+                "name": iname, "item_type": itype, "status": status,
+                "part_number": pn, "serial_number": sn, "slot_position": slot,
+            }, dedup_key=f"InventoryItem:{hostname}:{iname}")
+            if iid:
+                create_edge("HAS_INVENTORY_ITEM", dev_id, iid)
+
+
 def seed_platforms():
     """Create platforms."""
     print("\n=== Platforms ===")
@@ -889,11 +1033,13 @@ def main():
     login()
 
     seed_vendors_and_models()
+    seed_hardware_templates()
     seed_platforms()
     seed_software_versions()
     seed_tenants()
     seed_locations()
     seed_devices()
+    seed_inventory()
     seed_ipam()
     seed_cloud()
     seed_services()

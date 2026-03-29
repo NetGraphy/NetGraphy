@@ -1,0 +1,103 @@
+kind: NodeType
+version: v1
+metadata:
+  name: InventoryItemTemplate
+  display_name: Inventory Item Template
+  description: "A template inventory slot/bay on a hardware model — module bays, power supply bays, fan trays, SFP slots"
+  icon: package
+  color: "#A855F7"
+  category: Reference
+  tags: [reference, hardware, template, inventory]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Slot or bay name (e.g. PSU-1, FAN-1, Module Bay 0, SFP Slot 1/1)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  item_type:
+    type: enum
+    display_name: Type
+    enum_values:
+      - module_bay
+      - power_supply_bay
+      - fan_bay
+      - sfp_slot
+      - expansion_slot
+      - supervisor_slot
+      - line_card_slot
+      - other
+    required: true
+    description: "What kind of component this slot accepts"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  slot_position:
+    type: integer
+    display_name: Position
+    required: false
+    description: "Slot position number within the chassis"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  required:
+    type: boolean
+    display_name: Required
+    default: false
+    description: "Device cannot operate without a component installed in this slot"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  compatible_models:
+    type: list[string]
+    display_name: Compatible Models
+    required: false
+    description: "Part numbers of compatible modules/SFPs for this slot"
+    ui:
+      form_order: 5
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: item_type
+
+api:
+  plural_name: inventory-item-templates
+  filterable_fields: [name, item_type, required]
+  sortable_fields: [name, item_type, slot_position]
+  default_sort: slot_position
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

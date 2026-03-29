@@ -72,6 +72,49 @@ attributes:
     ui:
       form_order: 7
 
+  weight_kg:
+    type: float
+    display_name: "Weight (kg)"
+    required: false
+    description: "Unit weight in kilograms"
+    ui:
+      form_order: 8
+
+  max_power_watts:
+    type: integer
+    display_name: "Max Power (W)"
+    required: false
+    description: "Maximum power draw in watts"
+    ui:
+      form_order: 9
+
+  airflow:
+    type: enum
+    display_name: "Airflow"
+    enum_values: [front_to_back, back_to_front, side_to_side, passive]
+    required: false
+    description: "Cooling airflow direction"
+    ui:
+      form_order: 10
+      filter: true
+
+  console_ports:
+    type: integer
+    display_name: "Console Ports"
+    required: false
+    default: 1
+    description: "Number of console ports"
+    ui:
+      form_order: 11
+
+  power_supply_count:
+    type: integer
+    display_name: "PSU Slots"
+    required: false
+    description: "Number of power supply bays"
+    ui:
+      form_order: 12
+
   description:
     type: text
     display_name: "Description"

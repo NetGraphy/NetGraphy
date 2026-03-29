@@ -1,0 +1,152 @@
+kind: NodeType
+version: v1
+metadata:
+  name: InventoryItem
+  display_name: Inventory Item
+  description: "A physical component installed in a device — modules, supervisors, SFPs, power supplies, fans, line cards"
+  icon: hard-drive
+  color: "#D946EF"
+  category: Infrastructure
+  tags: [infrastructure, inventory, hardware]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Component name or slot designation (e.g. Supervisor 1, PSU-A, SFP Eth1/1)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  item_type:
+    type: enum
+    display_name: Type
+    enum_values:
+      - supervisor
+      - line_card
+      - module
+      - power_supply
+      - fan
+      - sfp
+      - sfp_plus
+      - sfp28
+      - qsfp_plus
+      - qsfp28
+      - qsfp_dd
+      - optic
+      - memory
+      - flash
+      - other
+    required: true
+    description: "Component type classification"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [installed, absent, failed, unsupported, reserved]
+    default: installed
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        installed: green
+        absent: gray
+        failed: red
+        unsupported: orange
+        reserved: blue
+
+  part_number:
+    type: string
+    display_name: Part Number
+    required: false
+    indexed: true
+    description: "Manufacturer part number / PID"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 8
+
+  serial_number:
+    type: string
+    display_name: Serial Number
+    required: false
+    indexed: true
+    description: "Component serial number"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      search_weight: 5
+
+  slot_position:
+    type: string
+    display_name: Slot
+    required: false
+    description: "Physical slot or bay identifier (e.g. 0, PSU-1, FAN-3)"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 6
+
+  hardware_revision:
+    type: string
+    display_name: HW Revision
+    required: false
+    description: "Hardware revision identifier (e.g. V02, Rev 3.0)"
+    ui:
+      form_order: 7
+
+  firmware_version:
+    type: string
+    display_name: Firmware
+    required: false
+    description: "Firmware or microcode version running on this component"
+    ui:
+      form_order: 8
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Vendor description string (e.g. from show inventory)"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, part_number, serial_number, description]
+
+graph:
+  default_label_field: name
+  group_by: item_type
+
+api:
+  plural_name: inventory-items
+  filterable_fields: [name, item_type, status, part_number, serial_number, slot_position]
+  sortable_fields: [name, item_type, status, part_number, slot_position]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
