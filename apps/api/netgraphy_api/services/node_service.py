@@ -77,19 +77,19 @@ class NodeService:
         # 3. Authorization
         self._rbac.require_permission(actor, "write", f"node:{node_type}")
 
-        # 4. Provenance
+        # 4. Lifecycle & provenance metadata (matches mixin attribute names)
         now = datetime.now(timezone.utc).isoformat()
-        properties["_created_by"] = actor.user_id
-        properties["_created_at"] = now
-        properties["_updated_by"] = actor.user_id
-        properties["_updated_at"] = now
-        properties["_source"] = "manual"
+        properties["created_by"] = actor.user_id
+        properties["created_at"] = now
+        properties["updated_by"] = actor.user_id
+        properties["updated_at"] = now
 
         # 5. Persist
         node = await self._repo.create_node(node_type, properties)
         log.info("node.created", node_id=node["id"])
 
-        # 6. Event
+        # 6. Audit + event
+        await self._persist_audit("create", node_type, node["id"], actor)
         await self._events.emit_node_created(node_type, node["id"], actor=actor.user_id)
 
         return node
@@ -158,9 +158,9 @@ class NodeService:
         if not existing:
             raise NodeNotFoundError(node_type, node_id)
 
-        # 5. Provenance
-        properties["_updated_by"] = actor.user_id
-        properties["_updated_at"] = datetime.now(timezone.utc).isoformat()
+        # 5. Lifecycle metadata
+        properties["updated_by"] = actor.user_id
+        properties["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         # 6. Persist
         node = await self._repo.update_node(node_type, node_id, properties)
@@ -169,7 +169,8 @@ class NodeService:
 
         log.info("node.updated", node_id=node_id)
 
-        # 7. Event
+        # 7. Audit + event
+        await self._persist_audit("update", node_type, node_id, actor)
         await self._events.emit_node_updated(
             node_type, node_id, changes=properties, actor=actor.user_id,
         )
@@ -211,7 +212,8 @@ class NodeService:
 
         log.info("node.deleted", node_id=node_id)
 
-        # 4. Event
+        # 4. Audit + event
+        await self._persist_audit("delete", node_type, node_id, actor)
         await self._events.emit_node_deleted(node_type, node_id, actor=actor.user_id)
 
     # ------------------------------------------------------------------ #
@@ -276,3 +278,34 @@ class NodeService:
 
         # 3. Fetch relationships
         return await self._repo.get_relationships(node_id, edge_type=edge_type)
+
+    # ------------------------------------------------------------------ #
+    #  Audit persistence                                                   #
+    # ------------------------------------------------------------------ #
+
+    async def _persist_audit(
+        self,
+        action: str,
+        resource_type: str,
+        resource_id: str,
+        actor: AuthContext,
+    ) -> None:
+        """Write an _AuditEvent node to Neo4j."""
+        import uuid
+
+        props = {
+            "id": str(uuid.uuid4()),
+            "action": action,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "actor": actor.user_id,
+            "actor_username": actor.username,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            await self._repo._driver.execute_write(
+                "CREATE (e:_AuditEvent $props) RETURN e",
+                {"props": props},
+            )
+        except Exception:
+            logger.warning("audit.persist_failed", action=action, resource_id=resource_id)
