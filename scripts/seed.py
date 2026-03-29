@@ -405,12 +405,12 @@ def seed_ipam():
 
     # Aggregates
     agg_rfc1918 = create_node("Prefix", {
-        "prefix": "10.0.0.0/8", "name": "RFC 1918 — Class A",
+        "prefix": "10.0.0.0/8", "description": "RFC 1918 — Class A private range",
         "status": "container", "ip_version": "4",
     }, key_field="prefix")
 
     agg_172 = create_node("Prefix", {
-        "prefix": "172.16.0.0/12", "name": "RFC 1918 — Class B",
+        "prefix": "172.16.0.0/12", "description": "RFC 1918 — Class B private range",
         "status": "container", "ip_version": "4",
     }, key_field="prefix")
 
@@ -446,9 +446,9 @@ def seed_ipam():
         ("172.16.0.0/24", "WAN P2P Links", "active", "4", None, "Shared Services", "172.16.0.0/12"),
     ]
 
-    for cidr, pfx_name, status, ipv, site, tenant, parent_cidr in site_prefixes:
+    for cidr, pfx_desc, status, ipv, site, tenant, parent_cidr in site_prefixes:
         pid = create_node("Prefix", {
-            "prefix": cidr, "name": pfx_name, "status": status, "ip_version": ipv,
+            "prefix": cidr, "description": pfx_desc, "status": status, "ip_version": ipv,
         }, key_field="prefix")
         if pid and parent_cidr:
             parent_id = n("Prefix", parent_cidr)

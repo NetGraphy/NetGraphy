@@ -195,16 +195,16 @@ class NodeRepository:
         rels = []
         for row in result.rows:
             related = row.get("m", {})
-            # Pick a human-readable label from the related node
+            # Pick a human-readable label — identity fields first, then display name
             label = (
-                related.get("name")
-                or related.get("hostname")
-                or related.get("address")
+                related.get("hostname")
                 or related.get("prefix")
+                or related.get("address")
                 or related.get("version_string")
+                or related.get("asn")
                 or related.get("model")
                 or related.get("filename")
-                or related.get("asn")
+                or related.get("name")
                 or related.get("id", "")
             )
             rels.append({

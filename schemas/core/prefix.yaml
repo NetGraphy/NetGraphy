@@ -81,19 +81,6 @@ attributes:
       list_column: true
       list_column_order: 6
 
-  name:
-    type: string
-    display_name: Name
-    required: false
-    indexed: true
-    max_length: 255
-    description: "Human-friendly name for this prefix"
-    ui:
-      list_column: true
-      list_column_order: 4
-      form_order: 4
-      search_weight: 8
-
   description:
     type: text
     display_name: Description
@@ -109,7 +96,7 @@ mixins:
 search:
   enabled: true
   primary_field: prefix
-  search_fields: [prefix, name, description]
+  search_fields: [prefix, description]
 
 graph:
   default_label_field: prefix
@@ -117,8 +104,8 @@ graph:
 
 api:
   plural_name: prefixes
-  filterable_fields: [prefix, status, ip_version, vlan_id, is_pool, name]
-  sortable_fields: [prefix, status, ip_version, name, created_at]
+  filterable_fields: [prefix, status, ip_version, vlan_id, is_pool]
+  sortable_fields: [prefix, status, ip_version, created_at]
   default_sort: prefix
 
 permissions:
