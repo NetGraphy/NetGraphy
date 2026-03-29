@@ -46,9 +46,11 @@ def login():
 
 def wait_for_api(retries: int = 15, delay: int = 3):
     """Wait for the API to become available."""
+    # Health endpoints are mounted at root, not under /api/v1
+    health_url = BASE_URL.rsplit("/api/", 1)[0] + "/health/live"
     for i in range(retries):
         try:
-            resp = requests.get(f"{BASE_URL}/health", timeout=5)
+            resp = requests.get(health_url, timeout=5)
             if resp.status_code == 200:
                 print("API is ready")
                 return

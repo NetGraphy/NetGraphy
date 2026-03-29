@@ -205,9 +205,11 @@ class SchemaRegistry:
                 if attr_name not in properties:
                     errors.append(f"Missing required attribute: {attr_name}")
 
-        # Check unknown attributes
+        # Check unknown attributes (skip internal _-prefixed fields set by the service layer)
         for key in properties:
-            if key not in defn.attributes and key != "id":
+            if key.startswith("_") or key == "id":
+                continue
+            if key not in defn.attributes:
                 errors.append(f"Unknown attribute: {key}")
 
         # Validate each provided property against its definition
