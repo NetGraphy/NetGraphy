@@ -298,8 +298,8 @@ class NodeService:
             "action": action,
             "resource_type": resource_type,
             "resource_id": resource_id,
-            "actor": actor.user_id,
-            "actor_username": actor.username,
+            "actor": actor.username,
+            "actor_id": actor.user_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         try:
