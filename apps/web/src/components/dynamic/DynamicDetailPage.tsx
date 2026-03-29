@@ -172,7 +172,7 @@ function OverviewTab({
           <dl className="space-y-2">
             {autoAttributes.map(([name, attr]) => (
               <div key={name}>
-                <dt className="text-xs text-gray-400">{name}</dt>
+                <dt className="text-xs text-gray-400">{attr.display_name || name}</dt>
                 <dd className="text-sm">
                   <FieldRenderer
                     value={node?.[name]}

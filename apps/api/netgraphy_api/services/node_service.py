@@ -79,9 +79,9 @@ class NodeService:
 
         # 4. Lifecycle & provenance metadata (matches mixin attribute names)
         now = datetime.now(timezone.utc).isoformat()
-        properties["created_by"] = actor.user_id
+        properties["created_by"] = actor.username
         properties["created_at"] = now
-        properties["updated_by"] = actor.user_id
+        properties["updated_by"] = actor.username
         properties["updated_at"] = now
 
         # 5. Persist
@@ -159,7 +159,7 @@ class NodeService:
             raise NodeNotFoundError(node_type, node_id)
 
         # 5. Lifecycle metadata
-        properties["updated_by"] = actor.user_id
+        properties["updated_by"] = actor.username
         properties["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         # 6. Persist
