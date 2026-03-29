@@ -107,23 +107,29 @@ export function DynamicListPage() {
                     key={item.id as string}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
-                    {columns.map(({ name, attr }) => (
+                    {columns.map(({ name, attr }, colIdx) => (
                       <td key={name} className="px-4 py-3 text-sm">
-                        <FieldRenderer
-                          value={item[name]}
-                          attribute={attr}
-                          mode="display"
-                        />
+                        {colIdx === 0 ? (
+                          <Link
+                            to={`/objects/${nodeType}/${item.id}`}
+                            className="font-medium text-brand-600 hover:text-brand-700"
+                          >
+                            <FieldRenderer
+                              value={item[name]}
+                              attribute={attr}
+                              mode="display"
+                            />
+                          </Link>
+                        ) : (
+                          <FieldRenderer
+                            value={item[name]}
+                            attribute={attr}
+                            mode="display"
+                          />
+                        )}
                       </td>
                     ))}
-                    <td className="px-4 py-3 text-right text-sm">
-                      <Link
-                        to={`/objects/${nodeType}/${item.id}`}
-                        className="text-brand-600 hover:text-brand-700"
-                      >
-                        View
-                      </Link>
-                    </td>
+                    <td className="px-4 py-3" />
                   </tr>
                 ))}
                 {items.length === 0 && (
