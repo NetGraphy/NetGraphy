@@ -199,11 +199,16 @@ class SchemaRegistry:
 
         errors = []
 
-        # Check required attributes
+        # Check required attributes (skip auto_set and fields with defaults)
         for attr_name, attr_def in defn.attributes.items():
-            if attr_def.required and attr_def.auto_set is None:
+            if attr_def.required and attr_def.auto_set is None and attr_def.default is None:
                 if attr_name not in properties:
                     errors.append(f"Missing required attribute: {attr_name}")
+
+        # Apply defaults for missing attributes that have them
+        for attr_name, attr_def in defn.attributes.items():
+            if attr_name not in properties and attr_def.default is not None:
+                properties[attr_name] = attr_def.default
 
         # Check unknown attributes (skip internal _-prefixed fields set by the service layer)
         for key in properties:
