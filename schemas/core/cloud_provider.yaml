@@ -1,0 +1,87 @@
+kind: NodeType
+version: v1
+metadata:
+  name: CloudProvider
+  display_name: Cloud Provider
+  description: "A public cloud provider — AWS, Azure, GCP, OCI, etc."
+  icon: cloud
+  color: "#0EA5E9"
+  category: Clouds
+  tags: [cloud, provider]
+
+attributes:
+  name:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Provider name (e.g. AWS, Azure, GCP)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 100
+    description: "URL-safe identifier (e.g. aws, azure, gcp)"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  status:
+    type: enum
+    enum_values: [active, planned, deprecated]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        deprecated: red
+
+  console_url:
+    type: url
+    required: false
+    description: "URL to the provider's management console"
+    ui:
+      form_order: 4
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, description]
+
+graph:
+  default_label_field: name
+
+api:
+  plural_name: cloud-providers
+  filterable_fields: [name, slug, status]
+  sortable_fields: [name, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

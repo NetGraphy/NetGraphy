@@ -6,7 +6,7 @@ metadata:
   description: "A physical location — site, building, floor, room, rack"
   icon: map-pin
   color: "#F59E0B"
-  category: Infrastructure
+  category: Organization
   tags: [locations, physical]
 
 attributes:

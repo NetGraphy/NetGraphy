@@ -1,0 +1,101 @@
+kind: NodeType
+version: v1
+metadata:
+  name: Tenant
+  display_name: Tenant
+  description: "A tenant network — represents an isolated network domain in a multi-tenant environment"
+  icon: users
+  color: "#7C3AED"
+  category: Organization
+  tags: [organization, multi-tenant]
+
+attributes:
+  name:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Tenant name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    required: true
+    unique: true
+    indexed: true
+    max_length: 100
+    description: "URL-safe identifier"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  status:
+    type: enum
+    enum_values: [active, planned, suspended, decommissioned]
+    default: active
+    required: true
+    description: "Operational status of the tenant"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        suspended: orange
+        decommissioned: red
+
+  tenant_type:
+    type: enum
+    enum_values: [customer, internal, shared_services, management]
+    required: true
+    description: "Classification of the tenant"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  contact_email:
+    type: email
+    required: false
+    description: "Primary contact email for this tenant"
+    ui:
+      form_order: 5
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, description]
+
+graph:
+  default_label_field: name
+  group_by: tenant_type
+
+api:
+  plural_name: tenants
+  filterable_fields: [name, slug, status, tenant_type]
+  sortable_fields: [name, status, tenant_type, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

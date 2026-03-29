@@ -8,7 +8,7 @@ metadata:
   name: LOCATED_IN
   display_name: "Located In"
   description: "Device is located at a physical location"
-  category: Infrastructure
+  category: Organization
 
 source:
   node_types: [Device]
@@ -50,7 +50,7 @@ metadata:
   name: PARENT_OF
   display_name: "Parent Of"
   description: "Location hierarchy — region contains sites, sites contain buildings, etc."
-  category: Infrastructure
+  category: Organization
 
 source:
   node_types: [Location]

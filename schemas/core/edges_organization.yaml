@@ -1,0 +1,60 @@
+---
+# --------------------------------------------------------------------------- #
+# ASSIGNED_TO_TENANT — Device → Tenant (many-to-one)                         #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ASSIGNED_TO_TENANT
+  display_name: "Assigned to Tenant"
+  description: "Device belongs to a tenant network"
+  category: Organization
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [Tenant]
+
+cardinality: many_to_one
+inverse_name: HAS_DEVICE
+
+constraints:
+  unique_source: true  # Each device belongs to at most one tenant
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# TENANT_USES_LOCATION — Tenant → Location (many-to-many)                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TENANT_USES_LOCATION
+  display_name: "Uses Location"
+  description: "Tenant has presence at a physical location"
+  category: Organization
+
+source:
+  node_types: [Tenant]
+
+target:
+  node_types: [Location]
+
+cardinality: many_to_many
+inverse_name: LOCATION_OF_TENANT
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true

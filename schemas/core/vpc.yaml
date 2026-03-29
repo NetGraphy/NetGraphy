@@ -1,0 +1,106 @@
+kind: NodeType
+version: v1
+metadata:
+  name: VPC
+  display_name: VPC
+  description: "A virtual private cloud / virtual network — AWS VPC, Azure VNet, GCP VPC"
+  icon: network
+  color: "#6366F1"
+  category: Clouds
+  tags: [cloud, vpc, virtual-network]
+
+attributes:
+  name:
+    type: string
+    required: true
+    indexed: true
+    max_length: 255
+    description: "VPC / VNet name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  cloud_id:
+    type: string
+    required: false
+    unique: true
+    indexed: true
+    description: "Provider-assigned ID (e.g. vpc-0abc123, /subscriptions/.../virtualNetworks/...)"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      search_weight: 8
+
+  region:
+    type: string
+    required: true
+    indexed: true
+    description: "Cloud region (e.g. us-east-1, eastus, us-central1)"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  cidr_blocks:
+    type: list[string]
+    required: false
+    description: "Address space CIDR blocks"
+    ui:
+      form_order: 4
+
+  status:
+    type: enum
+    enum_values: [active, planned, decommissioned]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 5
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        decommissioned: red
+
+  is_default:
+    type: boolean
+    default: false
+    description: "Whether this is the provider's default VPC"
+    ui:
+      form_order: 6
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, cloud_id, region, description]
+
+graph:
+  default_label_field: name
+  group_by: region
+
+api:
+  plural_name: vpcs
+  filterable_fields: [name, cloud_id, region, status, is_default]
+  sortable_fields: [name, region, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin

@@ -1,0 +1,192 @@
+---
+# --------------------------------------------------------------------------- #
+# VPC_IN_PROVIDER — VPC → CloudProvider (many-to-one)                        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPC_IN_PROVIDER
+  display_name: "In Provider"
+  description: "VPC belongs to a cloud provider account"
+  category: Clouds
+
+source:
+  node_types: [VPC]
+
+target:
+  node_types: [CloudProvider]
+
+cardinality: many_to_one
+inverse_name: HAS_VPC
+
+constraints:
+  unique_source: true  # Each VPC belongs to exactly one provider
+
+graph:
+  style: solid
+  color: "#0EA5E9"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# SUBNET_IN_VPC — CloudSubnet → VPC (many-to-one)                           #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: SUBNET_IN_VPC
+  display_name: "In VPC"
+  description: "Subnet belongs to a VPC"
+  category: Clouds
+
+source:
+  node_types: [CloudSubnet]
+
+target:
+  node_types: [VPC]
+
+cardinality: many_to_one
+inverse_name: HAS_SUBNET
+
+constraints:
+  unique_source: true  # Each subnet belongs to exactly one VPC
+
+graph:
+  style: solid
+  color: "#6366F1"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# GATEWAY_IN_VPC — CloudGateway → VPC (many-to-many)                        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: GATEWAY_IN_VPC
+  display_name: "Attached to VPC"
+  description: "Gateway is attached to a VPC (transit gateways can span multiple VPCs)"
+  category: Clouds
+
+source:
+  node_types: [CloudGateway]
+
+target:
+  node_types: [VPC]
+
+cardinality: many_to_many
+inverse_name: HAS_GATEWAY
+
+graph:
+  style: solid
+  color: "#F97316"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# GATEWAY_IN_PROVIDER — CloudGateway → CloudProvider (many-to-one)           #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: GATEWAY_IN_PROVIDER
+  display_name: "In Provider"
+  description: "Gateway belongs to a cloud provider"
+  category: Clouds
+
+source:
+  node_types: [CloudGateway]
+
+target:
+  node_types: [CloudProvider]
+
+cardinality: many_to_one
+inverse_name: HAS_GATEWAY
+
+constraints:
+  unique_source: true
+
+graph:
+  style: dashed
+  color: "#0EA5E9"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# VPC_OWNED_BY_TENANT — VPC → Tenant (many-to-one)                          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPC_OWNED_BY_TENANT
+  display_name: "Owned by Tenant"
+  description: "VPC is owned by or assigned to a tenant"
+  category: Clouds
+
+source:
+  node_types: [VPC]
+
+target:
+  node_types: [Tenant]
+
+cardinality: many_to_one
+inverse_name: HAS_VPC
+
+graph:
+  style: dashed
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+---
+# --------------------------------------------------------------------------- #
+# VPC_PEERED_WITH — VPC → VPC (many-to-many, bidirectional)                  #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPC_PEERED_WITH
+  display_name: "Peered With"
+  description: "VPC peering connection between two VPCs"
+  category: Clouds
+
+source:
+  node_types: [VPC]
+
+target:
+  node_types: [VPC]
+
+cardinality: many_to_many
+inverse_name: VPC_PEERED_WITH
+
+attributes:
+  peering_id:
+    type: string
+    required: false
+    description: "Provider-assigned peering connection ID"
+  status:
+    type: enum
+    enum_values: [active, pending, failed, deleted]
+    default: active
+
+graph:
+  style: dashed
+  color: "#6366F1"
+  show_label: true
+
+api:
+  exposed: true

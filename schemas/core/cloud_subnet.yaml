@@ -1,0 +1,115 @@
+kind: NodeType
+version: v1
+metadata:
+  name: CloudSubnet
+  display_name: Cloud Subnet
+  description: "A subnet within a VPC / VNet"
+  icon: git-branch
+  color: "#8B5CF6"
+  category: Clouds
+  tags: [cloud, subnet, network]
+
+attributes:
+  name:
+    type: string
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Subnet name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  cloud_id:
+    type: string
+    required: false
+    unique: true
+    indexed: true
+    description: "Provider-assigned ID"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      search_weight: 8
+
+  cidr:
+    type: string
+    required: true
+    indexed: true
+    description: "Subnet CIDR block (e.g. 10.0.1.0/24)"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  availability_zone:
+    type: string
+    required: false
+    indexed: true
+    description: "Availability zone (e.g. us-east-1a)"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  subnet_type:
+    type: enum
+    enum_values: [public, private, isolated]
+    required: true
+    description: "Whether the subnet has internet access"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      filter: true
+      badge_colors:
+        public: blue
+        private: green
+        isolated: gray
+
+  status:
+    type: enum
+    enum_values: [active, planned, decommissioned]
+    default: active
+    required: true
+    ui:
+      form_order: 6
+      filter: true
+      badge_colors:
+        active: green
+        planned: blue
+        decommissioned: red
+
+  description:
+    type: text
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, cloud_id, cidr, availability_zone, description]
+
+graph:
+  default_label_field: name
+  group_by: subnet_type
+
+api:
+  plural_name: cloud-subnets
+  filterable_fields: [name, cloud_id, cidr, availability_zone, subnet_type, status]
+  sortable_fields: [name, subnet_type, availability_zone, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
