@@ -331,3 +331,119 @@ async def create_user(
     )
 
     return {"data": _sanitize_user(user)}
+
+
+# --------------------------------------------------------------------------- #
+#  API Tokens                                                                  #
+# --------------------------------------------------------------------------- #
+
+
+class CreateApiTokenRequest(BaseModel):
+    """Payload for creating an API token."""
+    name: str = Field(..., min_length=1, max_length=100, description="Human-readable token name")
+    description: str = Field(default="", max_length=500)
+
+
+@router.post("/api-tokens", status_code=201)
+async def create_api_token(
+    body: CreateApiTokenRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Create a new API token for the current user.
+
+    Returns the raw token value — this is the ONLY time the token is
+    visible. It is stored as a SHA-256 hash and cannot be retrieved later.
+
+    Usage::
+
+        curl -H "Authorization: Bearer ngy_xxxx..." https://api.netgraphy.app/api/v1/objects/Device
+    """
+    import hashlib
+    import secrets
+
+    # Generate a prefixed token: ngy_<random>
+    raw_token = f"ngy_{secrets.token_urlsafe(48)}"
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    token_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    await driver.execute_write(
+        "MATCH (u:_User {id: $user_id}) "
+        "CREATE (t:_ApiToken {"
+        "  id: $id, name: $name, description: $description, "
+        "  token_hash: $hash, token_prefix: $prefix, "
+        "  is_active: true, created_at: $now, last_used_at: null"
+        "})-[:OWNED_BY]->(u) "
+        "RETURN t",
+        {
+            "user_id": auth.user_id,
+            "id": token_id,
+            "name": body.name,
+            "description": body.description,
+            "hash": token_hash,
+            "prefix": raw_token[:12] + "...",
+            "now": now,
+        },
+    )
+
+    logger.info("auth.api_token_created", token_id=token_id, name=body.name, user=auth.username)
+
+    return {
+        "data": {
+            "id": token_id,
+            "name": body.name,
+            "token": raw_token,
+            "prefix": raw_token[:12] + "...",
+            "created_at": now,
+            "message": "Save this token — it will not be shown again.",
+        }
+    }
+
+
+@router.get("/api-tokens")
+async def list_api_tokens(
+    auth: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """List all API tokens for the current user (token values are NOT returned)."""
+    result = await driver.execute_read(
+        "MATCH (t:_ApiToken)-[:OWNED_BY]->(u:_User {id: $user_id}) "
+        "RETURN t ORDER BY t.created_at DESC",
+        {"user_id": auth.user_id},
+    )
+
+    tokens = []
+    for row in result.rows:
+        t = row.get("t", {})
+        tokens.append({
+            "id": t.get("id"),
+            "name": t.get("name"),
+            "description": t.get("description", ""),
+            "prefix": t.get("token_prefix", ""),
+            "is_active": t.get("is_active", True),
+            "created_at": t.get("created_at"),
+            "last_used_at": t.get("last_used_at"),
+        })
+
+    return {"data": tokens}
+
+
+@router.delete("/api-tokens/{token_id}", status_code=204)
+async def revoke_api_token(
+    token_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Revoke (deactivate) an API token. The token can no longer be used."""
+    result = await driver.execute_write(
+        "MATCH (t:_ApiToken {id: $id})-[:OWNED_BY]->(u:_User {id: $user_id}) "
+        "SET t.is_active = false "
+        "RETURN t",
+        {"id": token_id, "user_id": auth.user_id},
+    )
+    if not result.rows:
+        from netgraphy_api.exceptions import NodeNotFoundError
+        raise NodeNotFoundError("_ApiToken", token_id)
+
+    logger.info("auth.api_token_revoked", token_id=token_id, user=auth.username)

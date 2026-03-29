@@ -83,6 +83,7 @@ async def lifespan(app: FastAPI):
 
     # --- Dependency Injection -------------------------------------------------
     init_dependencies(driver=driver, registry=registry, event_bus=event_bus)
+    app.state.neo4j_driver = driver  # Used by auth middleware for API token lookup
     logger.info("Dependencies initialised")
 
     # Admin user seeding is handled by the auth router's _get_or_create_admin_user()
