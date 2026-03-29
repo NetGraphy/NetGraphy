@@ -30,6 +30,12 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const url = originalRequest?.url || "";
+
+    // Never intercept auth endpoints — let login/refresh errors propagate normally
+    if (url.includes("/auth/")) {
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       const refreshToken = localStorage.getItem("netgraphy_refresh_token");
@@ -41,7 +47,6 @@ api.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        // Queue this request until the refresh completes
         return new Promise((resolve) => {
           pendingRequests.push((token: string) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -59,16 +64,13 @@ api.interceptors.response.use(
 
         localStorage.setItem("netgraphy_token", access_token);
         localStorage.setItem("netgraphy_refresh_token", newRefresh);
-        api.defaults.headers.common.Authorization = `Bearer ${access_token}`;
 
-        // Replay queued requests
         pendingRequests.forEach((cb) => cb(access_token));
         pendingRequests = [];
 
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return api(originalRequest);
       } catch {
-        // Refresh failed — force login
         localStorage.removeItem("netgraphy_token");
         localStorage.removeItem("netgraphy_refresh_token");
         window.location.href = "/login";
