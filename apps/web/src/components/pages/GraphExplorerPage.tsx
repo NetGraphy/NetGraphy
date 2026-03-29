@@ -50,8 +50,8 @@ export function GraphExplorerPage() {
     searchTimeout.current = setTimeout(() => {
       queryApi
         .executeCypher(
-          "MATCH (n) WHERE n.hostname CONTAINS $term OR n.name CONTAINS $term OR n.address CONTAINS $term OR n.prefix CONTAINS $term OR n.model CONTAINS $term OR toString(n.asn) CONTAINS $term RETURN n LIMIT 15",
-          { term: value.trim() },
+          "MATCH (n) WHERE toLower(n.hostname) CONTAINS $term OR toLower(n.name) CONTAINS $term OR toLower(n.address) CONTAINS $term OR toLower(n.prefix) CONTAINS $term OR toLower(n.model) CONTAINS $term OR toString(n.asn) CONTAINS $term OR toLower(n.slug) CONTAINS $term RETURN n LIMIT 15",
+          { term: value.trim().toLowerCase() },
         )
         .then((r) => {
           const result = r.data.data as QueryResult;
@@ -105,15 +105,40 @@ export function GraphExplorerPage() {
     },
   });
 
+  // Free-text search mutation — find nodes and expand them directly
+  const freeSearchMutation = useMutation({
+    mutationFn: (term: string) =>
+      queryApi
+        .executeCypher(
+          "MATCH (n) WHERE toLower(n.hostname) CONTAINS $term OR toLower(n.name) CONTAINS $term OR toLower(n.address) CONTAINS $term OR toLower(n.prefix) CONTAINS $term RETURN n LIMIT 5",
+          { term: term.toLowerCase() },
+        )
+        .then((r) => r.data.data as QueryResult),
+    onSuccess: (result) => {
+      if (result.nodes.length > 0) {
+        for (const node of result.nodes) {
+          expandMutation.mutate(node.id);
+        }
+      }
+    },
+  });
+
   const handleSearch = () => {
-    if (selectedItems.length === 0) return;
     setGraphNodes([]);
     setGraphEdges([]);
     setSelectedNode(null);
     setHasSearched(true);
-    // Expand all selected items
-    for (const item of selectedItems) {
-      expandMutation.mutate(item.id);
+
+    if (selectedItems.length > 0) {
+      // Expand all selected chips
+      for (const item of selectedItems) {
+        expandMutation.mutate(item.id);
+      }
+    } else if (search.trim()) {
+      // Free-text fallback: search and expand matches
+      freeSearchMutation.mutate(search.trim());
+    } else {
+      return; // nothing to search
     }
   };
 
@@ -138,7 +163,7 @@ export function GraphExplorerPage() {
     setSuggestions([]);
   };
 
-  const isLoading = expandMutation.isPending;
+  const isLoading = expandMutation.isPending || freeSearchMutation.isPending;
 
   return (
     <div className="flex h-full flex-col">
@@ -167,9 +192,9 @@ export function GraphExplorerPage() {
               value={search}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && suggestions.length > 0) {
+                if (e.key === "Enter" && showDropdown && suggestions.length > 0) {
                   addSelectedItem(suggestions[0]);
-                } else if (e.key === "Enter" && selectedItems.length > 0) {
+                } else if (e.key === "Enter") {
                   handleSearch();
                 } else if (e.key === "Backspace" && !search && selectedItems.length > 0) {
                   removeSelectedItem(selectedItems[selectedItems.length - 1].id);
@@ -203,7 +228,7 @@ export function GraphExplorerPage() {
         </div>
         <button
           onClick={handleSearch}
-          disabled={isLoading || selectedItems.length === 0}
+          disabled={isLoading || (selectedItems.length === 0 && !search.trim())}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {isLoading ? "Loading..." : "Search"}
