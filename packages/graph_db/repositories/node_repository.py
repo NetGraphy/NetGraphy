@@ -160,27 +160,63 @@ class NodeRepository:
         node_id: str,
         edge_type: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Get all relationships for a node, optionally filtered by edge type."""
+        """Get all relationships for a node, optionally filtered by edge type.
+
+        Returns each relationship with:
+        - edge_type, edge_id, edge_properties
+        - related_node (all properties including id)
+        - related_type (Neo4j label of the related node)
+        - direction ('outgoing' or 'incoming')
+        - label (display field for the related node)
+        """
+        # Use two directional matches to capture direction info
         if edge_type:
             query = (
-                f"MATCH (n {{id: $id}})-[r:{edge_type}]-(m) "
-                f"RETURN type(r) as edge_type, r, m"
+                f"MATCH (n {{id: $id}})-[r:{edge_type}]->(m) "
+                f"RETURN type(r) AS edge_type, properties(r) AS edge_props, "
+                f"m, labels(m)[0] AS related_type, 'outgoing' AS direction "
+                f"UNION ALL "
+                f"MATCH (n {{id: $id}})<-[r:{edge_type}]-(m) "
+                f"RETURN type(r) AS edge_type, properties(r) AS edge_props, "
+                f"m, labels(m)[0] AS related_type, 'incoming' AS direction"
             )
         else:
             query = (
-                "MATCH (n {id: $id})-[r]-(m) "
-                "RETURN type(r) as edge_type, r, m"
+                "MATCH (n {id: $id})-[r]->(m) "
+                "RETURN type(r) AS edge_type, properties(r) AS edge_props, "
+                "m, labels(m)[0] AS related_type, 'outgoing' AS direction "
+                "UNION ALL "
+                "MATCH (n {id: $id})<-[r]-(m) "
+                "RETURN type(r) AS edge_type, properties(r) AS edge_props, "
+                "m, labels(m)[0] AS related_type, 'incoming' AS direction"
             )
 
         result = await self._driver.execute_read(query, {"id": node_id})
-        return [
-            {
+        rels = []
+        for row in result.rows:
+            related = row.get("m", {})
+            # Pick a human-readable label from the related node
+            label = (
+                related.get("name")
+                or related.get("hostname")
+                or related.get("address")
+                or related.get("prefix")
+                or related.get("version_string")
+                or related.get("model")
+                or related.get("filename")
+                or related.get("asn")
+                or related.get("id", "")
+            )
+            rels.append({
                 "edge_type": row.get("edge_type"),
-                "edge_properties": row.get("r", {}),
-                "related_node": row.get("m", {}),
-            }
-            for row in result.rows
-        ]
+                "edge_properties": row.get("edge_props", {}),
+                "related_node": related,
+                "related_type": row.get("related_type"),
+                "related_id": related.get("id"),
+                "direction": row.get("direction"),
+                "label": str(label),
+            })
+        return rels
 
     async def bulk_upsert(
         self,

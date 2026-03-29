@@ -278,36 +278,32 @@ function RelationshipPanel({
           {relationships.map(
             (
               rel: {
-                id: string;
-                target_type?: string;
-                source_type?: string;
-                target_id?: string;
-                source_id?: string;
+                edge_type: string;
+                edge_properties?: Record<string, unknown>;
+                related_type?: string;
+                related_id?: string;
+                direction?: string;
                 label?: string;
-                properties?: Record<string, unknown>;
               },
               idx: number,
             ) => {
-              // Determine the "other" node
-              const otherType =
-                rel.target_type !== nodeType
-                  ? rel.target_type
-                  : rel.source_type;
-              const otherId =
-                rel.target_id !== nodeId ? rel.target_id : rel.source_id;
-
               return (
-                <li key={rel.id || idx} className="px-4 py-2">
+                <li key={rel.related_id || idx} className="px-4 py-2">
                   <Link
-                    to={`/objects/${otherType}/${otherId}`}
+                    to={`/objects/${rel.related_type}/${rel.related_id}`}
                     className="text-sm text-brand-600 hover:text-brand-700"
                   >
-                    {rel.label || `${otherType}/${otherId}`}
+                    {rel.label || rel.related_id}
                   </Link>
-                  {rel.properties &&
-                    Object.keys(rel.properties).length > 0 && (
+                  {rel.related_type && (
+                    <span className="ml-2 text-xs text-gray-400">
+                      {rel.related_type}
+                    </span>
+                  )}
+                  {rel.edge_properties &&
+                    Object.keys(rel.edge_properties).length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-2">
-                        {Object.entries(rel.properties).map(([k, v]) => (
+                        {Object.entries(rel.edge_properties).map(([k, v]) => (
                           <span
                             key={k}
                             className="text-xs text-gray-400"
