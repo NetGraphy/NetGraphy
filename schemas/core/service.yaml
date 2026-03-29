@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   service_type:
     type: enum
+    display_name: "Service Type"
     enum_values: [infrastructure, overlay, underlay, application, monitoring, security, other]
     required: true
     ui:
@@ -35,6 +37,7 @@ attributes:
 
   protocol:
     type: string
+    display_name: "Protocol"
     required: false
     description: "Primary protocol (e.g., BGP, OSPF, VXLAN, DNS)"
     ui:
@@ -44,6 +47,7 @@ attributes:
 
   status:
     type: enum
+    display_name: "Status"
     enum_values: [active, degraded, down, planned, maintenance]
     default: planned
     required: true
@@ -59,6 +63,7 @@ attributes:
 
   criticality:
     type: enum
+    display_name: "Criticality"
     enum_values: [critical, high, medium, low]
     default: medium
     required: true
@@ -68,6 +73,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

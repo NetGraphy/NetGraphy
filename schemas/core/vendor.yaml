@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   slug:
     type: string
+    display_name: "Slug"
     required: true
     unique: true
     indexed: true
@@ -34,6 +36,7 @@ attributes:
 
   url:
     type: url
+    display_name: "Website"
     required: false
     description: "Vendor website"
     ui:
@@ -41,6 +44,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 4

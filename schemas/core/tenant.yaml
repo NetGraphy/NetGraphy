@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   slug:
     type: string
+    display_name: "Slug"
     required: true
     unique: true
     indexed: true
@@ -37,6 +39,7 @@ attributes:
 
   status:
     type: enum
+    display_name: "Status"
     enum_values: [active, planned, suspended, decommissioned]
     default: active
     required: true
@@ -54,6 +57,7 @@ attributes:
 
   tenant_type:
     type: enum
+    display_name: "Tenant Type"
     enum_values: [customer, internal, shared_services, management]
     required: true
     description: "Classification of the tenant"
@@ -65,6 +69,7 @@ attributes:
 
   contact_email:
     type: email
+    display_name: "Contact Email"
     required: false
     description: "Primary contact email for this tenant"
     ui:
@@ -72,6 +77,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

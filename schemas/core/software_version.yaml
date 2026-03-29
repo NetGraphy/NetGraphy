@@ -12,6 +12,7 @@ metadata:
 attributes:
   version_string:
     type: string
+    display_name: "Version"
     required: true
     indexed: true
     max_length: 255
@@ -24,6 +25,7 @@ attributes:
 
   major:
     type: integer
+    display_name: "Major"
     required: false
     description: "Major version number"
     ui:
@@ -31,6 +33,7 @@ attributes:
 
   minor:
     type: integer
+    display_name: "Minor"
     required: false
     description: "Minor version number"
     ui:
@@ -38,6 +41,7 @@ attributes:
 
   patch:
     type: string
+    display_name: "Patch"
     required: false
     description: "Patch version"
     ui:
@@ -45,6 +49,7 @@ attributes:
 
   release_date:
     type: date
+    display_name: "Release Date"
     required: false
     description: "Software release date"
     ui:
@@ -54,6 +59,7 @@ attributes:
 
   end_of_support:
     type: date
+    display_name: "End of Support"
     required: false
     description: "End of support date"
     ui:
@@ -63,6 +69,7 @@ attributes:
 
   end_of_life:
     type: date
+    display_name: "End of Life"
     required: false
     description: "End of life date"
     ui:
@@ -70,6 +77,7 @@ attributes:
 
   status:
     type: enum
+    display_name: "Status"
     enum_values: [current, deprecated, end_of_support, end_of_life]
     default: current
     required: true
@@ -84,6 +92,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

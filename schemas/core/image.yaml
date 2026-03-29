@@ -12,6 +12,7 @@ metadata:
 attributes:
   filename:
     type: string
+    display_name: "Filename"
     required: true
     indexed: true
     max_length: 512
@@ -24,6 +25,7 @@ attributes:
 
   image_type:
     type: enum
+    display_name: "Image Type"
     enum_values: [firmware, bootloader, patch, bundle, other]
     required: true
     default: firmware
@@ -34,6 +36,7 @@ attributes:
 
   checksum_md5:
     type: string
+    display_name: "MD5 Checksum"
     required: false
     description: "MD5 checksum"
     ui:
@@ -41,6 +44,7 @@ attributes:
 
   checksum_sha256:
     type: string
+    display_name: "SHA-256 Checksum"
     required: false
     description: "SHA-256 checksum"
     ui:
@@ -48,6 +52,7 @@ attributes:
 
   file_size_bytes:
     type: integer
+    display_name: "File Size"
     required: false
     description: "File size in bytes"
     ui:
@@ -57,6 +62,7 @@ attributes:
 
   download_url:
     type: url
+    display_name: "Download URL"
     required: false
     description: "URL to download the image"
     ui:
@@ -64,6 +70,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

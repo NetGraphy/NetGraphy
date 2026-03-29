@@ -110,6 +110,7 @@ class AttributeDefinition(BaseModel):
     """Definition of a single attribute on a node or edge type."""
     name: str
     type: AttributeType
+    display_name: str | None = None
     required: bool = False
     unique: bool = False
     indexed: bool = False

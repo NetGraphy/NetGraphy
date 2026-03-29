@@ -92,9 +92,10 @@ export function DynamicListPage() {
                   {columns.map(({ name, attr }) => (
                     <th
                       key={name}
+                      title={attr.description || undefined}
                       className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
                     >
-                      {attr.description || name}
+                      {attr.display_name || name}
                     </th>
                   ))}
                   <th className="px-4 py-3" />

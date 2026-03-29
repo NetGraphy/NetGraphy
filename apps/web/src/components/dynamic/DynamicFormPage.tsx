@@ -75,7 +75,7 @@ export function DynamicFormPage() {
               htmlFor={name}
               className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
-              {attr.description || name}
+              {attr.display_name || name}
               {attr.required && (
                 <span className="ml-1 text-red-500">*</span>
               )}

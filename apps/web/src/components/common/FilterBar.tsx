@@ -61,8 +61,8 @@ export function FilterBar({ nodeType, filters, onFilterChange }: FilterBarProps)
     <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
       {filterAttributes.map(({ name, attr }) => (
         <div key={name} className="flex flex-col">
-          <label className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-            {attr.description || name}
+          <label title={attr.description || undefined} className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+            {attr.display_name || name}
           </label>
           <FilterInput
             attribute={attr}

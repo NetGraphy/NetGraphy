@@ -42,6 +42,7 @@ export interface UIAttributeMetadata {
 export interface AttributeDefinition {
   name: string;
   type: AttributeType;
+  display_name: string | null;
   required: boolean;
   unique: boolean;
   indexed: boolean;

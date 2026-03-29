@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     indexed: true
     max_length: 255
@@ -24,6 +25,7 @@ attributes:
 
   cloud_id:
     type: string
+    display_name: "Cloud ID"
     required: false
     unique: true
     indexed: true
@@ -36,6 +38,7 @@ attributes:
 
   region:
     type: string
+    display_name: "Region"
     required: true
     indexed: true
     description: "Cloud region (e.g. us-east-1, eastus, us-central1)"
@@ -47,6 +50,7 @@ attributes:
 
   cidr_blocks:
     type: list[string]
+    display_name: "CIDR Blocks"
     required: false
     description: "Address space CIDR blocks"
     ui:
@@ -54,6 +58,7 @@ attributes:
 
   status:
     type: enum
+    display_name: "Status"
     enum_values: [active, planned, decommissioned]
     default: active
     required: true
@@ -69,6 +74,7 @@ attributes:
 
   is_default:
     type: boolean
+    display_name: "Default VPC"
     default: false
     description: "Whether this is the provider's default VPC"
     ui:
@@ -76,6 +82,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

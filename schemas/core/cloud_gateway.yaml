@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     indexed: true
     max_length: 255
@@ -24,6 +25,7 @@ attributes:
 
   cloud_id:
     type: string
+    display_name: "Cloud ID"
     required: false
     unique: true
     indexed: true
@@ -36,6 +38,7 @@ attributes:
 
   gateway_type:
     type: enum
+    display_name: "Gateway Type"
     enum_values:
       - vpn_gateway
       - transit_gateway
@@ -57,6 +60,7 @@ attributes:
 
   region:
     type: string
+    display_name: "Region"
     required: true
     indexed: true
     description: "Cloud region"
@@ -68,6 +72,7 @@ attributes:
 
   status:
     type: enum
+    display_name: "Status"
     enum_values: [active, planned, degraded, offline, decommissioned]
     default: active
     required: true
@@ -85,6 +90,7 @@ attributes:
 
   bandwidth_mbps:
     type: integer
+    display_name: "Bandwidth (Mbps)"
     required: false
     description: "Provisioned bandwidth in Mbps"
     ui:
@@ -92,6 +98,7 @@ attributes:
 
   ip_addresses:
     type: list[string]
+    display_name: "IP Addresses"
     required: false
     description: "Public or private IP addresses assigned to this gateway"
     ui:
@@ -99,6 +106,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

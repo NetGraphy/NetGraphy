@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: Name
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   location_type:
     type: enum
+    display_name: Location Type
     enum_values: [region, site, building, floor, room, rack, row]
     required: true
     description: "Type of location in the hierarchy"
@@ -36,6 +38,7 @@ attributes:
 
   status:
     type: enum
+    display_name: Status
     enum_values: [active, planned, decommissioned]
     default: active
     required: true
@@ -49,6 +52,7 @@ attributes:
 
   address:
     type: text
+    display_name: Address
     required: false
     description: "Physical address"
     ui:
@@ -56,6 +60,7 @@ attributes:
 
   city:
     type: string
+    display_name: City
     required: false
     indexed: true
     ui:
@@ -64,12 +69,14 @@ attributes:
 
   state:
     type: string
+    display_name: State
     required: false
     ui:
       form_order: 6
 
   country:
     type: string
+    display_name: Country
     required: false
     indexed: true
     ui:
@@ -78,6 +85,7 @@ attributes:
 
   latitude:
     type: float
+    display_name: Latitude
     required: false
     description: "GPS latitude"
     ui:
@@ -85,6 +93,7 @@ attributes:
 
   longitude:
     type: float
+    display_name: Longitude
     required: false
     description: "GPS longitude"
     ui:
@@ -92,6 +101,7 @@ attributes:
 
   description:
     type: text
+    display_name: Description
     required: false
     ui:
       form_order: 10

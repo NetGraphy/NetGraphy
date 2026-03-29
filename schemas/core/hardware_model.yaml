@@ -12,6 +12,7 @@ metadata:
 attributes:
   model:
     type: string
+    display_name: "Model"
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   slug:
     type: string
+    display_name: "Slug"
     required: true
     unique: true
     indexed: true
@@ -33,6 +35,7 @@ attributes:
 
   part_number:
     type: string
+    display_name: "Part Number"
     required: false
     indexed: true
     description: "Part number / SKU"
@@ -43,6 +46,7 @@ attributes:
 
   is_full_depth:
     type: boolean
+    display_name: "Full Depth"
     required: false
     default: true
     description: "Occupies full rack depth"
@@ -51,6 +55,7 @@ attributes:
 
   u_height:
     type: integer
+    display_name: "Height (U)"
     required: false
     default: 1
     description: "Rack units height"
@@ -61,6 +66,7 @@ attributes:
 
   interface_count:
     type: integer
+    display_name: "Interface Count"
     required: false
     description: "Total number of interfaces"
     ui:
@@ -68,6 +74,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

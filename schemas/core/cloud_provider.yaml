@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   slug:
     type: string
+    display_name: "Slug"
     required: true
     unique: true
     indexed: true
@@ -37,6 +39,7 @@ attributes:
 
   status:
     type: enum
+    display_name: "Status"
     enum_values: [active, planned, deprecated]
     default: active
     required: true
@@ -52,6 +55,7 @@ attributes:
 
   console_url:
     type: url
+    display_name: "Console URL"
     required: false
     description: "URL to the provider's management console"
     ui:
@@ -59,6 +63,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

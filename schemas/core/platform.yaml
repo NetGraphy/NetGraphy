@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     unique: true
     indexed: true
@@ -25,6 +26,7 @@ attributes:
 
   slug:
     type: string
+    display_name: "Slug"
     required: true
     unique: true
     indexed: true
@@ -33,6 +35,7 @@ attributes:
 
   napalm_driver:
     type: string
+    display_name: "NAPALM Driver"
     required: false
     description: "NAPALM driver name for automation"
     ui:
@@ -40,6 +43,7 @@ attributes:
 
   netmiko_device_type:
     type: string
+    display_name: "Netmiko Device Type"
     required: false
     description: "Netmiko device_type for SSH connections"
     ui:
@@ -47,6 +51,7 @@ attributes:
 
   ansible_network_os:
     type: string
+    display_name: "Ansible Network OS"
     required: false
     description: "Ansible network_os value"
     ui:
@@ -54,6 +59,7 @@ attributes:
 
   nornir_platform:
     type: string
+    display_name: "Nornir Platform"
     required: false
     description: "Nornir platform identifier"
     ui:
@@ -61,6 +67,7 @@ attributes:
 
   description:
     type: text
+    display_name: "Description"
     required: false
     ui:
       form_order: 10

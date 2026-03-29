@@ -148,8 +148,8 @@ function OverviewTab({
         <dl className="grid grid-cols-2 gap-4">
           {mainAttributes.map(([name, attr]) => (
             <div key={name}>
-              <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {attr.description || name}
+              <dt title={attr.description || undefined} className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {attr.display_name || name}
               </dt>
               <dd className="mt-1 text-sm">
                 <FieldRenderer

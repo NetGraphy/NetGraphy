@@ -12,6 +12,7 @@ metadata:
 attributes:
   name:
     type: string
+    display_name: "Name"
     required: true
     indexed: true
     max_length: 255
@@ -24,6 +25,7 @@ attributes:
 
   interface_type:
     type: enum
+    display_name: "Type"
     enum_values: [physical, virtual, lag, loopback, tunnel, vlan, subinterface, management, other]
     required: true
     default: physical
@@ -36,6 +38,7 @@ attributes:
 
   enabled:
     type: boolean
+    display_name: "Enabled"
     required: true
     default: true
     description: "Administrative state"
@@ -46,6 +49,7 @@ attributes:
 
   oper_status:
     type: enum
+    display_name: "Oper Status"
     enum_values: [up, down, testing, unknown, dormant, not_present, lower_layer_down]
     required: false
     description: "Operational status from the device"
@@ -63,6 +67,7 @@ attributes:
 
   speed_mbps:
     type: integer
+    display_name: "Speed (Mbps)"
     required: false
     description: "Interface speed in Mbps"
     ui:
@@ -72,6 +77,7 @@ attributes:
 
   mtu:
     type: integer
+    display_name: "MTU"
     required: false
     default: 1500
     description: "Maximum transmission unit"
@@ -80,6 +86,7 @@ attributes:
 
   mac_address:
     type: mac_address
+    display_name: "MAC Address"
     required: false
     indexed: true
     description: "MAC address"
@@ -90,6 +97,7 @@ attributes:
 
   ip_addresses:
     type: list[string]
+    display_name: "IP Addresses"
     required: false
     description: "IP addresses assigned to this interface (CIDR notation)"
     ui:
@@ -97,6 +105,7 @@ attributes:
 
   description:
     type: string
+    display_name: "Description"
     required: false
     description: "Interface description from device config"
     ui:
@@ -107,6 +116,7 @@ attributes:
 
   mode:
     type: enum
+    display_name: "Mode"
     enum_values: [access, trunk, routed, l3, tunnel, other]
     required: false
     description: "Switching/routing mode"
@@ -116,6 +126,7 @@ attributes:
 
   vlan_id:
     type: integer
+    display_name: "VLAN ID"
     required: false
     description: "Access VLAN ID"
     ui:
