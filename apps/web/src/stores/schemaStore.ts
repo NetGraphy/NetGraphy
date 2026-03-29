@@ -9,6 +9,7 @@
  */
 
 import { create } from "zustand";
+import { schemaApi } from "@/api/client";
 import type {
   NodeTypeDefinition,
   EdgeTypeDefinition,
@@ -43,9 +44,8 @@ export const useSchemaStore = create<SchemaState>((set, get) => ({
   loadSchema: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch("/api/v1/schema/ui-metadata");
-      const json = await response.json();
-      const data: UIMetadata = json.data;
+      const response = await schemaApi.getUIMetadata();
+      const data: UIMetadata = response.data.data;
 
       const nodeTypes: Record<string, NodeTypeDefinition> = {};
       for (const nt of data.node_types) {

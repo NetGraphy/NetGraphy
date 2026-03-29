@@ -16,17 +16,17 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export function AppShell() {
-  const { loaded, loading, loadSchema } = useSchemaStore();
+  const { loaded, loading, error: schemaError, loadSchema } = useSchemaStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!loaded && !loading) {
+    if (!loaded && !loading && !schemaError) {
       loadSchema();
     }
-  }, [loaded, loading, loadSchema]);
+  }, [loaded, loading, schemaError, loadSchema]);
 
   const handleLogout = () => {
     logout();
@@ -37,6 +37,23 @@ export function AppShell() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-gray-500">Loading schema...</div>
+      </div>
+    );
+  }
+
+  if (schemaError) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Failed to load schema</p>
+          <p className="mt-1 text-sm text-gray-500">{schemaError}</p>
+          <button
+            onClick={() => loadSchema()}
+            className="mt-4 rounded-md bg-brand-600 px-4 py-2 text-sm text-white hover:bg-brand-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
