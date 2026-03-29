@@ -109,21 +109,36 @@ function GraphCanvasInner({
     [inputEdges],
   );
 
-  // Visibility filters (all visible by default)
+  // Default visible types — Device + Interface for nodes, their key edges
+  const DEFAULT_NODE_TYPES = new Set(["Device", "Interface"]);
+  const DEFAULT_EDGE_TYPES = new Set(["HAS_INTERFACE", "CONNECTED_TO", "LOCATED_IN", "HAS_MODEL", "RUNS_PLATFORM"]);
+
   const [visibleNodeTypes, setVisibleNodeTypes] = useState<Set<string>>(
-    () => new Set(allNodeTypes),
+    () => new Set(allNodeTypes.filter((t) => DEFAULT_NODE_TYPES.has(t))),
   );
   const [visibleEdgeTypes, setVisibleEdgeTypes] = useState<Set<string>>(
-    () => new Set(allEdgeTypes),
+    () => new Set(allEdgeTypes.filter((t) => DEFAULT_EDGE_TYPES.has(t))),
   );
 
-  // Keep filters in sync when input types change
+  // Add newly discovered types but don't reset user's selections
   useEffect(() => {
-    setVisibleNodeTypes(new Set(allNodeTypes));
+    setVisibleNodeTypes((prev) => {
+      const updated = new Set(prev);
+      for (const t of allNodeTypes) {
+        if (!prev.has(t) && DEFAULT_NODE_TYPES.has(t)) updated.add(t);
+      }
+      return updated;
+    });
   }, [allNodeTypes]);
 
   useEffect(() => {
-    setVisibleEdgeTypes(new Set(allEdgeTypes));
+    setVisibleEdgeTypes((prev) => {
+      const updated = new Set(prev);
+      for (const t of allEdgeTypes) {
+        if (!prev.has(t) && DEFAULT_EDGE_TYPES.has(t)) updated.add(t);
+      }
+      return updated;
+    });
   }, [allEdgeTypes]);
 
   // Filter nodes/edges
@@ -243,6 +258,11 @@ function GraphCanvasInner({
     });
   }, []);
 
+  const handleSelectAllNodes = useCallback(() => setVisibleNodeTypes(new Set(allNodeTypes)), [allNodeTypes]);
+  const handleDeselectAllNodes = useCallback(() => setVisibleNodeTypes(new Set()), []);
+  const handleSelectAllEdges = useCallback(() => setVisibleEdgeTypes(new Set(allEdgeTypes)), [allEdgeTypes]);
+  const handleDeselectAllEdges = useCallback(() => setVisibleEdgeTypes(new Set()), []);
+
   // Empty state
   if (inputNodes.length === 0) {
     return (
@@ -306,6 +326,10 @@ function GraphCanvasInner({
           onToggleNodeType={handleToggleNodeType}
           visibleEdgeTypes={visibleEdgeTypes}
           onToggleEdgeType={handleToggleEdgeType}
+          onSelectAllNodes={handleSelectAllNodes}
+          onDeselectAllNodes={handleDeselectAllNodes}
+          onSelectAllEdges={handleSelectAllEdges}
+          onDeselectAllEdges={handleDeselectAllEdges}
           nodeTypeList={allNodeTypes}
           edgeTypeList={allEdgeTypes}
           displayedCount={filteredGraphNodes.length}

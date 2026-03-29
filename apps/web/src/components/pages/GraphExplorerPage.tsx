@@ -3,38 +3,85 @@
  * Search for a starting node, expand neighbors, click to inspect properties.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryApi } from "@/api/client";
 import { GraphCanvas } from "@/components/graph/GraphCanvas";
 import type { GraphNode, GraphEdge, QueryResult } from "@/types/schema";
 
+interface SearchResult {
+  id: string;
+  label: string;
+  node_type: string;
+}
+
 export function GraphExplorerPage() {
   const [search, setSearch] = useState("");
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SearchResult[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
   const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-  const searchMutation = useMutation({
-    mutationFn: (term: string) =>
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Autocomplete search with debounce
+  const handleInputChange = (value: string) => {
+    setSearch(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+    searchTimeout.current = setTimeout(() => {
       queryApi
         .executeCypher(
-          "MATCH (n) WHERE n.hostname = $search OR n.name = $search RETURN n LIMIT 1",
-          { search: term },
+          "MATCH (n) WHERE n.hostname CONTAINS $term OR n.name CONTAINS $term OR n.address CONTAINS $term OR n.prefix CONTAINS $term OR n.model CONTAINS $term OR toString(n.asn) CONTAINS $term RETURN n LIMIT 15",
+          { term: value.trim() },
         )
-        .then((r) => r.data.data as QueryResult),
-    onSuccess: (result) => {
-      setHasSearched(true);
-      if (result.nodes.length > 0) {
-        // Found a starting node; now expand its neighbors
-        expandMutation.mutate(result.nodes[0].id);
-      } else {
-        setGraphNodes([]);
-        setGraphEdges([]);
-      }
-    },
-  });
+        .then((r) => {
+          const result = r.data.data as QueryResult;
+          const items: SearchResult[] = result.nodes.map((node) => ({
+            id: node.id,
+            label: node.label,
+            node_type: node.node_type,
+          }));
+          setSuggestions(items);
+          setShowDropdown(items.length > 0);
+        })
+        .catch(() => {
+          setSuggestions([]);
+          setShowDropdown(false);
+        });
+    }, 250);
+  };
+
+  const addSelectedItem = (item: SearchResult) => {
+    if (!selectedItems.find((s) => s.id === item.id)) {
+      setSelectedItems((prev) => [...prev, item]);
+    }
+    setSearch("");
+    setSuggestions([]);
+    setShowDropdown(false);
+  };
+
+  const removeSelectedItem = (id: string) => {
+    setSelectedItems((prev) => prev.filter((s) => s.id !== id));
+  };
 
   const expandMutation = useMutation({
     mutationFn: (nodeId: string) =>
@@ -59,11 +106,15 @@ export function GraphExplorerPage() {
   });
 
   const handleSearch = () => {
-    if (!search.trim()) return;
+    if (selectedItems.length === 0) return;
     setGraphNodes([]);
     setGraphEdges([]);
     setSelectedNode(null);
-    searchMutation.mutate(search.trim());
+    setHasSearched(true);
+    // Expand all selected items
+    for (const item of selectedItems) {
+      expandMutation.mutate(item.id);
+    }
   };
 
   const handleNodeSelect = useCallback((node: GraphNode) => {
@@ -83,62 +134,89 @@ export function GraphExplorerPage() {
     setSelectedNode(null);
     setHasSearched(false);
     setSearch("");
+    setSelectedItems([]);
+    setSuggestions([]);
   };
 
-  const isLoading = searchMutation.isPending || expandMutation.isPending;
+  const isLoading = expandMutation.isPending;
 
   return (
     <div className="flex h-full flex-col">
       {/* Search Bar */}
       <div className="mb-4 flex flex-shrink-0 items-center gap-3">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+        <div className="relative flex-1" ref={dropdownRef}>
+          {/* Selected chips */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2 py-1.5 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500">
+            {selectedItems.map((item) => (
+              <span
+                key={item.id}
+                className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700"
+              >
+                {item.label}
+                <span className="text-[9px] text-brand-400">{item.node_type}</span>
+                <button
+                  onClick={() => removeSelectedItem(item.id)}
+                  className="ml-0.5 text-brand-400 hover:text-brand-600"
+                >
+                  &times;
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && suggestions.length > 0) {
+                  addSelectedItem(suggestions[0]);
+                } else if (e.key === "Enter" && selectedItems.length > 0) {
+                  handleSearch();
+                } else if (e.key === "Backspace" && !search && selectedItems.length > 0) {
+                  removeSelectedItem(selectedItems[selectedItems.length - 1].id);
+                }
+              }}
+              onFocus={() => { if (suggestions.length > 0) setShowDropdown(true); }}
+              className="min-w-[120px] flex-1 border-none bg-transparent py-0.5 text-sm outline-none placeholder-gray-400"
+              placeholder={selectedItems.length === 0 ? "Search devices, prefixes, locations..." : "Add more..."}
             />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearch();
-            }}
-            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            placeholder="Search by hostname or name..."
-          />
+          </div>
+
+          {/* Autocomplete dropdown */}
+          {showDropdown && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+              {suggestions
+                .filter((s) => !selectedItems.find((sel) => sel.id === s.id))
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => addSelectedItem(item)}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                  >
+                    <span className="font-medium text-gray-900">{item.label}</span>
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                      {item.node_type}
+                    </span>
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
         <button
           onClick={handleSearch}
-          disabled={isLoading || !search.trim()}
+          disabled={isLoading || selectedItems.length === 0}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
-          {searchMutation.isPending ? "Searching..." : "Search"}
+          {isLoading ? "Loading..." : "Search"}
         </button>
         {graphNodes.length > 0 && (
           <button
             onClick={handleClearGraph}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
           >
             Clear
           </button>
         )}
       </div>
-
-      {/* Error */}
-      {searchMutation.isError && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-          Search error: {String(searchMutation.error)}
-        </div>
-      )}
 
       {/* Loading indicator for expansion */}
       {expandMutation.isPending && (
@@ -178,12 +256,12 @@ export function GraphExplorerPage() {
                 <p className="text-sm font-medium text-gray-500">
                   {hasSearched
                     ? "No nodes found for that search"
-                    : "Search for a node to begin exploring"}
+                    : "Search for nodes to begin exploring"}
                 </p>
                 <p className="mt-1 text-xs text-gray-400">
                   {hasSearched
-                    ? "Try a different hostname or name"
-                    : "Enter a hostname or name and press Enter"}
+                    ? "Try a different search term"
+                    : "Type a partial name to find matches, select multiple nodes, then click Search"}
                 </p>
               </div>
             </div>

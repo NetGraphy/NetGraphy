@@ -26,6 +26,10 @@ interface GraphControlsProps {
   onToggleNodeType: (nodeType: string) => void;
   visibleEdgeTypes: Set<string>;
   onToggleEdgeType: (edgeType: string) => void;
+  onSelectAllNodes: () => void;
+  onDeselectAllNodes: () => void;
+  onSelectAllEdges: () => void;
+  onDeselectAllEdges: () => void;
   nodeTypeList: string[];
   edgeTypeList: string[];
   displayedCount: number;
@@ -42,6 +46,10 @@ export function GraphControls({
   onToggleNodeType,
   visibleEdgeTypes,
   onToggleEdgeType,
+  onSelectAllNodes,
+  onDeselectAllNodes,
+  onSelectAllEdges,
+  onDeselectAllEdges,
   nodeTypeList,
   edgeTypeList,
   displayedCount,
@@ -150,6 +158,9 @@ export function GraphControls({
           <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
             Nodes
           </span>
+          <button type="button" onClick={onSelectAllNodes} className="text-[9px] text-brand-600 hover:text-brand-700" title="Select all node types">all</button>
+          <span className="text-[9px] text-gray-300">|</span>
+          <button type="button" onClick={onDeselectAllNodes} className="text-[9px] text-brand-600 hover:text-brand-700" title="Deselect all node types">none</button>
           {nodeTypeList.map((nt) => {
             const schema = nodeTypes[nt];
             const color =
@@ -192,6 +203,9 @@ export function GraphControls({
           <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
             Edges
           </span>
+          <button type="button" onClick={onSelectAllEdges} className="text-[9px] text-brand-600 hover:text-brand-700" title="Select all edge types">all</button>
+          <span className="text-[9px] text-gray-300">|</span>
+          <button type="button" onClick={onDeselectAllEdges} className="text-[9px] text-brand-600 hover:text-brand-700" title="Deselect all edge types">none</button>
           {edgeTypeList.map((et) => {
             const schema = edgeTypes[et];
             const color =
