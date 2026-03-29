@@ -14,6 +14,7 @@ import {
   Download,
   LayoutGrid,
   Network,
+  Filter,
 } from "lucide-react";
 import { useSchemaStore } from "@/stores/schemaStore";
 
@@ -34,6 +35,8 @@ interface GraphControlsProps {
   edgeTypeList: string[];
   displayedCount: number;
   totalCount: number;
+  onToggleFilter?: () => void;
+  filterActive?: boolean;
 }
 
 const DEFAULT_COLOR = "#6366f1";
@@ -54,6 +57,8 @@ export function GraphControls({
   edgeTypeList,
   displayedCount,
   totalCount,
+  onToggleFilter,
+  filterActive,
 }: GraphControlsProps) {
   const { zoomIn, zoomOut, fitView, getNodes, getEdges } = useReactFlow();
   const nodeTypes = useSchemaStore((s) => s.nodeTypes);
@@ -254,6 +259,24 @@ export function GraphControls({
         )}{" "}
         nodes
       </span>
+
+      <div className="h-5 w-px bg-gray-200" />
+
+      {/* Power Filter toggle */}
+      {onToggleFilter && (
+        <button
+          type="button"
+          onClick={onToggleFilter}
+          className="relative flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100"
+          title="Power Filters"
+        >
+          <Filter size={14} />
+          Filter
+          {filterActive && (
+            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-blue-500" />
+          )}
+        </button>
+      )}
 
       <div className="h-5 w-px bg-gray-200" />
 

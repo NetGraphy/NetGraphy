@@ -30,7 +30,10 @@ import type { GraphNode, GraphEdge } from "@/types/schema";
 import { CustomNode, type CustomNodeData } from "./CustomNode";
 import { CustomEdge } from "./CustomEdge";
 import { GraphControls, type LayoutType } from "./GraphControls";
+import { GraphFilterPanel } from "./GraphFilterPanel";
 import { applyDagreLayout, applyForceLayout } from "@/lib/graphLayout";
+import { applyGraphFilter } from "@/lib/graphFilterEngine";
+import { useGraphExplorerStore } from "@/stores/graphExplorerStore";
 
 // ---------- Types ----------
 
@@ -91,6 +94,10 @@ function GraphCanvasInner({
 
   // Layout state
   const [layout, setLayout] = useState<LayoutType>("hierarchical");
+
+  // Power filter panel state
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const graphFilter = useGraphExplorerStore((s) => s.filter);
 
   // Truncation
   const isTruncated = inputNodes.length > maxNodes;
@@ -163,14 +170,20 @@ function GraphCanvasInner({
     [inputEdges, visibleEdgeTypes, filteredNodeIds],
   );
 
+  // Apply power filter (from graphExplorerStore)
+  const powerFiltered = useMemo(
+    () => applyGraphFilter(filteredGraphNodes, filteredGraphEdges, graphFilter),
+    [filteredGraphNodes, filteredGraphEdges, graphFilter],
+  );
+
   // Convert to React Flow format
   const rawFlowNodes = useMemo(
-    () => toFlowNodes(filteredGraphNodes),
-    [filteredGraphNodes],
+    () => toFlowNodes(powerFiltered.nodes),
+    [powerFiltered.nodes],
   );
   const flowEdges = useMemo(
-    () => toFlowEdges(filteredGraphEdges),
-    [filteredGraphEdges],
+    () => toFlowEdges(powerFiltered.edges),
+    [powerFiltered.edges],
   );
 
   // Apply layout
@@ -332,10 +345,23 @@ function GraphCanvasInner({
           onDeselectAllEdges={handleDeselectAllEdges}
           nodeTypeList={allNodeTypes}
           edgeTypeList={allEdgeTypes}
-          displayedCount={filteredGraphNodes.length}
+          displayedCount={powerFiltered.nodes.length}
           totalCount={inputNodes.length}
+          onToggleFilter={() => setShowFilterPanel((prev) => !prev)}
+          filterActive={graphFilter.enabled && graphFilter.rootGroup.rules.length > 0}
         />
       </div>
+
+      {/* Power Filter panel */}
+      {showFilterPanel && (
+        <div className="absolute right-3 top-3 z-10">
+          <GraphFilterPanel
+            onClose={() => setShowFilterPanel(false)}
+            displayedCount={powerFiltered.nodes.length}
+            totalCount={inputNodes.length}
+          />
+        </div>
+      )}
 
       {/* React Flow canvas */}
       <div className="flex-1">
