@@ -29,6 +29,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Editor from "@monaco-editor/react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/api/client";
 import {
   useSchemaDesignerStore,
   SchemaNode,
@@ -458,6 +460,103 @@ export function SchemaDesignerPage() {
     updateNode, addEdge: addSchemaEdge, loadSchema, validate,
     undo, redo, resetSchema, getNodeById,
   } = store;
+
+  // Load existing schema from API on mount
+  const { data: nodeTypesData } = useQuery({
+    queryKey: ["schema-node-types"],
+    queryFn: () => api.get("/schema/node-types"),
+  });
+  const { data: edgeTypesData } = useQuery({
+    queryKey: ["schema-edge-types"],
+    queryFn: () => api.get("/schema/edge-types"),
+  });
+  const [schemaLoaded, setSchemaLoaded] = useState(false);
+
+  useEffect(() => {
+    if (schemaLoaded || !nodeTypesData?.data?.data || !edgeTypesData?.data?.data) return;
+    if (schema.nodes.length > 0) { setSchemaLoaded(true); return; } // Already has data
+
+    const nodeTypes: any[] = nodeTypesData.data.data;
+    const edgeTypes: any[] = edgeTypesData.data.data;
+
+    // Layout nodes in a grid
+    const cols = Math.ceil(Math.sqrt(nodeTypes.length));
+    const nodes: SchemaNode[] = nodeTypes.map((nt: any, i: number) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const attrs: SchemaAttribute[] = Object.entries(nt.attributes || {}).map(([name, def]: [string, any]) => ({
+        id: crypto.randomUUID(),
+        name,
+        type: def.type || "string",
+        required: def.required || false,
+        unique: def.unique || false,
+        indexed: def.indexed || false,
+        default_value: def.default !== undefined ? String(def.default) : null,
+        enum_values: def.enum_values || null,
+        description: def.description || "",
+      }));
+
+      return {
+        id: crypto.randomUUID(),
+        name: nt.metadata?.name || nt.name,
+        display_name: nt.metadata?.display_name || nt.metadata?.name || nt.name,
+        description: nt.metadata?.description || "",
+        category: nt.metadata?.category || "",
+        icon: nt.metadata?.icon || "box",
+        color: nt.metadata?.color || "#6366F1",
+        tags: nt.metadata?.tags || [],
+        attributes: attrs,
+        mixins: nt.mixins || [],
+        position: { x: 50 + col * 280, y: 50 + row * 250 },
+      };
+    });
+
+    // Build a name→ID lookup
+    const nameToId: Record<string, string> = {};
+    nodes.forEach((n) => { nameToId[n.name] = n.id; });
+
+    const edges: SchemaEdge[] = [];
+    for (const et of edgeTypes) {
+      const edgeName = et.metadata?.name || et.name;
+      const srcTypes: string[] = et.source?.node_types || [];
+      const tgtTypes: string[] = et.target?.node_types || [];
+
+      for (const src of srcTypes) {
+        for (const tgt of tgtTypes) {
+          if (nameToId[src] && nameToId[tgt]) {
+            edges.push({
+              id: crypto.randomUUID(),
+              name: edgeName,
+              display_name: et.metadata?.display_name || edgeName,
+              description: et.metadata?.description || "",
+              from_node_id: nameToId[src],
+              to_node_id: nameToId[tgt],
+              cardinality: et.cardinality || "many_to_many",
+              inverse_name: et.inverse_name || "",
+              attributes: Object.entries(et.attributes || {}).map(([name, def]: [string, any]) => ({
+                id: crypto.randomUUID(),
+                name,
+                type: def.type || "string",
+                required: def.required || false,
+                unique: false,
+                indexed: false,
+                default_value: null,
+                enum_values: def.enum_values || null,
+                description: def.description || "",
+              })),
+              constraints: {
+                unique_source: et.constraints?.unique_source || false,
+                unique_target: et.constraints?.unique_target || false,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    loadSchema({ nodes, edges });
+    setSchemaLoaded(true);
+  }, [nodeTypesData, edgeTypesData, schemaLoaded, schema.nodes.length, loadSchema]);
 
   const [showYaml, setShowYaml] = useState(true);
   const [yamlValue, setYamlValue] = useState("");
