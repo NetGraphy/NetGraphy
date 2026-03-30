@@ -107,6 +107,8 @@ class AgentRuntime:
         5. Feed tool results back to model
         6. Repeat until model returns text or max rounds reached
         """
+        from packages.ai.tracing import trace_agent_run, trace_model_call, trace_tool_call
+
         response = AgentResponse(model_used=self._model, provider_used=self._provider.config.provider_type)
 
         # Filter tools to only those the user is allowed to use
@@ -116,66 +118,96 @@ class AgentRuntime:
         system = self._build_system_prompt(system_instruction, actor)
         full_messages = [ChatMessage(role="system", content=system)] + messages
 
-        for round_num in range(max_rounds):
-            # Call model
-            model_response = await self._provider.chat(
-                messages=full_messages,
-                model=self._model,
-                tools=allowed_tools if allowed_tools else None,
-            )
+        user_msg = messages[-1].content if messages else ""
+        _run_ctx = trace_agent_run(
+            user=actor.username, message=user_msg,
+            model=self._model, provider=self._provider.config.provider_type,
+        )
+        run_meta = _run_ctx.__enter__()
 
-            response.steps.append(AgentStep(
-                step_type="model_call", content=model_response.content,
-                model=self._model, latency_ms=model_response.latency_ms,
-            ))
-            response.usage = model_response.usage
-            response.total_latency_ms += model_response.latency_ms
-
-            # If no tool calls, we're done
-            if not model_response.tool_calls:
-                response.content = model_response.content
-                break
-
-            # Execute tool calls
-            full_messages.append(ChatMessage(
-                role="assistant", content=model_response.content,
-                tool_calls=model_response.tool_calls,
-            ))
-
-            for tc in model_response.tool_calls:
-                response.tool_calls_made += 1
-
-                # Check if tool requires confirmation for destructive actions
-                tool_def = next((t for t in (tools or []) if t["name"] == tc.name), None)
-                auth_meta = tool_def.get("auth", {}) if tool_def else {}
-
-                if auth_meta.get("requires_confirmation") and auth_meta.get("destructive"):
-                    response.confirmation_required = {
-                        "tool": tc.name,
-                        "arguments": tc.arguments,
-                        "reason": "This is a destructive action that requires your confirmation.",
-                    }
-                    response.content = (
-                        f"I need your confirmation before executing **{tc.name}**. "
-                        f"This is a destructive action."
+        try:
+            for round_num in range(max_rounds):
+                # Call model with tracing
+                with trace_model_call(
+                    model=self._model, provider=self._provider.config.provider_type,
+                    tool_count=len(allowed_tools),
+                ) as model_meta:
+                    model_response = await self._provider.chat(
+                        messages=full_messages,
+                        model=self._model,
+                        tools=allowed_tools if allowed_tools else None,
                     )
-                    response.steps.append(AgentStep(
-                        step_type="confirmation_required", tool_name=tc.name,
-                        tool_args=tc.arguments,
-                    ))
-                    return response
+                    model_meta["usage"] = model_response.usage
+                    model_meta["latency_ms"] = model_response.latency_ms
+                    model_meta["finish_reason"] = model_response.finish_reason
 
-                # Execute the tool
-                result = await self._execute_tool(tc, actor)
-                response.steps.append(result)
-
-                # Add tool result to conversation
-                full_messages.append(ChatMessage(
-                    role="tool",
-                    content=json.dumps(result.tool_result) if result.tool_result else result.content,
-                    tool_call_id=tc.id,
-                    name=tc.name,
+                response.steps.append(AgentStep(
+                    step_type="model_call", content=model_response.content,
+                    model=self._model, latency_ms=model_response.latency_ms,
                 ))
+                response.usage = model_response.usage
+                response.total_latency_ms += model_response.latency_ms
+
+                # If no tool calls, we're done
+                if not model_response.tool_calls:
+                    response.content = model_response.content
+                    break
+
+                # Execute tool calls
+                full_messages.append(ChatMessage(
+                    role="assistant", content=model_response.content,
+                    tool_calls=model_response.tool_calls,
+                ))
+
+                for tc in model_response.tool_calls:
+                    response.tool_calls_made += 1
+
+                    # Check if tool requires confirmation for destructive actions
+                    tool_def = next((t for t in (tools or []) if t["name"] == tc.name), None)
+                    auth_meta = tool_def.get("auth", {}) if tool_def else {}
+
+                    if auth_meta.get("requires_confirmation") and auth_meta.get("destructive"):
+                        response.confirmation_required = {
+                            "tool": tc.name,
+                            "arguments": tc.arguments,
+                            "reason": "This is a destructive action that requires your confirmation.",
+                        }
+                        response.content = (
+                            f"I need your confirmation before executing **{tc.name}**. "
+                            f"This is a destructive action."
+                        )
+                        response.steps.append(AgentStep(
+                            step_type="confirmation_required", tool_name=tc.name,
+                            tool_args=tc.arguments,
+                        ))
+                        return response
+
+                    # Execute the tool with tracing
+                    with trace_tool_call(tool_name=tc.name, tool_args=tc.arguments) as tool_meta:
+                        result = await self._execute_tool(tc, actor)
+                        if result.tool_result and isinstance(result.tool_result, dict):
+                            tool_meta["result_count"] = len(result.tool_result.get("items", []))
+                            if result.tool_result.get("error"):
+                                tool_meta["error"] = result.tool_result.get("message", "")
+
+                    response.steps.append(result)
+
+                    # Add tool result to conversation
+                    full_messages.append(ChatMessage(
+                        role="tool",
+                        content=json.dumps(result.tool_result) if result.tool_result else result.content,
+                        tool_call_id=tc.id,
+                        name=tc.name,
+                    ))
+
+            # Set run metadata for tracing
+            run_meta["content"] = response.content
+            run_meta["tool_calls"] = response.tool_calls_made
+            run_meta["usage"] = response.usage
+            run_meta["latency_ms"] = response.total_latency_ms
+
+        finally:
+            _run_ctx.__exit__(None, None, None)
 
         return response
 

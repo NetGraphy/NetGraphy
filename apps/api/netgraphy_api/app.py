@@ -116,6 +116,13 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Load OTel tracing config from Neo4j
+    try:
+        from packages.ai.tracing import load_tracing_config
+        await load_tracing_config(driver)
+    except Exception:
+        logger.warning("otel.startup_config_load_failed")
+
     yield
 
     # --- Shutdown -------------------------------------------------------------

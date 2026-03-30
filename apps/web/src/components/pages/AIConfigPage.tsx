@@ -25,6 +25,12 @@ export function AIConfigPage() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [promptSaved, setPromptSaved] = useState(false);
 
+  // OTel config
+  const [otelEnabled, setOtelEnabled] = useState(false);
+  const [otelEndpoint, setOtelEndpoint] = useState("");
+  const [otelServiceName, setOtelServiceName] = useState("netgraphy-agent");
+  const [otelSaved, setOtelSaved] = useState(false);
+
   const { data, isLoading } = useQuery({
     queryKey: ["ai-providers"],
     queryFn: () => api.get("/agent/providers"),
@@ -49,6 +55,31 @@ export function AIConfigPage() {
       queryClient.invalidateQueries({ queryKey: ["system-prompt"] });
       setPromptSaved(true);
       setTimeout(() => setPromptSaved(false), 2000);
+    },
+  });
+
+  // OTel config
+  const { data: otelData } = useQuery({
+    queryKey: ["otel-config"],
+    queryFn: () => api.get("/agent/otel-config"),
+  });
+
+  const loadedOtel = otelData?.data?.data;
+  useEffect(() => {
+    if (loadedOtel) {
+      setOtelEnabled(loadedOtel.enabled || false);
+      setOtelEndpoint(loadedOtel.endpoint || "");
+      setOtelServiceName(loadedOtel.service_name || "netgraphy-agent");
+    }
+  }, [loadedOtel]);
+
+  const saveOtelMutation = useMutation({
+    mutationFn: (body: { enabled: boolean; endpoint: string; service_name: string }) =>
+      api.put("/agent/otel-config", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["otel-config"] });
+      setOtelSaved(true);
+      setTimeout(() => setOtelSaved(false), 2000);
     },
   });
 
@@ -125,6 +156,53 @@ export function AIConfigPage() {
         />
         <div className="mt-2 text-[10px] text-gray-400">
           This prompt is combined with the platform's built-in safety and query behavior rules. It cannot override security restrictions.
+        </div>
+      </div>
+
+      {/* OTel Observability */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">AI Observability (OpenTelemetry)</h2>
+            <p className="text-xs text-gray-500">
+              Send AI agent traces to Phoenix, Jaeger, or any OTLP-compatible collector for debugging and monitoring.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {otelSaved && <span className="text-xs text-green-600">Saved</span>}
+            <button
+              onClick={() => saveOtelMutation.mutate({ enabled: otelEnabled, endpoint: otelEndpoint, service_name: otelServiceName })}
+              disabled={saveOtelMutation.isPending}
+              className="rounded bg-brand-600 px-3 py-1.5 text-xs text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              {saveOtelMutation.isPending ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={otelEnabled} onChange={(e) => setOtelEnabled(e.target.checked)}
+                className="rounded border-gray-300" />
+              <span className="text-gray-700 dark:text-gray-300">Enable tracing</span>
+            </label>
+            <div className={`h-2.5 w-2.5 rounded-full ${otelEnabled ? "bg-green-500" : "bg-gray-400"}`} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">OTLP HTTP Endpoint</label>
+            <input type="text" value={otelEndpoint} onChange={(e) => setOtelEndpoint(e.target.value)}
+              placeholder="https://phoenix.example.com/v1/traces"
+              className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-500">Service Name</label>
+            <input type="text" value={otelServiceName} onChange={(e) => setOtelServiceName(e.target.value)}
+              placeholder="netgraphy-agent"
+              className="w-full rounded border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+          </div>
+        </div>
+        <div className="mt-2 text-[10px] text-gray-400">
+          Traces include agent runs, model calls, tool executions, and token usage. No sensitive data (API keys, passwords) is sent.
         </div>
       </div>
 

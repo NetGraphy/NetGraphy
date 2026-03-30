@@ -501,3 +501,67 @@ async def set_system_prompt(
         {"value": prompt_text, "now": now, "user": actor.username},
     )
     return {"data": {"system_prompt": prompt_text, "updated_at": now}}
+
+
+# --------------------------------------------------------------------------- #
+#  OTel / Observability Configuration                                          #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/otel-config")
+async def get_otel_config(
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Get the current OTel observability configuration."""
+    result = await driver.execute_read(
+        "MATCH (c:_AgentConfig {key: 'otel_config'}) RETURN c", {}
+    )
+    if result.rows:
+        cfg = result.rows[0]["c"]
+        return {"data": {
+            "enabled": cfg.get("enabled", False),
+            "endpoint": cfg.get("endpoint", ""),
+            "service_name": cfg.get("service_name", "netgraphy-agent"),
+            "updated_at": cfg.get("updated_at", ""),
+        }}
+    return {"data": {"enabled": False, "endpoint": "", "service_name": "netgraphy-agent", "updated_at": ""}}
+
+
+@router.put("/otel-config")
+async def set_otel_config(
+    body: dict[str, Any],
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+    rbac: PermissionChecker = Depends(get_rbac),
+):
+    """Configure OTel observability for the AI agent.
+
+    Body:
+        enabled: bool — enable/disable tracing
+        endpoint: str — OTLP HTTP endpoint (e.g., https://phoenix.example.com/v1/traces)
+        service_name: str — service name for traces (default: netgraphy-agent)
+    """
+    rbac.require_permission(actor, "manage", "user:*")
+
+    enabled = body.get("enabled", False)
+    endpoint = body.get("endpoint", "")
+    service_name = body.get("service_name", "netgraphy-agent")
+    now = datetime.now(timezone.utc).isoformat()
+
+    await driver.execute_write(
+        "MERGE (c:_AgentConfig {key: 'otel_config'}) "
+        "SET c.enabled = $enabled, c.endpoint = $endpoint, "
+        "c.service_name = $service_name, c.updated_at = $now, c.updated_by = $user",
+        {"enabled": enabled, "endpoint": endpoint, "service_name": service_name,
+         "now": now, "user": actor.username},
+    )
+
+    # Apply configuration immediately
+    from packages.ai.tracing import configure_tracing
+    if enabled and endpoint:
+        configure_tracing(endpoint, service_name)
+    else:
+        configure_tracing("")
+
+    return {"data": {"enabled": enabled, "endpoint": endpoint, "service_name": service_name, "updated_at": now}}

@@ -81,6 +81,13 @@ class MCPToolExecutor:
 
         Routes to the appropriate handler based on tool name pattern.
         """
+        logger.info(
+            "tool_execute_start",
+            tool=tool_name,
+            input_keys=list(tool_input.keys()),
+            has_filters="filters" in tool_input,
+            filter_count=len(tool_input.get("filters", [])),
+        )
         try:
             # --- Query tools: query_<entities> ---
             if tool_name.startswith("query_"):
@@ -160,6 +167,8 @@ class MCPToolExecutor:
         direct attribute-only query to still return useful results.
         """
         entity = self._resolve_entity_from_tool(tool_name, prefix="query_")
+        logger.info("query_tool_resolved", entity=entity, tool=tool_name,
+                     filters=tool_input.get("filters", []))
 
         # Build QueryAST from tool input
         ast = self._build_query_ast(entity, tool_input)
@@ -167,8 +176,11 @@ class MCPToolExecutor:
         # Validate — with fallback for relationship filter failures
         try:
             resolved_paths = self._validator.validate(ast)
+            logger.info("query_validated", entity=entity,
+                        path_count=len(resolved_paths),
+                        paths=[rp.raw_path for rp in resolved_paths])
         except QueryValidationError as e:
-            logger.warning("query_validation_fallback", entity=entity, errors=e.errors)
+            logger.warning("query_validation_failed", entity=entity, errors=e.errors)
             # Try falling back to direct filters only (strip relationship paths)
             direct_conditions = []
             for f in tool_input.get("filters", []):
@@ -390,8 +402,25 @@ class MCPToolExecutor:
         return {"found": True, "data": node}
 
     async def _execute_list(self, tool_name: str, tool_input: dict[str, Any]) -> dict[str, Any]:
-        """Execute a list tool — delegates to query tool for consistency."""
+        """Execute a list tool — delegates to query tool for consistency.
+
+        Converts old-style flat key=value filters to the structured filter
+        format expected by the query tool.
+        """
         entity = self._resolve_entity_from_tool(tool_name, prefix="list_")
+
+        # Convert flat filters (e.g., {"status": "active"}) to structured format
+        if "filters" not in tool_input:
+            structured_filters = []
+            skip_keys = {"page", "page_size", "sort", "limit", "offset", "fields", "include_total"}
+            for key, value in tool_input.items():
+                if key not in skip_keys:
+                    structured_filters.append({
+                        "path": key, "operator": "eq", "value": value,
+                    })
+            if structured_filters:
+                tool_input = {**tool_input, "filters": structured_filters}
+
         return await self._execute_query_tool(f"query_{_slugify(entity)}s", tool_input)
 
     async def _execute_update(self, tool_name: str, tool_input: dict[str, Any]) -> dict[str, Any]:
