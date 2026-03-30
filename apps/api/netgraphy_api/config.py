@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     app_name: str = "NetGraphy"
     debug: bool = False
     api_prefix: str = "/api/v1"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["*"]
 
     # --- Neo4j ---
     neo4j_uri: str = "bolt://localhost:7687"
