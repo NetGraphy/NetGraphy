@@ -53,7 +53,8 @@ export function ReportBuilderPage() {
   const [rowMode, setRowMode] = useState<RowMode>("root");
   const [sortField, setSortField] = useState("");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [limit, setLimit] = useState(50);
+  const [pageSize, setPageSize] = useState(50);
+  const [page, setPage] = useState(1);
   const [groupBy, setGroupBy] = useState<string[]>([]);
 
   // Preview
@@ -140,16 +141,24 @@ export function ReportBuilderPage() {
     setFilters((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const buildReportBody = useCallback(() => ({
-    root_entity: rootEntity,
-    columns: selectedColumns.map((c) => ({ path: c.path, source: c.source, display_label: c.display_label, alias: c.alias })),
-    filters: filters.filter((f) => f.path && f.operator),
-    row_mode: rowMode,
-    sort: sortField || undefined,
-    sort_direction: sortDir,
-    limit,
-    group_by: rowMode === "aggregate" ? groupBy : [],
-  }), [rootEntity, selectedColumns, filters, rowMode, sortField, sortDir, limit, groupBy]);
+  const buildReportBody = useCallback((overrideLimit?: number) => {
+    // For aggregate mode, auto-derive group_by from selected root columns
+    const autoGroupBy = rowMode === "aggregate"
+      ? selectedColumns.filter((c) => c.source === "root").map((c) => c.path)
+      : [];
+
+    return {
+      root_entity: rootEntity,
+      columns: selectedColumns.map((c) => ({ path: c.path, source: c.source, display_label: c.display_label, alias: c.alias })),
+      filters: filters.filter((f) => f.path && f.operator),
+      row_mode: rowMode,
+      sort: sortField || undefined,
+      sort_direction: sortDir,
+      limit: overrideLimit ?? pageSize,
+      offset: overrideLimit ? 0 : (page - 1) * pageSize,
+      group_by: autoGroupBy,
+    };
+  }, [rootEntity, selectedColumns, filters, rowMode, sortField, sortDir, pageSize, page]);
 
   const runPreview = useCallback(async () => {
     setPreviewLoading(true);
@@ -166,7 +175,8 @@ export function ReportBuilderPage() {
 
   const exportCsv = useCallback(async () => {
     try {
-      const resp = await api.post("/reports/export/csv", { ...buildReportBody(), max_export_rows: 10000 }, { responseType: "blob" });
+      // Export always fetches ALL results (up to max_export_rows)
+      const resp = await api.post("/reports/export/csv", { ...buildReportBody(10000), max_export_rows: 10000 }, { responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([resp.data]));
       const a = document.createElement("a");
       a.href = url;
@@ -375,7 +385,7 @@ export function ReportBuilderPage() {
               </div>
             </div>
 
-            {/* Sort & Limit */}
+            {/* Sort & Pagination */}
             <div className="border-b border-gray-200 p-3 dark:border-gray-700">
               <div className="flex gap-2">
                 <div className="flex-1">
@@ -394,11 +404,16 @@ export function ReportBuilderPage() {
                     <option value="desc">Desc</option>
                   </select>
                 </div>
-                <div className="w-16">
-                  <label className="text-[10px] font-medium text-gray-500">Limit</label>
-                  <input type="number" value={limit} onChange={(e) => setLimit(Number(e.target.value))} min={1} max={10000}
-                    className="w-full rounded border border-gray-300 px-1 py-1 text-[11px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                <div className="w-20">
+                  <label className="text-[10px] font-medium text-gray-500">Page Size</label>
+                  <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    className="w-full rounded border border-gray-300 px-1 py-1 text-[11px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    {[25, 50, 100, 250, 500].map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
                 </div>
+              </div>
+              <div className="mt-1 text-[10px] text-gray-400">
+                Preview shows {pageSize} rows per page. CSV export always includes all matching results.
               </div>
             </div>
 
@@ -473,12 +488,20 @@ export function ReportBuilderPage() {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs text-gray-500">
-                  {previewData.total_count !== null ? `${previewData.total_count} total results` : `${previewData.rows.length} rows`}
+                  {previewData.total_count !== null
+                    ? `${previewData.total_count} total results — page ${page}`
+                    : `${previewData.rows.length} rows`}
                   {rowMode === "expanded" && " (expanded)"}
+                  {rowMode === "aggregate" && " (aggregated)"}
                 </span>
-                <span className="text-[10px] text-gray-400">
-                  CSV headers: {previewData.csv_headers.join(", ")}
-                </span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setPage(Math.max(1, page - 1)); }} disabled={page <= 1}
+                    className="rounded border border-gray-300 px-2 py-0.5 text-[10px] disabled:opacity-30">Prev</button>
+                  <span className="text-[10px] text-gray-500">Page {page}</span>
+                  <button onClick={() => { setPage(page + 1); }}
+                    disabled={previewData.total_count !== null && page * pageSize >= previewData.total_count}
+                    className="rounded border border-gray-300 px-2 py-0.5 text-[10px] disabled:opacity-30">Next</button>
+                </div>
               </div>
               <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

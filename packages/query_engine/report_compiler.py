@@ -307,35 +307,56 @@ class ReportCompiler:
         report: ReportDefinition,
         state: _CompilerState,
     ) -> CompiledQuery:
-        """Compile an aggregate report."""
+        """Compile an aggregate report.
+
+        If group_by is empty, auto-detect from root columns in the report.
+        """
         core = self._build_core(state)
 
-        if report.group_by:
-            group_fields = []
+        # Auto-detect group_by from selected root columns if not specified
+        group_by = report.group_by
+        if not group_by:
+            group_by = [
+                col.path for col in report.columns
+                if col.source.value == "root" and "." not in col.path
+            ]
+
+        if group_by:
             return_parts = []
-            for gb in report.group_by:
+            for gb in group_by:
                 parts = gb.split(".")
                 if len(parts) == 1:
-                    group_fields.append(f"n.{parts[0]}")
-                    return_parts.append(f"n.{parts[0]} AS {parts[0]}")
+                    return_parts.append(f"n.{parts[0]} AS {_slugify(report.root_entity)}_{parts[0]}")
                 # TODO: support group_by on related fields
-            group_fields_str = ", ".join(group_fields)
+
             agg = report.aggregate_function or "count"
-            return_parts.append(f"{agg}(n) AS {agg}")
+            agg_alias = f"{agg}_total"
+            return_parts.append(f"{agg}(DISTINCT n) AS {agg_alias}")
+
+            csv_headers = [f"{_slugify(report.root_entity)}_{gb}" for gb in group_by] + [agg_alias]
 
             query = (
                 f"{core}\n"
                 f"RETURN {', '.join(return_parts)}\n"
-                f"ORDER BY {agg} DESC\n"
+                f"ORDER BY {agg_alias} DESC\n"
                 f"SKIP $__skip LIMIT $__limit"
             )
+            column_meta = [
+                {"path": gb, "source": "root", "display_label": gb, "csv_header": f"{_slugify(report.root_entity)}_{gb}", "is_expansion": False}
+                for gb in group_by
+            ] + [{"path": agg_alias, "source": "aggregate", "display_label": agg_alias, "csv_header": agg_alias, "is_expansion": False}]
         else:
             query = f"{core}\nRETURN count(n) AS total"
+            csv_headers = ["total"]
+            column_meta = [{"path": "total", "source": "aggregate", "display_label": "Total", "csv_header": "total", "is_expansion": False}]
 
         state.params["__skip"] = report.pagination.offset
         state.params["__limit"] = min(report.pagination.limit, report.max_export_rows)
 
-        return CompiledQuery(data_query=query, data_params=dict(state.params))
+        return CompiledQuery(
+            data_query=query, data_params=dict(state.params),
+            csv_headers=csv_headers, column_meta=column_meta,
+        )
 
     def _build_core(self, state: _CompilerState) -> str:
         parts = list(state.match_clauses)
@@ -349,14 +370,17 @@ class ReportCompiler:
         columns: list[_ResolvedColumn],
     ) -> str:
         if not sort:
-            return "ORDER BY n.id"
+            # Default: order by first column's alias (safe for all query shapes)
+            if columns:
+                return f"ORDER BY {columns[0].csv_header}"
+            return ""
         parts = []
-        # Map sort fields to resolved column expressions
-        col_map = {rc.column.path: rc.cypher_expr for rc in columns}
+        # Map sort fields to resolved column csv_headers (safe aliases)
+        col_map = {rc.column.path: rc.csv_header for rc in columns}
         for sf in sort:
-            expr = col_map.get(sf.field, f"n.{sf.field}")
+            alias = col_map.get(sf.field, sf.field)
             direction = "DESC" if sf.direction == SortDirection.DESC else ""
-            parts.append(f"{expr} {direction}".strip())
+            parts.append(f"{alias} {direction}".strip())
         return "ORDER BY " + ", ".join(parts)
 
     def _find_edge(self, alias: str, root_entity: str):
