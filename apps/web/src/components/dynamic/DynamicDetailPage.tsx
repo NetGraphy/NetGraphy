@@ -8,8 +8,8 @@
  */
 
 import { useState, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSchemaStore } from "@/stores/schemaStore";
 import { nodesApi, api } from "@/api/client";
 import { FieldRenderer } from "./FieldRenderer";
@@ -21,8 +21,14 @@ export function DynamicDetailPage() {
   const { getNodeType, getEdgesForNodeType } = useSchemaStore();
   const [activeTab, setActiveTab] = useState("overview");
 
+  const navigate = useNavigate();
   const typeDef = nodeType ? getNodeType(nodeType) : undefined;
   const edgeTypes = nodeType ? getEdgesForNodeType(nodeType) : [];
+
+  const deleteMutation = useMutation({
+    mutationFn: () => nodesApi.delete(nodeType!, id!),
+    onSuccess: () => navigate(`/objects/${nodeType}`),
+  });
 
   // Build dynamic tabs: overview + schema-defined custom tabs + relationships + history
   const detailTabs = typeDef?.detail_tabs || [];
@@ -80,10 +86,21 @@ export function DynamicDetailPage() {
         <div className="flex gap-2">
           <Link
             to={`/objects/${nodeType}/${id}/edit`}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Edit
           </Link>
+          <button
+            onClick={() => {
+              if (confirm(`Delete this ${displayName}? This action cannot be undone.`)) {
+                deleteMutation.mutate();
+              }
+            }}
+            disabled={deleteMutation.isPending}
+            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+          >
+            {deleteMutation.isPending ? "Deleting..." : "Delete"}
+          </button>
         </div>
       </div>
 

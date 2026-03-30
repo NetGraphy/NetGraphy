@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSchemaStore } from "@/stores/schemaStore";
 import { nodesApi } from "@/api/client";
 import { FieldRenderer } from "./FieldRenderer";
@@ -98,7 +98,7 @@ export function DynamicListPage() {
                       {attr.display_name || name}
                     </th>
                   ))}
-                  <th className="px-4 py-3" />
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -129,7 +129,9 @@ export function DynamicListPage() {
                         )}
                       </td>
                     ))}
-                    <td className="px-4 py-3" />
+                    <td className="px-4 py-3 text-right">
+                      <DeleteButton nodeType={nodeType!} nodeId={item.id as string} />
+                    </td>
                   </tr>
                 ))}
                 {items.length === 0 && (
@@ -157,5 +159,28 @@ export function DynamicListPage() {
         </>
       )}
     </div>
+  );
+}
+
+function DeleteButton({ nodeType, nodeId }: { nodeType: string; nodeId: string }) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () => nodesApi.delete(nodeType, nodeId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["nodes", nodeType] }),
+  });
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (confirm("Delete this object? This cannot be undone.")) {
+          mutation.mutate();
+        }
+      }}
+      disabled={mutation.isPending}
+      className="rounded border border-red-300 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+    >
+      {mutation.isPending ? "..." : "Delete"}
+    </button>
   );
 }
