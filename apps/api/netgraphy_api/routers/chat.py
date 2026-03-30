@@ -175,11 +175,15 @@ async def chat(
         conv = await conv_svc.create_conversation(actor.user_id, title=message[:80])
         conv_id = conv["id"]
 
-    # Load conversation history
+    # Load conversation history — only user and assistant messages.
+    # Tool messages are internal to a single agent turn and cannot be
+    # replayed without the full tool_calls structure (OpenAI requires
+    # tool messages to follow an assistant message with tool_calls).
     history_msgs = await conv_svc.get_messages(conv_id)
     chat_messages = [
         ChatMessage(role=m.get("role", "user"), content=m.get("content", ""))
         for m in history_msgs
+        if m.get("role") in ("user", "assistant")
     ]
     chat_messages.append(ChatMessage(role="user", content=message))
 
@@ -260,6 +264,7 @@ async def chat_stream(
     chat_messages = [
         ChatMessage(role=m.get("role", "user"), content=m.get("content", ""))
         for m in history_msgs
+        if m.get("role") in ("user", "assistant")
     ]
     chat_messages.append(ChatMessage(role="user", content=message))
 
