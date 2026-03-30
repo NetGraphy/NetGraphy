@@ -246,7 +246,8 @@ class OpenAICompatibleProvider(BaseProvider):
             ]
 
         create_kwargs: dict[str, Any] = {
-            "model": model, "messages": api_messages, "temperature": temperature, "max_tokens": max_tokens,
+            "model": model, "messages": api_messages, "temperature": temperature,
+            "max_completion_tokens": max_tokens,
         }
         if api_tools:
             create_kwargs["tools"] = api_tools
@@ -289,7 +290,7 @@ class OpenAICompatibleProvider(BaseProvider):
 
         stream = await client.chat.completions.create(
             model=model, messages=api_messages, temperature=temperature,
-            max_tokens=max_tokens, stream=True,
+            max_completion_tokens=max_tokens, stream=True,
         )
 
         async for chunk in stream:
