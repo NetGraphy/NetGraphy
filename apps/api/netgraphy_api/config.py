@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     minio_secure: bool = False
     minio_bucket: str = "netgraphy"
 
-    # --- Schema ---
-    schema_dirs: list[str] = ["schemas/core", "schemas/iac", "schemas/examples"]
+    # --- Plugins ---
+    plugin_schema_dirs: list[str] = []  # Additional schema dirs from plugins (auto-discovered from Git repos)
 
     # --- Auth ---
     secret_key: str = "CHANGE-ME-IN-PRODUCTION"

@@ -71,12 +71,24 @@ async def lifespan(app: FastAPI):
     logger.info("Neo4j connected", uri=settings.neo4j_uri)
 
     # --- Schema Registry ------------------------------------------------------
+    # Core schema directories are always loaded — never configured via env vars.
+    # Plugin schemas are discovered from Git-synced repos at runtime.
+    core_schema_dirs = [
+        "schemas/mixins",
+        "schemas/core",
+        "schemas/iac",
+    ]
+    # Append any plugin schema dirs (from Git-synced plugin repos)
+    all_schema_dirs = core_schema_dirs + list(settings.plugin_schema_dirs)
+
     registry = SchemaRegistry()
-    schema_count = await registry.load_from_directories(settings.schema_dirs)
+    schema_count = await registry.load_from_directories(all_schema_dirs)
     logger.info(
         "Schema registry loaded",
         node_types=schema_count["node_types"],
         edge_types=schema_count["edge_types"],
+        core_dirs=core_schema_dirs,
+        plugin_dirs=settings.plugin_schema_dirs or [],
     )
 
     # --- Event Bus ------------------------------------------------------------
