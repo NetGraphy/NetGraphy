@@ -131,10 +131,17 @@ async def chat(
 
     # Run agent
     runtime = AgentRuntime(driver, registry, provider, model)
-    response = await runtime.run(
-        messages=chat_messages, actor=actor, tools=tools,
-        system_instruction=system_instruction,
-    )
+    try:
+        response = await runtime.run(
+            messages=chat_messages, actor=actor, tools=tools,
+            system_instruction=system_instruction,
+        )
+    except RuntimeError as e:
+        # Provider SDK not installed or config error
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error("agent.chat_error", error=str(e), user=actor.username)
+        raise HTTPException(status_code=502, detail=f"AI provider error: {e}")
 
     # Save assistant response
     await conv_svc.add_message(
