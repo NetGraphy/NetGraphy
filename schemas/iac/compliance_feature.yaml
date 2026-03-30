@@ -1,0 +1,84 @@
+kind: NodeType
+version: v1
+metadata:
+  name: ComplianceFeature
+  display_name: Compliance Feature
+  description: >
+    Named configuration feature that groups related config sections for compliance
+    checking. Examples: aaa, ntp, bgp, snmp, dns, logging, syslog, tacacs.
+    Features are organization-specific — what constitutes "BGP configuration"
+    varies by enterprise.
+  icon: shield-check
+  color: "#10b981"
+  category: Infrastructure as Code
+  tags: [iac, compliance]
+
+attributes:
+  name:
+    type: string
+    display_name: Feature Name
+    required: true
+    unique: true
+    indexed: true
+    description: Canonical feature name (e.g., aaa, ntp, bgp, snmp)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  display_name:
+    type: string
+    display_name: Display Name
+    description: Human-readable name
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  description:
+    type: text
+    display_name: Description
+
+  category:
+    type: enum
+    display_name: Category
+    enum_values: [security, services, routing, switching, management, system, interfaces, other]
+    default: other
+    ui:
+      list_column: true
+      badge_colors:
+        security: red
+        services: blue
+        routing: purple
+        switching: teal
+        management: amber
+        system: gray
+        interfaces: cyan
+        other: gray
+
+  severity:
+    type: enum
+    display_name: Severity
+    enum_values: [critical, high, medium, low, informational]
+    default: medium
+    description: Impact level when this feature is non-compliant
+    ui:
+      list_column: true
+      badge_colors:
+        critical: red
+        high: orange
+        medium: yellow
+        low: blue
+        informational: gray
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, display_name, description]
+
+api:
+  plural_name: compliance-features
+  filterable_fields: [name, category, severity]
+  sortable_fields: [name, category, severity]
+
+graph:
+  default_label_field: name
+  color: "#10b981"

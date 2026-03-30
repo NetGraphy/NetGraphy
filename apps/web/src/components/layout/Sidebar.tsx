@@ -18,6 +18,15 @@ const SPECIAL_SECTIONS = [
     ],
   },
   {
+    title: "Infrastructure as Code",
+    items: [
+      { label: "Config Profiles", path: "/iac/profiles" },
+      { label: "Compliance", path: "/iac/compliance" },
+      { label: "Config Contexts", path: "/iac/contexts" },
+      { label: "Transformations", path: "/iac/transformations" },
+    ],
+  },
+  {
     title: "Automation",
     items: [
       { label: "Jobs", path: "/jobs" },

@@ -1,0 +1,132 @@
+kind: NodeType
+version: v1
+metadata:
+  name: ConfigRemoval
+  display_name: Config Removal
+  description: >
+    Per-platform regex pattern for removing transient lines from backup configs
+    before compliance comparison (timestamps, build info, crypto keys, etc.)
+  icon: scissors
+  color: "#64748b"
+  category: Infrastructure as Code
+  tags: [iac, config]
+
+attributes:
+  name:
+    type: string
+    display_name: Rule Name
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  platform_slug:
+    type: string
+    display_name: Platform
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  regex:
+    type: string
+    display_name: Regex Pattern
+    required: true
+    description: >
+      Python regex pattern matching lines to remove entirely.
+      Example: ^Building\s+configuration.*\n
+    ui:
+      form_widget: code
+
+  description:
+    type: text
+    display_name: Description
+    ui:
+      list_column: true
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, platform_slug]
+
+api:
+  plural_name: config-removals
+  filterable_fields: [name, platform_slug]
+  sortable_fields: [name, platform_slug]
+
+graph:
+  default_label_field: name
+  color: "#64748b"
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: ConfigReplacement
+  display_name: Config Replacement
+  description: >
+    Per-platform regex find/replace for redacting sensitive data in backup
+    configs (passwords, keys, community strings) before storage and comparison.
+  icon: pencil
+  color: "#64748b"
+  category: Infrastructure as Code
+  tags: [iac, config]
+
+attributes:
+  name:
+    type: string
+    display_name: Rule Name
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  platform_slug:
+    type: string
+    display_name: Platform
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  regex:
+    type: string
+    display_name: Find Pattern
+    required: true
+    description: Python regex with optional capture groups
+    ui:
+      form_widget: code
+
+  replace:
+    type: string
+    display_name: Replace With
+    required: true
+    description: >
+      Replacement string (supports backreferences \1, \2, etc.)
+      Example: \1<REDACTED>\2
+    ui:
+      form_widget: code
+
+  description:
+    type: text
+    display_name: Description
+    ui:
+      list_column: true
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, platform_slug]
+
+api:
+  plural_name: config-replacements
+  filterable_fields: [name, platform_slug]
+  sortable_fields: [name, platform_slug]
+
+graph:
+  default_label_field: name
+  color: "#64748b"

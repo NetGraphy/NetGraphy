@@ -27,6 +27,7 @@ from netgraphy_api.routers import (
     edges,
     git_sources,
     health,
+    iac,
     ingestion,
     jobs,
     nodes,
@@ -165,6 +166,9 @@ def create_app() -> FastAPI:
     app.include_router(audit.router, prefix=f"{prefix}/audit", tags=["Audit"])
     app.include_router(
         dev.router, prefix=f"{prefix}/dev", tags=["Dev Workbench"]
+    )
+    app.include_router(
+        iac.router, prefix=f"{prefix}/iac", tags=["Infrastructure as Code"]
     )
 
     return app

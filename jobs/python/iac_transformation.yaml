@@ -1,0 +1,39 @@
+kind: Job
+runtime: python
+metadata:
+  name: iac_device_transformation
+  display_name: Device State Transformation
+  description: >
+    Transfers device state from a source device to a replacement device
+    using transformation mappings. Translates interface names, transfers
+    relationships, and applies property mappings for hardware replacement.
+  category: Infrastructure as Code
+  tags: [iac, transformation, replacement, eol]
+
+entrypoint: packages.iac.transformation:TransformationEngine.transform_device
+
+parameters:
+  source_device_id:
+    type: string
+    description: Device being replaced
+    required: true
+  destination_device_id:
+    type: string
+    description: Replacement device
+    required: true
+  mapping_name:
+    type: string
+    description: Explicit transformation mapping name (auto-detected if empty)
+    required: false
+  dry_run:
+    type: boolean
+    description: Preview transformation without applying
+    default: true
+
+execution:
+  timeout_seconds: 600
+  max_retries: 0
+  concurrency_limit: 5
+
+permissions:
+  required_role: admin

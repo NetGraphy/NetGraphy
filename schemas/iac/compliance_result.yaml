@@ -1,0 +1,122 @@
+kind: NodeType
+version: v1
+metadata:
+  name: ComplianceResult
+  display_name: Compliance Result
+  description: >
+    Per-device, per-feature compliance result from the last compliance run.
+    Stores the actual vs intended config sections, missing/extra lines, and
+    whether the feature is compliant. A device is fully compliant only when
+    ALL its feature results are compliant.
+  icon: clipboard-check
+  color: "#ef4444"
+  category: Infrastructure as Code
+  tags: [iac, compliance]
+
+attributes:
+  device_id:
+    type: string
+    display_name: Device ID
+    required: true
+    indexed: true
+
+  device_hostname:
+    type: string
+    display_name: Device Hostname
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  feature_name:
+    type: string
+    display_name: Feature
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  rule_name:
+    type: string
+    display_name: Rule
+    required: true
+    indexed: true
+
+  compliant:
+    type: boolean
+    display_name: Compliant
+    required: true
+    default: false
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      badge_colors:
+        "true": green
+        "false": red
+
+  actual_config:
+    type: text
+    display_name: Actual Config
+    description: Extracted config section from backup (filtered by match_config)
+
+  intended_config:
+    type: text
+    display_name: Intended Config
+    description: Extracted config section from intended
+
+  missing:
+    type: text
+    display_name: Missing Lines
+    description: Config lines in intended but not in actual
+
+  extra:
+    type: text
+    display_name: Extra Lines
+    description: Config lines in actual but not in intended
+
+  remediation:
+    type: text
+    display_name: Remediation Config
+    description: Generated remediation commands to fix non-compliance
+
+  ordered:
+    type: boolean
+    display_name: Order Compliant
+    default: true
+    description: Whether the ordering matches (if config_ordered is enabled)
+
+  diff_summary:
+    type: json
+    display_name: Diff Summary
+    description: Structured diff data (line counts, change types)
+
+  run_id:
+    type: string
+    display_name: Run ID
+    indexed: true
+    description: Compliance job run ID that produced this result
+
+  checked_at:
+    type: datetime
+    display_name: Checked At
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 4
+
+search:
+  enabled: true
+  primary_field: device_hostname
+  search_fields: [device_hostname, feature_name, rule_name]
+
+api:
+  plural_name: compliance-results
+  filterable_fields: [device_hostname, feature_name, compliant, run_id]
+  sortable_fields: [device_hostname, feature_name, compliant, checked_at]
+
+graph:
+  default_label_field: feature_name
+  color: "#ef4444"

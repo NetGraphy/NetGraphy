@@ -1,0 +1,31 @@
+kind: Job
+runtime: python
+metadata:
+  name: iac_compliance_check
+  display_name: Compliance Check
+  description: >
+    Compares backup (actual) vs intended configurations per compliance feature.
+    Extracts matching config sections, diffs them, and generates compliance
+    results with missing/extra lines and remediation configs.
+  category: Infrastructure as Code
+  tags: [iac, compliance, diff]
+
+entrypoint: packages.iac.compliance:ComplianceEngine.run_compliance
+
+parameters:
+  device_ids:
+    type: list
+    description: Device IDs to check (empty = all with backups)
+    required: false
+
+execution:
+  timeout_seconds: 1800
+  max_retries: 1
+  concurrency_limit: 20
+
+schedule:
+  cron: "0 3 * * *"  # Daily at 3am (after intended gen)
+  enabled: false
+
+permissions:
+  required_role: operator

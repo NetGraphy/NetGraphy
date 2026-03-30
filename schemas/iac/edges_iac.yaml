@@ -1,0 +1,105 @@
+# Infrastructure as Code edge types
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_CONFIG_PROFILE
+  display_name: Has Config Profile
+  description: Links a device to its active IaC configuration profile
+  category: Infrastructure as Code
+source:
+  node_types: [Device]
+target:
+  node_types: [ConfigProfile]
+cardinality: many_to_one
+inverse_name: PROFILE_APPLIES_TO
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_COMPLIANCE_RULE
+  display_name: Has Compliance Rule
+  description: Links a compliance feature to its per-platform rules
+  category: Infrastructure as Code
+source:
+  node_types: [ComplianceFeature]
+target:
+  node_types: [ComplianceRule]
+cardinality: one_to_many
+inverse_name: RULE_FOR_FEATURE
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_COMPLIANCE_RESULT
+  display_name: Has Compliance Result
+  description: Links a device to its per-feature compliance results
+  category: Infrastructure as Code
+source:
+  node_types: [Device]
+target:
+  node_types: [ComplianceResult]
+cardinality: one_to_many
+inverse_name: COMPLIANCE_OF_DEVICE
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_CONFIG_CONTEXT
+  display_name: Has Config Context
+  description: Links a device to config contexts that apply to it (resolved at render time)
+  category: Infrastructure as Code
+source:
+  node_types: [Device]
+target:
+  node_types: [ConfigContext]
+cardinality: many_to_many
+inverse_name: CONTEXT_APPLIES_TO
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: REPLACES_DEVICE
+  display_name: Replaces Device
+  description: >
+    Links a planned replacement device to the device it will replace.
+    Used by the JSON Transformation engine to transfer state.
+  category: Infrastructure as Code
+source:
+  node_types: [Device]
+target:
+  node_types: [Device]
+cardinality: one_to_one
+inverse_name: REPLACED_BY
+attributes:
+  transformation_mapping:
+    type: string
+    display_name: Transformation Mapping
+    description: Name of the TransformationMapping to use
+  status:
+    type: enum
+    display_name: Transfer Status
+    enum_values: [planned, in_progress, completed, failed, rolled_back]
+    default: planned
+  transferred_at:
+    type: datetime
+    display_name: Transferred At
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: PLATFORM_HAS_TRANSFORMATION
+  display_name: Platform Has Transformation
+  description: Links a platform pair to available transformation mappings
+  category: Infrastructure as Code
+source:
+  node_types: [Platform]
+target:
+  node_types: [TransformationMapping]
+cardinality: one_to_many
+inverse_name: TRANSFORMS_FROM_PLATFORM

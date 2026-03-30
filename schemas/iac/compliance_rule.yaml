@@ -1,0 +1,124 @@
+kind: NodeType
+version: v1
+metadata:
+  name: ComplianceRule
+  display_name: Compliance Rule
+  description: >
+    Per-platform compliance rule that links a ComplianceFeature to specific
+    config match patterns and comparison settings. Defines how to extract and
+    compare a feature's config section from backup vs intended.
+  icon: scale
+  color: "#f59e0b"
+  category: Infrastructure as Code
+  tags: [iac, compliance]
+
+attributes:
+  name:
+    type: string
+    display_name: Rule Name
+    required: true
+    indexed: true
+    description: Descriptive rule name (e.g., cisco_ios_ntp, arista_eos_bgp)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  platform_slug:
+    type: string
+    display_name: Platform
+    required: true
+    indexed: true
+    description: Platform slug this rule applies to (e.g., cisco_ios, arista_eos)
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  feature_name:
+    type: string
+    display_name: Feature
+    required: true
+    indexed: true
+    description: ComplianceFeature name this rule checks
+    ui:
+      list_column: true
+      list_column_order: 3
+
+  match_config:
+    type: text
+    display_name: Match Config
+    required: true
+    description: >
+      Root config lines to extract for comparison. One pattern per line.
+      For CLI: lines that start with these patterns are extracted with children.
+      For JSON: top-level keys to compare (or blank for full comparison).
+      Examples: "router bgp", "ntp", "aaa", "interface"
+    ui:
+      form_widget: code
+
+  config_type:
+    type: enum
+    display_name: Config Type
+    enum_values: [cli, json, xml]
+    default: cli
+    description: Format of the configuration being compared
+    ui:
+      list_column: true
+
+  config_ordered:
+    type: boolean
+    display_name: Order Matters
+    default: false
+    description: >
+      Whether line/element ordering is significant for compliance.
+      Unordered mode treats reordered lines as equivalent.
+
+  enable_remediation:
+    type: boolean
+    display_name: Enable Remediation
+    default: true
+    description: Whether to generate remediation config for non-compliance
+
+  remediation_type:
+    type: enum
+    display_name: Remediation Type
+    enum_values: [intended_deploy, hierconfig, custom_template, manual]
+    default: intended_deploy
+    description: >
+      How to generate remediation:
+      - intended_deploy: Push the intended config section
+      - hierconfig: Use hierarchical config diffing
+      - custom_template: Use a Jinja2 remediation template
+      - manual: Flag for manual remediation
+
+  remediation_template:
+    type: text
+    display_name: Remediation Template
+    description: >
+      Jinja2 template for generating remediation config. Available vars:
+      device, feature, intended, actual, missing, extra.
+      Only used when remediation_type is custom_template.
+    ui:
+      form_widget: code
+
+  remediation_options:
+    type: json
+    display_name: Remediation Options
+    description: JSON options for hierconfig or custom remediation engines
+
+  description:
+    type: text
+    display_name: Description
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, platform_slug, feature_name]
+
+api:
+  plural_name: compliance-rules
+  filterable_fields: [name, platform_slug, feature_name, config_type]
+  sortable_fields: [name, platform_slug, feature_name]
+
+graph:
+  default_label_field: name
+  color: "#f59e0b"

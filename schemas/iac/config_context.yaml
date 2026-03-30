@@ -1,0 +1,106 @@
+kind: NodeType
+version: v1
+metadata:
+  name: ConfigContext
+  display_name: Config Context
+  description: >
+    Arbitrary JSON data structure scoped to devices by location, role, platform,
+    tenant, or tags. Contexts are merged hierarchically by weight — higher weight
+    wins on conflicts. Used in Jinja2 templates for per-device rendering of
+    services like TACACS, NTP, syslog, SNMP communities, etc.
+  icon: database
+  color: "#8b5cf6"
+  category: Infrastructure as Code
+  tags: [iac, context]
+
+attributes:
+  name:
+    type: string
+    display_name: Context Name
+    required: true
+    unique: true
+    indexed: true
+    description: Unique name (e.g., ntp_servers_east_coast, tacacs_global)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  weight:
+    type: integer
+    display_name: Weight
+    required: true
+    default: 1000
+    description: Merge priority — higher weight overrides lower on conflicts
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  data:
+    type: json
+    display_name: Context Data
+    required: true
+    description: >
+      JSON data available in templates. Example:
+      {"ntp_servers": ["10.1.1.1", "10.1.1.2"], "timezone": "UTC"}
+    ui:
+      form_widget: code
+
+  # Scoping fields — at least one must be set
+  scope_locations:
+    type: "list[string]"
+    display_name: Locations
+    description: Location names this context applies to
+
+  scope_roles:
+    type: "list[string]"
+    display_name: Device Roles
+    description: Device roles this context applies to
+
+  scope_platforms:
+    type: "list[string]"
+    display_name: Platforms
+    description: Platform slugs this context applies to
+
+  scope_tags:
+    type: "list[string]"
+    display_name: Tags
+    description: Device tags this context applies to
+
+  scope_hostname_regex:
+    type: string
+    display_name: Hostname Pattern
+    description: Regex pattern to match device hostnames
+
+  description:
+    type: text
+    display_name: Description
+
+  is_active:
+    type: boolean
+    display_name: Active
+    default: true
+    ui:
+      list_column: true
+
+  source:
+    type: enum
+    display_name: Source
+    enum_values: [manual, git_sync, api]
+    default: manual
+    description: How this context was created
+    ui:
+      list_column: true
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+api:
+  plural_name: config-contexts
+  filterable_fields: [name, is_active, source]
+  sortable_fields: [name, weight]
+
+graph:
+  default_label_field: name
+  color: "#8b5cf6"

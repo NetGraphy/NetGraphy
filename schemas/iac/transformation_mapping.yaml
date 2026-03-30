@@ -1,0 +1,158 @@
+kind: NodeType
+version: v1
+metadata:
+  name: TransformationMapping
+  display_name: Transformation Mapping
+  description: >
+    Defines how to translate device state from one hardware model to another
+    for hardware replacement automation. Maps interface names, feature syntax,
+    and relationship data between source and destination platforms.
+    Part of the JSON Transformation feature for EoL hardware replacement.
+  icon: arrows-right-left
+  color: "#ec4899"
+  category: Infrastructure as Code
+  tags: [iac, transformation]
+
+attributes:
+  name:
+    type: string
+    display_name: Mapping Name
+    required: true
+    unique: true
+    indexed: true
+    description: Descriptive name (e.g., arista_7050_to_cisco_9300)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  source_platform:
+    type: string
+    display_name: Source Platform
+    required: true
+    indexed: true
+    description: Platform slug of the device being replaced
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  source_model:
+    type: string
+    display_name: Source Model
+    description: Specific hardware model being replaced (optional, for model-level mappings)
+
+  destination_platform:
+    type: string
+    display_name: Destination Platform
+    required: true
+    indexed: true
+    description: Platform slug of the replacement device
+    ui:
+      list_column: true
+      list_column_order: 3
+
+  destination_model:
+    type: string
+    display_name: Destination Model
+    description: Specific hardware model of the replacement
+
+  # --- Interface Mapping ---
+  interface_map:
+    type: json
+    display_name: Interface Map
+    required: true
+    description: >
+      JSON mapping of source interface patterns to destination patterns.
+      Supports regex for flexible matching. Example:
+      {
+        "Ethernet(\\d+)": "Ethernet1/\\1",
+        "Management0": "mgmt0",
+        "Loopback(\\d+)": "Loopback\\1",
+        "Vlan(\\d+)": "Vlan\\1"
+      }
+    ui:
+      form_widget: code
+
+  # --- Feature Syntax Translation ---
+  feature_translations:
+    type: json
+    display_name: Feature Translations
+    description: >
+      JSON mapping of config feature syntax translations between platforms.
+      Keys are feature names, values are Jinja2 templates. Example:
+      {
+        "hostname": "hostname {{ value }}",
+        "ntp_server": "ntp server {{ value }}",
+        "route_map": "route-map {{ name }} {{ action }} {{ seq }}"
+      }
+    ui:
+      form_widget: code
+
+  # --- Property Mapping ---
+  property_map:
+    type: json
+    display_name: Property Map
+    description: >
+      JSON mapping of node property transformations. Maps source property
+      names/values to destination equivalents. Example:
+      {
+        "speed_mbps": {"10000": "10000", "25000": "25000"},
+        "mtu": "preserve",
+        "description": "preserve"
+      }
+    ui:
+      form_widget: code
+
+  # --- Relationship Transfer Rules ---
+  relationship_rules:
+    type: json
+    display_name: Relationship Rules
+    description: >
+      Rules for transferring graph relationships from source to destination.
+      Defines which edge types to transfer and how to transform match keys.
+      Example:
+      {
+        "transfer": ["HAS_INTERFACE", "CONNECTED_TO", "MEMBER_OF", "LOCATED_IN"],
+        "skip": ["HAS_BACKUP"],
+        "transform_keys": {
+          "HAS_INTERFACE": {"name": "interface_map"}
+        }
+      }
+    ui:
+      form_widget: code
+
+  # --- Graph Query for State Extraction ---
+  state_query:
+    type: text
+    display_name: State Extraction Query
+    description: >
+      Cypher query to extract full device state for transformation.
+      Must accept $device_id parameter. Returns all data needed to
+      reconstruct the device on new hardware.
+    ui:
+      form_widget: code
+
+  description:
+    type: text
+    display_name: Description
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, draft, deprecated]
+    default: draft
+    ui:
+      list_column: true
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, source_platform, destination_platform, description]
+
+api:
+  plural_name: transformation-mappings
+  filterable_fields: [name, source_platform, destination_platform, status]
+  sortable_fields: [name, source_platform, destination_platform]
+
+graph:
+  default_label_field: name
+  color: "#ec4899"

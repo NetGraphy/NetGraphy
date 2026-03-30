@@ -1,0 +1,171 @@
+kind: NodeType
+version: v1
+metadata:
+  name: ConfigProfile
+  display_name: Config Profile
+  description: >
+    Infrastructure as Code profile that binds Git repositories, path templates,
+    and rendering settings to a scope of devices. Multiple profiles can coexist
+    with different weights; the highest-weight matching profile wins per device.
+  icon: cog
+  color: "#6366f1"
+  category: Infrastructure as Code
+  tags: [iac, config]
+
+attributes:
+  name:
+    type: string
+    display_name: Profile Name
+    required: true
+    unique: true
+    indexed: true
+    description: Unique name for this IaC profile
+
+  weight:
+    type: integer
+    display_name: Weight
+    required: true
+    default: 1000
+    description: Priority weight — higher wins when device matches multiple profiles
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  scope_query:
+    type: text
+    display_name: Scope Query
+    description: >
+      Cypher query returning device IDs in scope. If empty, applies to all devices.
+      Example: MATCH (d:Device) WHERE d.role IN ['router','switch'] RETURN d.id
+
+  # --- Backup Repository ---
+  backup_repo_url:
+    type: url
+    display_name: Backup Repo URL
+    description: Git repo URL for storing config backups
+
+  backup_repo_branch:
+    type: string
+    display_name: Backup Branch
+    default: "main"
+
+  backup_path_template:
+    type: string
+    display_name: Backup Path Template
+    description: >
+      Jinja2 template for backup file paths. Variables: device (hostname, role,
+      platform, location, etc). Example: {{device.location}}/{{device.hostname}}-cfg.txt
+    default: "{{device.location}}/{{device.hostname}}-cfg.txt"
+    ui:
+      form_widget: code
+
+  # --- Intended Config Repository ---
+  intended_repo_url:
+    type: url
+    display_name: Intended Repo URL
+    description: Git repo URL for storing rendered intended configs
+
+  intended_repo_branch:
+    type: string
+    display_name: Intended Branch
+    default: "main"
+
+  intended_path_template:
+    type: string
+    display_name: Intended Path Template
+    description: >
+      Jinja2 template for intended config file paths.
+      Example: {{device.location}}/{{device.hostname}}-intended.txt
+    default: "{{device.location}}/{{device.hostname}}-intended.txt"
+    ui:
+      form_widget: code
+
+  # --- Template Repository ---
+  template_repo_url:
+    type: url
+    display_name: Template Repo URL
+    description: Git repo containing Jinja2 base templates for config generation
+
+  template_repo_branch:
+    type: string
+    display_name: Template Branch
+    default: "main"
+
+  template_entry_template:
+    type: string
+    display_name: Template Entry Point
+    description: >
+      Jinja2 template that resolves to the entry-point J2 file for a device.
+      Example: {{device.platform_slug}}.j2
+    default: "{{device.platform_slug}}.j2"
+    ui:
+      form_widget: code
+
+  # --- Config Context Repository ---
+  context_repo_url:
+    type: url
+    display_name: Context Repo URL
+    description: Git repo containing config context YAML files (TACACS, logging, NTP, etc.)
+
+  context_repo_branch:
+    type: string
+    display_name: Context Branch
+    default: "main"
+
+  # --- Data Query ---
+  sot_query:
+    type: text
+    display_name: Source of Truth Query
+    description: >
+      Cypher query that aggregates device data for template rendering.
+      Must accept $device_id parameter and return a single record with all
+      template variables. The result is available as top-level vars in Jinja2.
+    ui:
+      form_widget: code
+
+  # --- Backup Settings ---
+  backup_command:
+    type: string
+    display_name: Backup Command
+    default: "show running-config"
+    description: CLI command to retrieve the running configuration
+
+  backup_test_connectivity:
+    type: boolean
+    display_name: Test Connectivity
+    default: true
+    description: Pre-check device reachability before attempting backup
+
+  description:
+    type: text
+    display_name: Description
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled, testing]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        disabled: gray
+        testing: yellow
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+api:
+  plural_name: config-profiles
+  filterable_fields: [name, status]
+  sortable_fields: [name, weight, status]
+
+graph:
+  default_label_field: name
+  color: "#6366f1"

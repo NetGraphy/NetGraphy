@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     minio_bucket: str = "netgraphy"
 
     # --- Schema ---
-    schema_dirs: list[str] = ["schemas/core", "schemas/examples"]
+    schema_dirs: list[str] = ["schemas/core", "schemas/iac", "schemas/examples"]
 
     # --- Auth ---
     secret_key: str = "CHANGE-ME-IN-PRODUCTION"

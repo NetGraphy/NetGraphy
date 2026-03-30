@@ -1,0 +1,35 @@
+kind: Job
+runtime: python
+metadata:
+  name: iac_config_backup
+  display_name: Config Backup
+  description: >
+    Collects running configurations from network devices via CLI,
+    applies cleanup rules (removals/replacements), and stores
+    cleaned configs in the backup Git repository.
+  category: Infrastructure as Code
+  tags: [iac, backup, config]
+
+entrypoint: packages.iac.backup:ConfigBackupService.execute_backup
+
+parameters:
+  device_ids:
+    type: list
+    description: Device IDs to back up (empty = all in scope)
+    required: false
+  dry_run:
+    type: boolean
+    description: Preview without committing to Git
+    default: false
+
+execution:
+  timeout_seconds: 3600
+  max_retries: 1
+  concurrency_limit: 10
+
+schedule:
+  cron: "0 2 * * *"  # Daily at 2am
+  enabled: false
+
+permissions:
+  required_role: operator
