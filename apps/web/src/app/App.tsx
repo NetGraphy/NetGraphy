@@ -21,6 +21,7 @@ import { SchemaValidatorPage } from "@/components/pages/SchemaValidatorPage";
 import { FilterEditorPage } from "@/components/pages/FilterEditorPage";
 import { DevWorkbenchPage } from "@/components/pages/DevWorkbenchPage";
 import { IaCDashboardPage } from "@/components/pages/IaCDashboardPage";
+import { UserManagementPage } from "@/components/pages/UserManagementPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,7 +76,7 @@ export function App() {
                 <Route path="/git-sources" element={<GitSourcesPage />} />
                 <Route path="/admin/audit" element={<AuditLogPage />} />
                 <Route path="/admin/schema-validator" element={<SchemaValidatorPage />} />
-                <Route path="/admin/rbac" element={<PlaceholderPage title="RBAC Management" description="Configure roles, permissions, and access control policies." />} />
+                <Route path="/admin/users" element={<UserManagementPage />} />
 
                 {/* Graph */}
                 <Route path="/graph" element={<GraphExplorerPage />} />

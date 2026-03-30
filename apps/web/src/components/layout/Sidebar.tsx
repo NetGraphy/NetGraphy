@@ -41,6 +41,7 @@ const SPECIAL_SECTIONS = [
   {
     title: "Administration",
     items: [
+      { label: "Users & Groups", path: "/admin/users" },
       { label: "Schema Explorer", path: "/schema" },
       { label: "Schema Validator", path: "/admin/schema-validator" },
       { label: "Git Sources", path: "/git-sources" },
