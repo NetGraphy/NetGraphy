@@ -20,6 +20,7 @@ import { GraphExplorerPage } from "@/components/pages/GraphExplorerPage";
 import { SchemaValidatorPage } from "@/components/pages/SchemaValidatorPage";
 import { FilterEditorPage } from "@/components/pages/FilterEditorPage";
 import { DevWorkbenchPage } from "@/components/pages/DevWorkbenchPage";
+import { IaCDashboardPage } from "@/components/pages/IaCDashboardPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +60,9 @@ export function App() {
                 <Route path="/objects/:nodeType/:id/edit" element={<DynamicFormPage />} />
                 <Route path="/query" element={<QueryWorkbench />} />
                 <Route path="/schema" element={<SchemaExplorer />} />
+
+                {/* Infrastructure as Code */}
+                <Route path="/iac" element={<IaCDashboardPage />} />
 
                 {/* Automation */}
                 <Route path="/parsers" element={<ParserRegistryPage />} />

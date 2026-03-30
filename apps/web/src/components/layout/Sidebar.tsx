@@ -20,10 +20,13 @@ const SPECIAL_SECTIONS = [
   {
     title: "Infrastructure as Code",
     items: [
-      { label: "Config Profiles", path: "/iac/profiles" },
-      { label: "Compliance", path: "/iac/compliance" },
-      { label: "Config Contexts", path: "/iac/contexts" },
-      { label: "Transformations", path: "/iac/transformations" },
+      { label: "IaC Dashboard", path: "/iac" },
+      { label: "Config Profiles", path: "/objects/ConfigProfile" },
+      { label: "Compliance Features", path: "/objects/ComplianceFeature" },
+      { label: "Compliance Rules", path: "/objects/ComplianceRule" },
+      { label: "Compliance Results", path: "/objects/ComplianceResult" },
+      { label: "Config Contexts", path: "/objects/ConfigContext" },
+      { label: "Transformations", path: "/objects/TransformationMapping" },
     ],
   },
   {
