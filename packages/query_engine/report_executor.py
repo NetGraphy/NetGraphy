@@ -61,19 +61,9 @@ class ReportExecutor:
             if count_result.rows:
                 total_count = count_result.rows[0].get("total", len(data_result.rows))
 
-        # Build column metadata
-        column_meta = []
-        csv_headers = []
-        for col in report.columns:
-            alias = col.alias or col.path.replace(".", "_")
-            csv_headers.append(alias)
-            column_meta.append({
-                "path": col.path,
-                "source": col.source.value if hasattr(col.source, "value") else col.source,
-                "display_label": col.display_label or col.path,
-                "alias": alias,
-                "formatter": col.formatter,
-            })
+        # Use the compiler's csv_headers — these match the Cypher AS aliases
+        csv_headers = compiled.csv_headers
+        column_meta = compiled.column_meta
 
         # The rows from Neo4j use the csv_header aliases from the compiler
         rows = data_result.rows

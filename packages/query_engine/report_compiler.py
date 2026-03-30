@@ -143,11 +143,24 @@ class ReportCompiler:
         logger.debug("report_compiled", entity=entity, columns=len(resolved_columns),
                      row_mode=report.row_mode, has_expansion=has_expansion)
 
+        # Build column metadata for the executor
+        column_meta = []
+        for rc in resolved_columns:
+            column_meta.append({
+                "path": rc.column.path,
+                "source": rc.column.source.value if hasattr(rc.column.source, "value") else str(rc.column.source),
+                "display_label": rc.column.display_label or rc.column.path,
+                "csv_header": rc.csv_header,
+                "is_expansion": rc.is_expansion,
+            })
+
         return CompiledQuery(
             data_query=data_query,
             data_params=dict(state.params),
             count_query=count_query,
             count_params=dict(state.params),
+            csv_headers=csv_headers,
+            column_meta=column_meta,
         )
 
     def _resolve_columns(

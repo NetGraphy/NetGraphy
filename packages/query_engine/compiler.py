@@ -47,11 +47,15 @@ class CompiledQuery:
         data_params: dict[str, Any],
         count_query: str | None = None,
         count_params: dict[str, Any] | None = None,
+        csv_headers: list[str] | None = None,
+        column_meta: list[dict[str, Any]] | None = None,
     ):
         self.data_query = data_query
         self.data_params = data_params
         self.count_query = count_query
         self.count_params = count_params
+        self.csv_headers = csv_headers or []
+        self.column_meta = column_meta or []
 
 
 class _CompilerState:

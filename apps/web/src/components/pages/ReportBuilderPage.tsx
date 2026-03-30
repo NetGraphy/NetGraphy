@@ -222,7 +222,7 @@ export function ReportBuilderPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] gap-0">
       {/* Left: Builder */}
-      <div className="flex w-[420px] flex-shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-y-auto">
+      <div className="flex w-[480px] flex-shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 overflow-y-auto">
         {/* Entity selector */}
         <div className="border-b border-gray-200 p-3 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
@@ -266,11 +266,11 @@ export function ReportBuilderPage() {
                 <div key={i} className="mb-3 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700/50">
                   <div className="flex items-center justify-between mb-1.5">
                     <select value={f.path} onChange={(e) => updateFilter(i, "path", e.target.value)}
-                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                      className="flex-1 min-w-0 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white truncate">
                       <option value="">Select field...</option>
-                      {filterPaths.map((fp) => <option key={fp.path} value={fp.path}>{fp.path} ({fp.type})</option>)}
+                      {filterPaths.map((fp) => <option key={fp.path} value={fp.path}>{fp.path}</option>)}
                     </select>
-                    <button onClick={() => removeFilter(i)} className="ml-2 text-red-400 hover:text-red-600 text-xs px-1">Remove</button>
+                    <button onClick={() => removeFilter(i)} className="ml-2 flex-shrink-0 text-red-400 hover:text-red-600 text-xs px-1">Remove</button>
                   </div>
                   <div className="flex gap-2">
                     <select value={f.operator} onChange={(e) => updateFilter(i, "operator", e.target.value)}
