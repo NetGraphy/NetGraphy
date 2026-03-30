@@ -237,9 +237,17 @@ export function ChatPanel({
             <svg className="mb-3 h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
-            <div className="text-sm text-gray-500">Ask me about your network infrastructure</div>
-            <div className="mt-2 flex flex-wrap justify-center gap-1">
-              {["Show all devices", "Find orphaned nodes", "Explain the schema"].map((q) => (
+            <div className="text-sm text-gray-500">Ask specific questions for best results</div>
+            <div className="mt-1 mb-2 text-[10px] text-gray-400 max-w-[280px]">
+              Tip: Narrow queries by site, status, role, or relationship to avoid large result sets.
+            </div>
+            <div className="mt-1 flex flex-wrap justify-center gap-1">
+              {[
+                "Devices in the Dallas data center",
+                "Active circuits from AT&T",
+                "Sites with no devices",
+                "Count devices by role",
+              ].map((q) => (
                 <button key={q} onClick={() => { setInput(q); }}
                   className="rounded-full bg-gray-100 px-2 py-1 text-[10px] text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300">
                   {q}
