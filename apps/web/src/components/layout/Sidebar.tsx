@@ -13,6 +13,7 @@ const SPECIAL_SECTIONS = [
     title: "Development",
     items: [
       { label: "Dev Workbench", path: "/dev" },
+      { label: "Schema Designer", path: "/schema-designer" },
       { label: "Query Workbench", path: "/query" },
       { label: "Report Builder", path: "/reports" },
       { label: "Graph Explorer", path: "/graph" },

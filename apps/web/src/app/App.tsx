@@ -26,6 +26,7 @@ import { GeneratedArtifactsPage } from "@/components/pages/GeneratedArtifactsPag
 import { AIConfigPage } from "@/components/pages/AIConfigPage";
 import { DocsPage } from "@/components/pages/DocsPage";
 import { ReportBuilderPage } from "@/components/pages/ReportBuilderPage";
+import { SchemaDesignerPage } from "@/components/pages/SchemaDesignerPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,7 @@ export function App() {
                 <Route path="/query" element={<QueryWorkbench />} />
                 <Route path="/reports" element={<ReportBuilderPage />} />
                 <Route path="/schema" element={<SchemaExplorer />} />
+                <Route path="/schema-designer" element={<SchemaDesignerPage />} />
 
                 {/* Infrastructure as Code */}
                 <Route path="/iac" element={<IaCDashboardPage />} />
