@@ -74,12 +74,69 @@ async def _get_provider_and_model(driver: Neo4jDriver) -> tuple[Any, str]:
     return create_provider(provider_config), default_model
 
 
-async def _get_tools_for_user(registry: SchemaRegistry, actor: AuthContext) -> list[dict[str, Any]]:
-    """Get MCP tools filtered by user permissions."""
+MAX_TOOLS = 80  # Stay well under provider limits (OpenAI=128, Anthropic=4096)
+
+
+async def _get_tools_for_user(
+    registry: SchemaRegistry,
+    actor: AuthContext,
+    message: str = "",
+) -> list[dict[str, Any]]:
+    """Get MCP tools filtered by user permissions and relevance to the message.
+
+    With 52+ node types generating 600+ tools, we can't send them all to
+    the model. Instead we:
+    1. Score tools by relevance to the user's message
+    2. Always include core CRUD tools for the most common types
+    3. Cap at MAX_TOOLS to stay within provider limits
+    """
     from packages.schema_engine.generators.engine import GenerationEngine
     engine = GenerationEngine(registry)
     manifest = engine.generate()
-    return manifest.mcp_tools  # Agent runtime filters further
+    all_tools = manifest.mcp_tools
+
+    if len(all_tools) <= MAX_TOOLS:
+        return all_tools
+
+    # Score each tool by keyword relevance to the message
+    msg_lower = message.lower()
+    msg_words = set(msg_lower.split())
+
+    scored: list[tuple[float, dict]] = []
+    for tool in all_tools:
+        score = 0.0
+        name = tool.get("name", "").lower()
+        desc = tool.get("description", "").lower()
+        node_type = (tool.get("node_type") or "").lower()
+        category = tool.get("category", "")
+
+        # Boost if message mentions the node type or tool keywords
+        for word in msg_words:
+            if len(word) < 3:
+                continue
+            if word in name:
+                score += 10
+            if word in node_type:
+                score += 8
+            if word in desc:
+                score += 3
+
+        # Always include CRUD tools for core types
+        core_types = {"device", "interface", "prefix", "ipaddress", "vlan", "site", "location", "circuit", "provider"}
+        if node_type in core_types:
+            score += 5
+
+        # Boost list/search tools (most useful for chat)
+        if category in ("crud", "search"):
+            score += 2
+        if name.startswith("list_") or name.startswith("search_"):
+            score += 3
+
+        scored.append((score, tool))
+
+    # Sort by score descending, take top MAX_TOOLS
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [tool for _, tool in scored[:MAX_TOOLS]]
 
 
 # --------------------------------------------------------------------------- #
@@ -107,7 +164,7 @@ async def chat(
 
     provider, model = await _get_provider_and_model(driver)
     conv_svc = ConversationService(driver)
-    tools = await _get_tools_for_user(registry, actor)
+    tools = await _get_tools_for_user(registry, actor, body.get("message", ""))
 
     message = body.get("message", "")
     conv_id = body.get("conversation_id")
@@ -190,7 +247,7 @@ async def chat_stream(
 
     provider, model = await _get_provider_and_model(driver)
     conv_svc = ConversationService(driver)
-    tools = await _get_tools_for_user(registry, actor)
+    tools = await _get_tools_for_user(registry, actor, body.get("message", ""))
 
     message = body.get("message", "")
     conv_id = body.get("conversation_id")
