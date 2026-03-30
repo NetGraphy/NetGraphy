@@ -263,21 +263,26 @@ export function ReportBuilderPage() {
                 <button onClick={addFilter} className="text-[10px] text-brand-600 hover:underline">+ Add Filter</button>
               </div>
               {filters.map((f, i) => (
-                <div key={i} className="mb-2 flex gap-1 items-start">
-                  <select value={f.path} onChange={(e) => updateFilter(i, "path", e.target.value)}
-                    className="flex-1 rounded border border-gray-300 px-1 py-1 text-[11px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                    <option value="">Field...</option>
-                    {filterPaths.map((fp) => <option key={fp.path} value={fp.path}>{fp.path} ({fp.type})</option>)}
-                  </select>
-                  <select value={f.operator} onChange={(e) => updateFilter(i, "operator", e.target.value)}
-                    className="w-20 rounded border border-gray-300 px-1 py-1 text-[11px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                    {(filterPaths.find((fp) => fp.path === f.path)?.operators || ["eq", "neq", "contains"]).map((op) => (
-                      <option key={op} value={op}>{op}</option>
-                    ))}
-                  </select>
-                  <input value={f.value} onChange={(e) => updateFilter(i, "value", e.target.value)}
-                    placeholder="Value" className="w-24 rounded border border-gray-300 px-1 py-1 text-[11px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
-                  <button onClick={() => removeFilter(i)} className="text-red-500 text-[11px] px-1">x</button>
+                <div key={i} className="mb-3 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700/50">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <select value={f.path} onChange={(e) => updateFilter(i, "path", e.target.value)}
+                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                      <option value="">Select field...</option>
+                      {filterPaths.map((fp) => <option key={fp.path} value={fp.path}>{fp.path} ({fp.type})</option>)}
+                    </select>
+                    <button onClick={() => removeFilter(i)} className="ml-2 text-red-400 hover:text-red-600 text-xs px-1">Remove</button>
+                  </div>
+                  <div className="flex gap-2">
+                    <select value={f.operator} onChange={(e) => updateFilter(i, "operator", e.target.value)}
+                      className="w-28 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                      {(filterPaths.find((fp) => fp.path === f.path)?.operators || ["eq", "neq", "contains"]).map((op) => (
+                        <option key={op} value={op}>{op}</option>
+                      ))}
+                    </select>
+                    <input value={f.value} onChange={(e) => updateFilter(i, "value", e.target.value)}
+                      placeholder="Value..."
+                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                  </div>
                 </div>
               ))}
               {filters.length === 0 && <div className="text-[11px] text-gray-400">No filters — all records will be included</div>}
