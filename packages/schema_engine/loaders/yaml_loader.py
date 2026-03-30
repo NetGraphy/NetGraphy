@@ -55,9 +55,13 @@ def parse_attributes(raw_attrs: dict[str, Any]) -> dict[str, AttributeDefinition
             if attr_data.get("indexed"):
                 query.filterable = True
                 query.sortable = True
-            # UI list columns are default return fields
+            # UI list columns are default return and export fields
             if ui_data.get("list_column"):
                 query.default_return_field = True
+                query.export_default = True
+            # String fields support regex when explicitly indexed
+            if attr_type == "string" and attr_data.get("indexed"):
+                query.supports_regex = True
 
         attributes[attr_name] = AttributeDefinition(name=attr_name, ui=ui, health=health, query=query, **attr_data)
     return attributes

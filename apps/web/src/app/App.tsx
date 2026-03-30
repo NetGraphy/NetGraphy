@@ -25,6 +25,7 @@ import { UserManagementPage } from "@/components/pages/UserManagementPage";
 import { GeneratedArtifactsPage } from "@/components/pages/GeneratedArtifactsPage";
 import { AIConfigPage } from "@/components/pages/AIConfigPage";
 import { DocsPage } from "@/components/pages/DocsPage";
+import { ReportBuilderPage } from "@/components/pages/ReportBuilderPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +64,7 @@ export function App() {
                 <Route path="/objects/:nodeType/:id" element={<DynamicDetailPage />} />
                 <Route path="/objects/:nodeType/:id/edit" element={<DynamicFormPage />} />
                 <Route path="/query" element={<QueryWorkbench />} />
+                <Route path="/reports" element={<ReportBuilderPage />} />
                 <Route path="/schema" element={<SchemaExplorer />} />
 
                 {/* Infrastructure as Code */}

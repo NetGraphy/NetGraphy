@@ -14,6 +14,7 @@ const SPECIAL_SECTIONS = [
     items: [
       { label: "Dev Workbench", path: "/dev" },
       { label: "Query Workbench", path: "/query" },
+      { label: "Report Builder", path: "/reports" },
       { label: "Graph Explorer", path: "/graph" },
     ],
   },

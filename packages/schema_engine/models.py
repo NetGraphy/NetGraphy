@@ -179,33 +179,37 @@ class AttributeHealthMetadata(BaseModel):
 # --------------------------------------------------------------------------- #
 
 class QueryAttributeMetadata(BaseModel):
-    """Controls query filter generation for this attribute.
+    """Controls query filter and report generation for this attribute.
 
-    Determines what filter operators are available when querying this
-    attribute via MCP tools or the query API. Sensible defaults are
-    derived from the attribute type at generation time.
+    Determines what filter operators are available and whether this field
+    can be included in reports and CSV exports.
     """
     filterable: bool = True  # Can be used in WHERE clauses
     sortable: bool = True  # Can be used in ORDER BY
+    reportable: bool = True  # Can be selected as a report column
     exact_match: bool = True  # Supports eq/neq
     supports_contains: bool = False  # Supports CONTAINS / starts_with / ends_with
     supports_prefix: bool = False  # Supports STARTS WITH
     supports_range: bool = False  # Supports gt/gte/lt/lte/between
+    supports_regex: bool = False  # Supports regex matching (explicit opt-in)
     case_sensitive: bool = True  # Whether text matching is case-sensitive
     default_return_field: bool = False  # Include in default field selection
+    export_default: bool = False  # Include in default CSV export columns
+    formatter_hint: str | None = None  # UI formatting hint (e.g., "ip", "date", "bytes")
 
 
 class QueryNodeMetadata(BaseModel):
-    """Controls query generation for this node type.
+    """Controls query and report generation for this node type.
 
-    Configures pagination defaults, traversal limits, and which fields
-    are returned by default. The generation engine uses this to produce
-    safe, bounded MCP query tools.
+    Configures pagination defaults, traversal limits, default fields,
+    and export settings.
     """
     default_list_fields: list[str] = Field(default_factory=list)
+    default_report_fields: list[str] = Field(default_factory=list)
     default_sort_field: str | None = None
     default_page_size: int = 50
     max_page_size: int = 200
+    max_export_rows: int = 10000
     primary_search_fields: list[str] = Field(default_factory=list)
     relationship_filters_enabled: bool = True
     max_traversal_depth: int = 3
@@ -213,15 +217,18 @@ class QueryNodeMetadata(BaseModel):
 
 
 class QueryEdgeMetadata(BaseModel):
-    """Controls query traversal generation for this edge type.
+    """Controls query traversal and report generation for this edge type.
 
-    Determines whether this relationship can be used as a filter path
-    in MCP query tools (e.g., Device -> located_at -> Location).
+    Determines whether this relationship can be traversed for filtering,
+    whether its target fields can appear in reports, and how row expansion
+    should behave for CSV exports.
     """
     traversable: bool = True  # Can be traversed in filter paths
-    query_alias: str | None = None  # Override the auto-derived alias (default: snake_case of name)
+    traversable_in_reports: bool = True  # Target fields can be report columns
+    query_alias: str | None = None  # Override the auto-derived alias
     supports_existence_filter: bool = True  # Filter by "has/lacks this relationship"
     supports_count_filter: bool = True  # Filter by relationship count
+    supports_row_expansion: bool = True  # Can expand into multiple CSV rows
 
 
 # --------------------------------------------------------------------------- #

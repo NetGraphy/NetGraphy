@@ -36,6 +36,7 @@ from netgraphy_api.routers import (
     nodes,
     parsers,
     queries,
+    reports,
     schema,
 )
 from packages.auth.middleware import AuthMiddleware
@@ -193,6 +194,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(
         docs.router, prefix=f"{prefix}/documentation", tags=["Documentation"]
+    )
+    app.include_router(
+        reports.router, prefix=f"{prefix}/reports", tags=["Reports"]
     )
 
     return app
