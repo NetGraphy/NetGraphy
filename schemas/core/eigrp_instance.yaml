@@ -1,0 +1,180 @@
+kind: NodeType
+version: v1
+metadata:
+  name: EIGRPInstance
+  display_name: EIGRP Instance
+  description: An EIGRP routing process on a device with network statements and interface participation.
+  icon: zap
+  color: "#7C3AED"
+  category: Routing
+  tags: [routing, eigrp]
+
+attributes:
+  autonomous_system:
+    type: integer
+    display_name: AS Number
+    required: true
+    indexed: true
+    description: EIGRP autonomous system number
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  named_mode:
+    type: boolean
+    display_name: Named Mode
+    default: false
+    description: Using EIGRP named mode configuration
+
+  instance_name:
+    type: string
+    display_name: Instance Name
+    description: Named mode instance name (if named_mode is true)
+
+  router_id:
+    type: ip_address
+    display_name: Router ID
+
+  vrf:
+    type: string
+    display_name: VRF
+
+  stub:
+    type: boolean
+    display_name: Stub
+    default: false
+    description: Configure as EIGRP stub router
+
+  stub_options:
+    type: "list[string]"
+    display_name: Stub Options
+    description: Stub options (connected, static, summary, redistributed, receive-only)
+
+  networks:
+    type: "list[string]"
+    display_name: Networks
+    description: Network statements in CIDR notation
+
+  redistribute:
+    type: "list[string]"
+    display_name: Redistribute
+    description: Protocols redistributed into EIGRP
+
+  variance:
+    type: integer
+    display_name: Variance
+    description: EIGRP variance multiplier for unequal-cost load balancing
+
+  status:
+    type: enum
+    enum_values: [active, planned, disabled]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: autonomous_system
+  search_fields: [autonomous_system, instance_name, description]
+
+api:
+  plural_name: eigrp-instances
+  filterable_fields: [autonomous_system, status]
+  sortable_fields: [autonomous_system]
+
+graph:
+  default_label_field: autonomous_system
+  color: "#7C3AED"
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: RIPInstance
+  display_name: RIP Instance
+  description: A RIP routing process on a device.
+  icon: activity
+  color: "#A855F7"
+  category: Routing
+  tags: [routing, rip]
+
+attributes:
+  version:
+    type: enum
+    display_name: Version
+    enum_values: ["1", "2", "ng"]
+    default: "2"
+    description: RIP version (1, 2, or ng/RIPng for IPv6)
+    ui:
+      list_column: true
+
+  vrf:
+    type: string
+    display_name: VRF
+
+  networks:
+    type: "list[string]"
+    display_name: Networks
+    description: Network statements in CIDR notation
+
+  redistribute:
+    type: "list[string]"
+    display_name: Redistribute
+
+  passive_by_default:
+    type: boolean
+    display_name: Passive by Default
+    default: false
+
+  auto_summary:
+    type: boolean
+    display_name: Auto Summary
+    default: false
+
+  default_originate:
+    type: boolean
+    display_name: Default Originate
+    default: false
+
+  status:
+    type: enum
+    enum_values: [active, planned, disabled]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: version
+  search_fields: [version, description]
+
+api:
+  plural_name: rip-instances
+  filterable_fields: [version, status]
+  sortable_fields: [version]
+
+graph:
+  default_label_field: version
+  color: "#A855F7"

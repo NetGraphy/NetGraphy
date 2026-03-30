@@ -1,0 +1,98 @@
+kind: NodeType
+version: v1
+metadata:
+  name: BGPPeerGroup
+  display_name: BGP Peer Group
+  description: >
+    A named group of BGP peers sharing common configuration (timers, policies,
+    authentication). Linked to a BGPRoutingInstance and optionally scoped to a VRF.
+  icon: users
+  color: "#F97316"
+  category: Routing
+  tags: [routing, bgp]
+
+attributes:
+  name:
+    type: string
+    display_name: Peer Group Name
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  enabled:
+    type: boolean
+    display_name: Enabled
+    default: true
+
+  autonomous_system:
+    type: integer
+    display_name: Remote ASN
+    description: Remote AS for this peer group (overrides instance-level ASN for eBGP)
+    ui:
+      list_column: true
+      list_column_order: 3
+
+  role:
+    type: enum
+    display_name: Role
+    enum_values: [transit, peer, customer, route_reflector_client, confederation, internal, other]
+    ui:
+      list_column: true
+
+  source_ip:
+    type: ip_address
+    display_name: Update Source IP
+    description: Source IP for BGP updates (update-source)
+
+  source_interface:
+    type: string
+    display_name: Update Source Interface
+    description: Source interface name for BGP updates
+
+  import_policy:
+    type: string
+    display_name: Import Policy
+    description: Inbound route-map or policy name
+
+  export_policy:
+    type: string
+    display_name: Export Policy
+    description: Outbound route-map or policy name
+
+  multipath:
+    type: boolean
+    display_name: Multipath
+    description: Enable multipath for this peer group
+
+  max_prefixes:
+    type: integer
+    display_name: Max Prefixes
+    description: Maximum number of prefixes to accept
+
+  description:
+    type: text
+    display_name: Description
+
+  extra_attributes:
+    type: json
+    display_name: Extra Attributes
+    description: Additional peer group configuration (timers, BFD, etc.)
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+api:
+  plural_name: bgp-peer-groups
+  filterable_fields: [name, role, autonomous_system]
+  sortable_fields: [name, role]
+
+graph:
+  default_label_field: name
+  color: "#F97316"

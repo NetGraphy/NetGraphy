@@ -1,0 +1,95 @@
+kind: NodeType
+version: v1
+metadata:
+  name: BGPSession
+  display_name: BGP Session
+  description: >
+    A BGP peering session between two endpoints (devices/providers).
+    Contains two PeerEndpoints and represents the logical adjacency.
+  icon: arrows-left-right
+  color: "#B91C1C"
+  category: Routing
+  tags: [routing, bgp]
+
+attributes:
+  name:
+    type: string
+    display_name: Session Name
+    indexed: true
+    description: Auto-generated or user-defined session name
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  session_type:
+    type: enum
+    display_name: Session Type
+    enum_values: [ebgp, ibgp, ebgp_multihop, confederation]
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+      badge_colors:
+        ebgp: blue
+        ibgp: green
+        ebgp_multihop: purple
+        confederation: amber
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, planned, disabled, failed]
+    default: planned
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+        failed: red
+
+  local_ip:
+    type: ip_address
+    display_name: Local IP
+    ui:
+      list_column: true
+
+  remote_ip:
+    type: ip_address
+    display_name: Remote IP
+    ui:
+      list_column: true
+
+  local_asn:
+    type: integer
+    display_name: Local ASN
+    ui:
+      list_column: true
+
+  remote_asn:
+    type: integer
+    display_name: Remote ASN
+    ui:
+      list_column: true
+
+  description:
+    type: text
+    display_name: Description
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, local_ip, remote_ip, description]
+
+api:
+  plural_name: bgp-sessions
+  filterable_fields: [session_type, status, local_asn, remote_asn]
+  sortable_fields: [name, session_type, status]
+
+graph:
+  default_label_field: name
+  color: "#B91C1C"

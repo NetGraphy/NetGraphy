@@ -1,0 +1,204 @@
+kind: NodeType
+version: v1
+metadata:
+  name: InterfaceRedundancyGroup
+  display_name: Interface Redundancy Group
+  description: >
+    A logical grouping of interfaces providing redundancy (LAG, MLAG,
+    port-channel, vpc). Member interfaces share traffic and failover.
+    Can be associated with a VirtualGateway for first-hop redundancy.
+  icon: copy
+  color: "#F59E0B"
+  category: Infrastructure
+  tags: [redundancy, infrastructure]
+
+attributes:
+  name:
+    type: string
+    display_name: Group Name
+    required: true
+    indexed: true
+    description: Logical group name (e.g., Port-channel1, ae0)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  group_type:
+    type: enum
+    display_name: Group Type
+    enum_values: [lag, mlag, vpc, vss, stackwise, vrrp_group, hsrp_group, glbp_group]
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+      badge_colors:
+        lag: blue
+        mlag: purple
+        vpc: teal
+        vss: amber
+        stackwise: cyan
+        vrrp_group: green
+        hsrp_group: orange
+        glbp_group: emerald
+
+  protocol:
+    type: enum
+    display_name: Protocol
+    enum_values: [lacp, pagp, static, mlag, vpc, vrrp, hsrp, glbp, carp, none]
+    default: lacp
+    ui:
+      list_column: true
+
+  status:
+    type: enum
+    enum_values: [active, planned, disabled, degraded]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+        degraded: red
+
+  virtual_ip:
+    type: ip_address
+    display_name: Virtual IP
+    description: Shared virtual IP address (for FHRP groups)
+    ui:
+      list_column: true
+
+  virtual_mac:
+    type: mac_address
+    display_name: Virtual MAC
+    description: Virtual MAC address
+
+  priority:
+    type: integer
+    display_name: Priority
+    description: Election priority (VRRP/HSRP/GLBP)
+
+  preempt:
+    type: boolean
+    display_name: Preempt
+    default: true
+    description: Allow higher-priority router to take over
+
+  group_id:
+    type: integer
+    display_name: Group ID
+    description: VRRP/HSRP/GLBP group number
+
+  hello_interval:
+    type: integer
+    display_name: Hello Interval
+    description: Seconds between hello messages
+
+  hold_time:
+    type: integer
+    display_name: Hold Time
+    description: Seconds before declaring peer down
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, group_type, description]
+
+api:
+  plural_name: interface-redundancy-groups
+  filterable_fields: [name, group_type, protocol, status]
+  sortable_fields: [name, group_type, status]
+
+graph:
+  default_label_field: name
+  color: "#F59E0B"
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: DeviceRedundancyGroup
+  display_name: Device Redundancy Group
+  description: >
+    A group of devices providing device-level redundancy (HA pairs,
+    clusters, stacks). Defines failover behavior and member roles.
+  icon: server
+  color: "#D97706"
+  category: Infrastructure
+  tags: [redundancy, infrastructure]
+
+attributes:
+  name:
+    type: string
+    display_name: Group Name
+    required: true
+    unique: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  group_type:
+    type: enum
+    display_name: Group Type
+    enum_values: [ha_pair, cluster, stack, virtual_chassis, vss, vpc_domain, fabric]
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  failover_strategy:
+    type: enum
+    display_name: Failover Strategy
+    enum_values: [active_standby, active_active, n_plus_1, load_balanced, none]
+    default: active_standby
+    ui:
+      list_column: true
+
+  status:
+    type: enum
+    enum_values: [active, planned, disabled, degraded]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+        degraded: red
+
+  virtual_ip:
+    type: ip_address
+    display_name: Management Virtual IP
+    description: Shared management virtual IP for the group
+
+  max_members:
+    type: integer
+    display_name: Max Members
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, group_type, description]
+
+api:
+  plural_name: device-redundancy-groups
+  filterable_fields: [name, group_type, failover_strategy, status]
+  sortable_fields: [name, group_type]
+
+graph:
+  default_label_field: name
+  color: "#D97706"

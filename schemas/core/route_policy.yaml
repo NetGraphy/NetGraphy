@@ -1,0 +1,59 @@
+kind: NodeType
+version: v1
+metadata:
+  name: RoutePolicy
+  display_name: Route Policy
+  description: >
+    A route-map, prefix-list, or routing policy used by routing protocols
+    to control route advertisement and acceptance.
+  icon: filter
+  color: "#6D28D9"
+  category: Routing
+  tags: [routing, policy]
+
+attributes:
+  name:
+    type: string
+    display_name: Policy Name
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  policy_type:
+    type: enum
+    display_name: Type
+    enum_values: [route_map, prefix_list, as_path_list, community_list, policy_statement, access_list]
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  content:
+    type: text
+    display_name: Policy Content
+    description: Full text of the policy definition
+    ui:
+      form_widget: code
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+api:
+  plural_name: route-policies
+  filterable_fields: [name, policy_type]
+  sortable_fields: [name, policy_type]
+
+graph:
+  default_label_field: name
+  color: "#6D28D9"

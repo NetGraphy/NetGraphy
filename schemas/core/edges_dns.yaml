@@ -1,0 +1,74 @@
+# DNS edge types
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: ZONE_HAS_RECORD
+  display_name: Zone Has Record
+  description: Links a DNS zone to its resource records
+  category: IPAM
+source:
+  node_types: [DNSZone]
+target:
+  node_types: [DNSRecord]
+cardinality: one_to_many
+inverse_name: RECORD_IN_ZONE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#0EA5E9"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DNS_RECORD_RESOLVES_TO
+  display_name: DNS Record Resolves To
+  description: Links an A/AAAA DNS record to the IP address it resolves to
+  category: IPAM
+source:
+  node_types: [DNSRecord]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: RESOLVED_BY_DNS
+graph:
+  style: dashed
+  color: "#38BDF8"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DNS_ZONE_FOR_PREFIX
+  display_name: DNS Zone For Prefix
+  description: Links a reverse DNS zone to its IP prefix
+  category: IPAM
+source:
+  node_types: [DNSZone]
+target:
+  node_types: [Prefix]
+cardinality: many_to_one
+inverse_name: HAS_DNS_ZONE
+graph:
+  style: dashed
+  color: "#0EA5E9"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DNS_ZONE_ASSIGNED_TO_TENANT
+  display_name: DNS Zone Assigned To Tenant
+  description: Links a DNS zone to its owning tenant
+  category: IPAM
+source:
+  node_types: [DNSZone]
+target:
+  node_types: [Tenant]
+cardinality: many_to_one
+inverse_name: HAS_DNS_ZONE
+graph:
+  style: dashed
+  color: "#7C3AED"

@@ -1,0 +1,153 @@
+# VLAN and VXLAN edge types
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VLAN_IN_GROUP
+  display_name: VLAN In Group
+  description: Links a VLAN to its VLAN group
+  category: IPAM
+source:
+  node_types: [VLAN]
+target:
+  node_types: [VLANGroup]
+cardinality: many_to_one
+inverse_name: HAS_VLAN
+graph:
+  style: solid
+  color: "#14B8A6"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VLAN_AT_LOCATION
+  display_name: VLAN At Location
+  description: Links a VLAN to its location scope
+  category: IPAM
+source:
+  node_types: [VLAN]
+target:
+  node_types: [Location]
+cardinality: many_to_one
+inverse_name: HAS_VLAN
+graph:
+  style: dashed
+  color: "#F59E0B"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VLAN_HAS_PREFIX
+  display_name: VLAN Has Prefix
+  description: Links a VLAN to its associated IP prefix (SVI subnet)
+  category: IPAM
+source:
+  node_types: [VLAN]
+target:
+  node_types: [Prefix]
+cardinality: one_to_many
+inverse_name: PREFIX_ON_VLAN
+graph:
+  style: dashed
+  color: "#0891B2"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: INTERFACE_IN_VLAN
+  display_name: Interface In VLAN
+  description: Links an interface to VLANs it participates in (access or trunk)
+  category: IPAM
+source:
+  node_types: [Interface]
+target:
+  node_types: [VLAN]
+cardinality: many_to_many
+inverse_name: HAS_INTERFACE
+attributes:
+  mode:
+    type: enum
+    enum_values: [access, tagged, native]
+    default: access
+graph:
+  style: solid
+  color: "#14B8A6"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VLAN_ASSIGNED_TO_TENANT
+  display_name: VLAN Assigned To Tenant
+  description: Links a VLAN to its owning tenant
+  category: IPAM
+source:
+  node_types: [VLAN]
+target:
+  node_types: [Tenant]
+cardinality: many_to_one
+inverse_name: HAS_VLAN
+graph:
+  style: dashed
+  color: "#7C3AED"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VXLAN_MAPS_TO_VLAN
+  display_name: VXLAN Maps To VLAN
+  description: Links a VXLAN VNI to its associated VLAN
+  category: IPAM
+source:
+  node_types: [VXLAN]
+target:
+  node_types: [VLAN]
+cardinality: one_to_one
+inverse_name: MAPPED_BY_VXLAN
+graph:
+  style: solid
+  color: "#06B6D4"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VXLAN_ON_DEVICE
+  display_name: VXLAN On Device
+  description: Links a VXLAN to VTEP devices participating in the overlay
+  category: IPAM
+source:
+  node_types: [VXLAN]
+target:
+  node_types: [Device]
+cardinality: many_to_many
+inverse_name: HAS_VXLAN
+attributes:
+  vtep_ip:
+    type: ip_address
+    description: VTEP source IP on this device
+graph:
+  style: dashed
+  color: "#06B6D4"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VXLAN_IN_VPC
+  display_name: VXLAN In VPC
+  description: Links a VXLAN to a VPC or overlay domain
+  category: IPAM
+source:
+  node_types: [VXLAN]
+target:
+  node_types: [VPC]
+cardinality: many_to_one
+inverse_name: HAS_VXLAN
+graph:
+  style: dashed
+  color: "#6366F1"

@@ -1,0 +1,93 @@
+kind: NodeType
+version: v1
+metadata:
+  name: OSPFInterface
+  display_name: OSPF Interface
+  description: >
+    OSPF configuration on a specific interface. Defines the interface's
+    participation in an OSPF area with cost, network type, and timers.
+  icon: plug
+  color: "#60A5FA"
+  category: Routing
+  tags: [routing, ospf]
+
+attributes:
+  interface_name:
+    type: string
+    display_name: Interface
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  network_type:
+    type: enum
+    display_name: Network Type
+    enum_values: [broadcast, point_to_point, point_to_multipoint, non_broadcast, loopback]
+    default: broadcast
+    ui:
+      list_column: true
+
+  cost:
+    type: integer
+    display_name: Cost
+    description: Interface cost for SPF calculation
+    ui:
+      list_column: true
+
+  priority:
+    type: integer
+    display_name: Priority
+    default: 1
+    description: DR/BDR election priority (0 = not eligible)
+
+  passive:
+    type: boolean
+    display_name: Passive
+    default: false
+    description: Suppress OSPF hello packets on this interface
+
+  bfd:
+    type: boolean
+    display_name: BFD
+    default: false
+    description: Enable BFD for fast failure detection
+
+  hello_interval:
+    type: integer
+    display_name: Hello Interval
+    description: Seconds between hello packets
+
+  dead_interval:
+    type: integer
+    display_name: Dead Interval
+    description: Seconds before declaring neighbor dead
+
+  authentication:
+    type: enum
+    display_name: Authentication
+    enum_values: [none, plaintext, md5, sha]
+    default: none
+
+  status:
+    type: enum
+    enum_values: [active, disabled]
+    default: active
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: interface_name
+  search_fields: [interface_name]
+
+api:
+  plural_name: ospf-interfaces
+  filterable_fields: [network_type, passive, status]
+  sortable_fields: [interface_name, cost]
+
+graph:
+  default_label_field: interface_name
+  color: "#60A5FA"

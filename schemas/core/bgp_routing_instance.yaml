@@ -1,0 +1,77 @@
+kind: NodeType
+version: v1
+metadata:
+  name: BGPRoutingInstance
+  display_name: BGP Routing Instance
+  description: >
+    A BGP process running on a device. Links a device to its local ASN,
+    router-id, and serves as the parent for peer groups and address families.
+  icon: globe
+  color: "#DC2626"
+  category: Routing
+  tags: [routing, bgp]
+
+attributes:
+  device_id:
+    type: string
+    required: true
+    indexed: true
+    description: Device this BGP instance runs on
+
+  autonomous_system:
+    type: integer
+    display_name: Local ASN
+    required: true
+    indexed: true
+    description: Local autonomous system number
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  router_id:
+    type: ip_address
+    display_name: Router ID
+    description: BGP router identifier (usually a loopback IP)
+    ui:
+      list_column: true
+      list_column_order: 3
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, planned, disabled, decommissioned]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+        decommissioned: red
+
+  description:
+    type: text
+    display_name: Description
+
+  extra_attributes:
+    type: json
+    display_name: Extra Attributes
+    description: Additional BGP configuration parameters (JSON)
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: device_id
+  search_fields: [device_id, description]
+
+api:
+  plural_name: bgp-routing-instances
+  filterable_fields: [autonomous_system, status]
+  sortable_fields: [autonomous_system, status]
+
+graph:
+  default_label_field: autonomous_system
+  color: "#DC2626"

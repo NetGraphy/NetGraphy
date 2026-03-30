@@ -1,0 +1,96 @@
+kind: NodeType
+version: v1
+metadata:
+  name: OSPFInstance
+  display_name: OSPF Instance
+  description: An OSPF routing process on a device with areas and interface participation.
+  icon: share-2
+  color: "#2563EB"
+  category: Routing
+  tags: [routing, ospf]
+
+attributes:
+  process_id:
+    type: integer
+    display_name: Process ID
+    required: true
+    indexed: true
+    description: OSPF process ID (1-65535)
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  router_id:
+    type: ip_address
+    display_name: Router ID
+    ui:
+      list_column: true
+      list_column_order: 3
+
+  version:
+    type: enum
+    display_name: OSPF Version
+    enum_values: ["2", "3"]
+    default: "2"
+    description: OSPFv2 (IPv4) or OSPFv3 (IPv6)
+    ui:
+      list_column: true
+
+  vrf:
+    type: string
+    display_name: VRF
+    description: VRF context for this OSPF instance
+
+  reference_bandwidth:
+    type: integer
+    display_name: Reference Bandwidth (Mbps)
+    description: Auto-cost reference bandwidth in Mbps
+
+  max_lsa:
+    type: integer
+    display_name: Max LSAs
+    description: Maximum LSA limit
+
+  default_originate:
+    type: boolean
+    display_name: Default Originate
+    default: false
+
+  passive_by_default:
+    type: boolean
+    display_name: Passive by Default
+    default: false
+    description: All interfaces passive unless explicitly set active
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, planned, disabled]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        planned: blue
+        disabled: gray
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: process_id
+  search_fields: [process_id, router_id, description]
+
+api:
+  plural_name: ospf-instances
+  filterable_fields: [process_id, version, status]
+  sortable_fields: [process_id, version]
+
+graph:
+  default_label_field: process_id
+  color: "#2563EB"

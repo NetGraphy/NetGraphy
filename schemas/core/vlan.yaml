@@ -1,0 +1,225 @@
+kind: NodeType
+version: v1
+metadata:
+  name: VLAN
+  display_name: VLAN
+  description: A Virtual LAN identified by a numeric VLAN ID, scoped to a VLAN group or site.
+  icon: layers
+  color: "#14B8A6"
+  category: IPAM
+  tags: [ipam, vlan, switching]
+
+attributes:
+  vid:
+    type: integer
+    display_name: VLAN ID
+    required: true
+    indexed: true
+    description: IEEE 802.1Q VLAN ID (1-4094)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  name:
+    type: string
+    display_name: VLAN Name
+    required: true
+    indexed: true
+    description: Human-readable VLAN name (e.g., MGMT, DATA, VOICE)
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, reserved, deprecated]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        reserved: blue
+        deprecated: gray
+
+  role:
+    type: enum
+    display_name: Role
+    enum_values: [production, development, management, voice, guest, dmz, storage, iot, other]
+    ui:
+      list_column: true
+
+  group:
+    type: string
+    display_name: VLAN Group
+    indexed: true
+    description: VLAN group this VLAN belongs to
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, vid, group, description]
+
+api:
+  plural_name: vlans
+  filterable_fields: [vid, name, status, role, group]
+  sortable_fields: [vid, name, status]
+  default_sort: vid
+
+graph:
+  default_label_field: name
+  color: "#14B8A6"
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: VLANGroup
+  display_name: VLAN Group
+  description: >
+    A logical grouping of VLANs that share the same VLAN ID namespace.
+    Scoped to a location, device, or virtual chassis.
+  icon: folder
+  color: "#0D9488"
+  category: IPAM
+  tags: [ipam, vlan]
+
+attributes:
+  name:
+    type: string
+    display_name: Group Name
+    required: true
+    unique: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  min_vid:
+    type: integer
+    display_name: Min VLAN ID
+    default: 1
+
+  max_vid:
+    type: integer
+    display_name: Max VLAN ID
+    default: 4094
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+api:
+  plural_name: vlan-groups
+  filterable_fields: [name]
+  sortable_fields: [name]
+
+graph:
+  default_label_field: name
+  color: "#0D9488"
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: VXLAN
+  display_name: VXLAN
+  description: >
+    A VXLAN network overlay identified by a VNI (VXLAN Network Identifier).
+    Extends L2 domains across L3 boundaries using UDP encapsulation.
+  icon: cloud
+  color: "#06B6D4"
+  category: IPAM
+  tags: [ipam, vxlan, overlay]
+
+attributes:
+  vni:
+    type: integer
+    display_name: VNI
+    required: true
+    unique: true
+    indexed: true
+    description: VXLAN Network Identifier (1-16777215)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  name:
+    type: string
+    display_name: Name
+    required: true
+    indexed: true
+    ui:
+      list_column: true
+      list_column_order: 2
+
+  status:
+    type: enum
+    enum_values: [active, reserved, deprecated]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        reserved: blue
+        deprecated: gray
+
+  vxlan_type:
+    type: enum
+    display_name: Type
+    enum_values: [l2vni, l3vni]
+    default: l2vni
+    description: L2 VNI maps to VLAN, L3 VNI maps to VRF
+    ui:
+      list_column: true
+
+  multicast_group:
+    type: ip_address
+    display_name: Multicast Group
+    description: Multicast group for BUM traffic (if using multicast replication)
+
+  source_interface:
+    type: string
+    display_name: Source Interface
+    description: NVE/VTEP source interface (usually a Loopback)
+
+  associated_vlan_id:
+    type: integer
+    display_name: Associated VLAN
+    description: VLAN ID mapped to this VNI
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, vni, description]
+
+api:
+  plural_name: vxlans
+  filterable_fields: [vni, name, status, vxlan_type]
+  sortable_fields: [vni, name]
+  default_sort: vni
+
+graph:
+  default_label_field: name
+  color: "#06B6D4"

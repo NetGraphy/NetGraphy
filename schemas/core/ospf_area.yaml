@@ -1,0 +1,74 @@
+kind: NodeType
+version: v1
+metadata:
+  name: OSPFArea
+  display_name: OSPF Area
+  description: An OSPF area within a routing instance. Areas partition the OSPF domain.
+  icon: hexagon
+  color: "#3B82F6"
+  category: Routing
+  tags: [routing, ospf]
+
+attributes:
+  area_id:
+    type: string
+    display_name: Area ID
+    required: true
+    indexed: true
+    description: Area identifier in dotted notation (e.g., 0.0.0.0) or integer
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  area_type:
+    type: enum
+    display_name: Area Type
+    enum_values: [normal, stub, nssa, totally_stubby, totally_nssa, backbone]
+    default: normal
+    ui:
+      list_column: true
+      list_column_order: 2
+      badge_colors:
+        backbone: purple
+        normal: green
+        stub: amber
+        nssa: blue
+        totally_stubby: orange
+        totally_nssa: cyan
+
+  no_summary:
+    type: boolean
+    display_name: No Summary
+    default: false
+    description: Suppress inter-area summary LSAs (totally stub/NSSA)
+
+  default_cost:
+    type: integer
+    display_name: Default Cost
+    description: Cost of the default route injected into stub/NSSA areas
+
+  authentication:
+    type: enum
+    display_name: Authentication
+    enum_values: [none, plaintext, md5, sha]
+    default: none
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: area_id
+  search_fields: [area_id, description]
+
+api:
+  plural_name: ospf-areas
+  filterable_fields: [area_id, area_type]
+  sortable_fields: [area_id, area_type]
+
+graph:
+  default_label_field: area_id
+  color: "#3B82F6"

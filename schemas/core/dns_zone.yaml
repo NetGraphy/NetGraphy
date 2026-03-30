@@ -1,0 +1,217 @@
+kind: NodeType
+version: v1
+metadata:
+  name: DNSZone
+  display_name: DNS Zone
+  description: >
+    A DNS zone (forward or reverse) with SOA parameters. Contains DNS records
+    and is optionally scoped to a DNS view.
+  icon: globe-2
+  color: "#0EA5E9"
+  category: IPAM
+  tags: [dns, ipam]
+
+attributes:
+  name:
+    type: string
+    display_name: Zone Name
+    required: true
+    indexed: true
+    description: FQDN of the zone (e.g., example.com, 10.in-addr.arpa)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  view:
+    type: string
+    display_name: DNS View
+    default: default
+    indexed: true
+    description: DNS view this zone belongs to (for split-horizon DNS)
+    ui:
+      list_column: true
+
+  zone_type:
+    type: enum
+    display_name: Zone Type
+    enum_values: [forward, reverse_v4, reverse_v6]
+    default: forward
+    ui:
+      list_column: true
+
+  status:
+    type: enum
+    enum_values: [active, reserved, deprecated]
+    default: active
+    ui:
+      list_column: true
+      badge_colors:
+        active: green
+        reserved: blue
+        deprecated: gray
+
+  ttl:
+    type: integer
+    display_name: Default TTL
+    default: 3600
+    description: Default TTL for records in this zone (seconds)
+
+  soa_mname:
+    type: string
+    display_name: SOA Primary NS
+    description: FQDN of the primary authoritative nameserver
+
+  soa_rname:
+    type: email
+    display_name: SOA Admin Email
+    description: Zone administrator email address
+
+  soa_refresh:
+    type: integer
+    display_name: SOA Refresh
+    default: 86400
+    description: Seconds between slave refresh checks
+
+  soa_retry:
+    type: integer
+    display_name: SOA Retry
+    default: 7200
+
+  soa_expire:
+    type: integer
+    display_name: SOA Expire
+    default: 3600000
+
+  soa_serial:
+    type: integer
+    display_name: SOA Serial
+    default: 0
+
+  soa_minimum:
+    type: integer
+    display_name: SOA Minimum TTL
+    default: 3600
+
+  description:
+    type: text
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, view, description]
+
+api:
+  plural_name: dns-zones
+  filterable_fields: [name, view, zone_type, status]
+  sortable_fields: [name, view, zone_type]
+
+graph:
+  default_label_field: name
+  color: "#0EA5E9"
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: DNSRecord
+  display_name: DNS Record
+  description: >
+    A DNS resource record within a zone. Supports A, AAAA, CNAME, MX, TXT,
+    PTR, SRV, NS record types.
+  icon: file-text
+  color: "#38BDF8"
+  category: IPAM
+  tags: [dns, ipam]
+
+attributes:
+  name:
+    type: string
+    display_name: Record Name
+    required: true
+    indexed: true
+    description: Record name (e.g., www, mail, @)
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  record_type:
+    type: enum
+    display_name: Record Type
+    required: true
+    indexed: true
+    enum_values: [A, AAAA, CNAME, MX, TXT, PTR, SRV, NS, SOA, CAA]
+    ui:
+      list_column: true
+      list_column_order: 2
+      badge_colors:
+        A: green
+        AAAA: blue
+        CNAME: purple
+        MX: orange
+        TXT: gray
+        PTR: teal
+        SRV: cyan
+        NS: amber
+
+  value:
+    type: string
+    display_name: Value
+    required: true
+    description: Record value (IP for A/AAAA, hostname for CNAME/MX/NS, text for TXT)
+    ui:
+      list_column: true
+      list_column_order: 3
+
+  ttl:
+    type: integer
+    display_name: TTL
+    description: Record-specific TTL (overrides zone default)
+
+  priority:
+    type: integer
+    display_name: Priority
+    description: Priority for MX and SRV records
+
+  weight:
+    type: integer
+    display_name: Weight
+    description: Weight for SRV records
+
+  port:
+    type: integer
+    display_name: Port
+    description: Port for SRV records
+
+  status:
+    type: enum
+    enum_values: [active, reserved, deprecated]
+    default: active
+    ui:
+      list_column: true
+
+  description:
+    type: text
+  comment:
+    type: string
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, value, record_type, description]
+
+api:
+  plural_name: dns-records
+  filterable_fields: [name, record_type, status]
+  sortable_fields: [name, record_type]
+
+graph:
+  default_label_field: name
+  color: "#38BDF8"

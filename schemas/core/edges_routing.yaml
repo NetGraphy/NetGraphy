@@ -1,0 +1,400 @@
+# Routing protocol edge types — BGP, OSPF, EIGRP, RIP
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_BGP
+  display_name: Device Has BGP
+  description: Links a device to its BGP routing instance
+  category: Routing
+source:
+  node_types: [Device]
+target:
+  node_types: [BGPRoutingInstance]
+cardinality: one_to_many
+inverse_name: BGP_ON_DEVICE
+graph:
+  style: solid
+  color: "#DC2626"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: BGP_HAS_PEER_GROUP
+  display_name: BGP Has Peer Group
+  description: Links a BGP instance to its peer groups
+  category: Routing
+source:
+  node_types: [BGPRoutingInstance]
+target:
+  node_types: [BGPPeerGroup]
+cardinality: one_to_many
+inverse_name: PEER_GROUP_OF_INSTANCE
+graph:
+  style: solid
+  color: "#F97316"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: BGP_HAS_SESSION
+  display_name: BGP Has Session
+  description: Links a BGP routing instance to its peering sessions
+  category: Routing
+source:
+  node_types: [BGPRoutingInstance]
+target:
+  node_types: [BGPSession]
+cardinality: one_to_many
+inverse_name: SESSION_OF_INSTANCE
+graph:
+  style: solid
+  color: "#B91C1C"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: SESSION_IN_PEER_GROUP
+  display_name: Session In Peer Group
+  description: Links a BGP session to its peer group
+  category: Routing
+source:
+  node_types: [BGPSession]
+target:
+  node_types: [BGPPeerGroup]
+cardinality: many_to_one
+inverse_name: HAS_SESSIONS
+graph:
+  style: dashed
+  color: "#F97316"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: BGP_SESSION_USES_IP
+  display_name: BGP Session Uses IP
+  description: Links a BGP session endpoint to the IP address used for peering
+  category: Routing
+source:
+  node_types: [BGPSession]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: USED_BY_BGP_SESSION
+attributes:
+  endpoint:
+    type: enum
+    enum_values: [local, remote]
+    required: true
+graph:
+  style: dashed
+  color: "#DC2626"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: BGP_USES_ASN
+  display_name: BGP Uses ASN
+  description: Links a BGP routing instance to its autonomous system
+  category: Routing
+source:
+  node_types: [BGPRoutingInstance, BGPPeerGroup, BGPSession]
+target:
+  node_types: [BGPASN]
+cardinality: many_to_one
+inverse_name: USED_BY_BGP
+attributes:
+  role:
+    type: enum
+    enum_values: [local, remote]
+    default: local
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: true
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: BGP_HAS_ADDRESS_FAMILY
+  display_name: BGP Has Address Family
+  description: Links a BGP instance/group/endpoint to its address family config
+  category: Routing
+source:
+  node_types: [BGPRoutingInstance, BGPPeerGroup]
+target:
+  node_types: [BGPAddressFamily]
+cardinality: one_to_many
+inverse_name: ADDRESS_FAMILY_OF
+graph:
+  style: solid
+  color: "#991B1B"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: BGP_USES_ROUTE_POLICY
+  display_name: BGP Uses Route Policy
+  description: Links BGP config to a route policy for import/export filtering
+  category: Routing
+source:
+  node_types: [BGPPeerGroup, BGPAddressFamily]
+target:
+  node_types: [RoutePolicy]
+cardinality: many_to_one
+inverse_name: USED_BY_BGP
+attributes:
+  direction:
+    type: enum
+    enum_values: [import, export]
+    required: true
+graph:
+  style: dashed
+  color: "#6D28D9"
+  show_label: true
+
+# --- OSPF Edges ---
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_OSPF
+  display_name: Device Has OSPF
+  description: Links a device to its OSPF routing instance
+  category: Routing
+source:
+  node_types: [Device]
+target:
+  node_types: [OSPFInstance]
+cardinality: one_to_many
+inverse_name: OSPF_ON_DEVICE
+graph:
+  style: solid
+  color: "#2563EB"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: OSPF_HAS_AREA
+  display_name: OSPF Has Area
+  description: Links an OSPF instance to its areas
+  category: Routing
+source:
+  node_types: [OSPFInstance]
+target:
+  node_types: [OSPFArea]
+cardinality: one_to_many
+inverse_name: AREA_OF_OSPF
+graph:
+  style: solid
+  color: "#3B82F6"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: OSPF_AREA_HAS_INTERFACE
+  display_name: OSPF Area Has Interface
+  description: Links an OSPF area to its interface configurations
+  category: Routing
+source:
+  node_types: [OSPFArea]
+target:
+  node_types: [OSPFInterface]
+cardinality: one_to_many
+inverse_name: IN_OSPF_AREA
+graph:
+  style: solid
+  color: "#60A5FA"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: OSPF_INTERFACE_ON
+  display_name: OSPF Interface On
+  description: Links an OSPF interface config to the actual device interface
+  category: Routing
+source:
+  node_types: [OSPFInterface]
+target:
+  node_types: [Interface]
+cardinality: one_to_one
+inverse_name: HAS_OSPF_CONFIG
+constraints:
+  unique_source: true
+graph:
+  style: dashed
+  color: "#60A5FA"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: OSPF_ADVERTISES_PREFIX
+  display_name: OSPF Advertises Prefix
+  description: Links an OSPF area/instance to prefixes it advertises
+  category: Routing
+source:
+  node_types: [OSPFInstance, OSPFArea]
+target:
+  node_types: [Prefix]
+cardinality: many_to_many
+inverse_name: ADVERTISED_BY_OSPF
+attributes:
+  lsa_type:
+    type: enum
+    enum_values: [type_1, type_2, type_3, type_4, type_5, type_7]
+graph:
+  style: dashed
+  color: "#2563EB"
+  show_label: true
+
+# --- EIGRP Edges ---
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_EIGRP
+  display_name: Device Has EIGRP
+  description: Links a device to its EIGRP routing instance
+  category: Routing
+source:
+  node_types: [Device]
+target:
+  node_types: [EIGRPInstance]
+cardinality: one_to_many
+inverse_name: EIGRP_ON_DEVICE
+graph:
+  style: solid
+  color: "#7C3AED"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: EIGRP_ON_INTERFACE
+  display_name: EIGRP On Interface
+  description: Links an EIGRP instance to interfaces participating in the process
+  category: Routing
+source:
+  node_types: [EIGRPInstance]
+target:
+  node_types: [Interface]
+cardinality: many_to_many
+inverse_name: HAS_EIGRP
+attributes:
+  passive:
+    type: boolean
+    default: false
+graph:
+  style: dashed
+  color: "#7C3AED"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: EIGRP_ADVERTISES_PREFIX
+  display_name: EIGRP Advertises Prefix
+  description: Links an EIGRP instance to prefixes in its topology
+  category: Routing
+source:
+  node_types: [EIGRPInstance]
+target:
+  node_types: [Prefix]
+cardinality: many_to_many
+inverse_name: ADVERTISED_BY_EIGRP
+graph:
+  style: dashed
+  color: "#7C3AED"
+
+# --- RIP Edges ---
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_RIP
+  display_name: Device Has RIP
+  description: Links a device to its RIP routing instance
+  category: Routing
+source:
+  node_types: [Device]
+target:
+  node_types: [RIPInstance]
+cardinality: one_to_many
+inverse_name: RIP_ON_DEVICE
+graph:
+  style: solid
+  color: "#A855F7"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: RIP_ON_INTERFACE
+  display_name: RIP On Interface
+  description: Links a RIP instance to interfaces participating in the process
+  category: Routing
+source:
+  node_types: [RIPInstance]
+target:
+  node_types: [Interface]
+cardinality: many_to_many
+inverse_name: HAS_RIP
+attributes:
+  passive:
+    type: boolean
+    default: false
+graph:
+  style: dashed
+  color: "#A855F7"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: RIP_ADVERTISES_PREFIX
+  display_name: RIP Advertises Prefix
+  description: Links a RIP instance to prefixes in its routing table
+  category: Routing
+source:
+  node_types: [RIPInstance]
+target:
+  node_types: [Prefix]
+cardinality: many_to_many
+inverse_name: ADVERTISED_BY_RIP
+graph:
+  style: dashed
+  color: "#A855F7"
+
+# --- Route Policy Edges ---
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: ROUTE_POLICY_ON_DEVICE
+  display_name: Route Policy On Device
+  description: Links a route policy to the device it is configured on
+  category: Routing
+source:
+  node_types: [RoutePolicy]
+target:
+  node_types: [Device]
+cardinality: many_to_one
+inverse_name: HAS_ROUTE_POLICY
+graph:
+  style: dashed
+  color: "#6D28D9"

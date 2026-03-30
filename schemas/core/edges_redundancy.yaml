@@ -1,0 +1,147 @@
+# Redundancy group and virtual gateway edge types
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: INTERFACE_IN_REDUNDANCY_GROUP
+  display_name: Interface In Redundancy Group
+  description: Links an interface to a redundancy group (LAG, MLAG, FHRP) as a member
+  category: Infrastructure
+source:
+  node_types: [Interface]
+target:
+  node_types: [InterfaceRedundancyGroup]
+cardinality: many_to_one
+inverse_name: HAS_MEMBER_INTERFACE
+attributes:
+  role:
+    type: enum
+    enum_values: [active, standby, member, primary, secondary]
+    default: member
+  priority:
+    type: integer
+    description: Member priority within the group
+graph:
+  style: solid
+  color: "#F59E0B"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: REDUNDANCY_GROUP_ON_DEVICE
+  display_name: Redundancy Group On Device
+  description: Links an interface redundancy group to the device it is configured on
+  category: Infrastructure
+source:
+  node_types: [InterfaceRedundancyGroup]
+target:
+  node_types: [Device]
+cardinality: many_to_one
+inverse_name: HAS_REDUNDANCY_GROUP
+graph:
+  style: solid
+  color: "#F59E0B"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: REDUNDANCY_GROUP_USES_IP
+  display_name: Redundancy Group Uses IP
+  description: Links an FHRP redundancy group to its virtual IP address
+  category: Infrastructure
+source:
+  node_types: [InterfaceRedundancyGroup]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: USED_BY_REDUNDANCY_GROUP
+graph:
+  style: dashed
+  color: "#F59E0B"
+  show_label: true
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_IN_REDUNDANCY_GROUP
+  display_name: Device In Redundancy Group
+  description: Links a device to a device redundancy group (HA pair, cluster, stack)
+  category: Infrastructure
+source:
+  node_types: [Device]
+target:
+  node_types: [DeviceRedundancyGroup]
+cardinality: many_to_one
+inverse_name: HAS_MEMBER_DEVICE
+attributes:
+  role:
+    type: enum
+    enum_values: [primary, secondary, active, standby, member, arbiter]
+    default: member
+    description: Role of this device in the group
+  priority:
+    type: integer
+    description: Device priority within the group
+graph:
+  style: solid
+  color: "#D97706"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_GROUP_AT_LOCATION
+  display_name: Device Group At Location
+  description: Links a device redundancy group to its location
+  category: Infrastructure
+source:
+  node_types: [DeviceRedundancyGroup]
+target:
+  node_types: [Location]
+cardinality: many_to_one
+inverse_name: HAS_DEVICE_GROUP
+graph:
+  style: dashed
+  color: "#F59E0B"
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: REDUNDANCY_GROUP_PEER
+  display_name: Redundancy Group Peer
+  description: >
+    Links two interface redundancy groups as MLAG/VPC peers across devices.
+    For example, links vpc peer-link groups between two Nexus switches.
+  category: Infrastructure
+source:
+  node_types: [InterfaceRedundancyGroup]
+target:
+  node_types: [InterfaceRedundancyGroup]
+cardinality: one_to_one
+inverse_name: PEERED_WITH
+graph:
+  style: dashed
+  color: "#D97706"
+  show_label: true
+
+---
+kind: EdgeType
+version: v1
+metadata:
+  name: VLAN_ON_REDUNDANCY_GROUP
+  display_name: VLAN On Redundancy Group
+  description: Links VLANs to interface redundancy groups carrying their traffic
+  category: Infrastructure
+source:
+  node_types: [VLAN]
+target:
+  node_types: [InterfaceRedundancyGroup]
+cardinality: many_to_many
+inverse_name: CARRIES_VLAN
+graph:
+  style: dashed
+  color: "#14B8A6"

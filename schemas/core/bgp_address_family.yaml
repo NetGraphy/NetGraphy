@@ -1,0 +1,89 @@
+kind: NodeType
+version: v1
+metadata:
+  name: BGPAddressFamily
+  display_name: BGP Address Family
+  description: >
+    BGP address family (AFI/SAFI) configuration on a routing instance,
+    peer group, or peer endpoint. Defines the protocol and sub-protocol
+    for route exchange.
+  icon: layers
+  color: "#991B1B"
+  category: Routing
+  tags: [routing, bgp]
+
+attributes:
+  afi_safi:
+    type: enum
+    display_name: AFI/SAFI
+    required: true
+    indexed: true
+    enum_values:
+      - ipv4_unicast
+      - ipv4_multicast
+      - ipv4_labeled_unicast
+      - ipv4_flowspec
+      - ipv6_unicast
+      - ipv6_multicast
+      - ipv6_labeled_unicast
+      - ipv6_flowspec
+      - vpnv4_unicast
+      - vpnv4_multicast
+      - vpnv6_unicast
+      - vpnv6_multicast
+      - l2vpn_evpn
+      - l2vpn_vpls
+    ui:
+      list_column: true
+      list_column_order: 1
+
+  scope_type:
+    type: enum
+    display_name: Scope
+    enum_values: [routing_instance, peer_group, peer_endpoint]
+    required: true
+    description: What this address family is configured on
+    ui:
+      list_column: true
+
+  scope_id:
+    type: string
+    display_name: Scope ID
+    required: true
+    indexed: true
+    description: ID of the BGPRoutingInstance, BGPPeerGroup, or BGPPeerEndpoint
+
+  import_policy:
+    type: string
+    display_name: Import Policy
+
+  export_policy:
+    type: string
+    display_name: Export Policy
+
+  multipath:
+    type: boolean
+    display_name: Multipath
+
+  redistribute:
+    type: "list[string]"
+    display_name: Redistribute
+    description: Protocols redistributed into this address family (connected, static, ospf, etc.)
+
+  extra_attributes:
+    type: json
+    display_name: Extra Attributes
+
+search:
+  enabled: true
+  primary_field: afi_safi
+  search_fields: [afi_safi]
+
+api:
+  plural_name: bgp-address-families
+  filterable_fields: [afi_safi, scope_type]
+  sortable_fields: [afi_safi, scope_type]
+
+graph:
+  default_label_field: afi_safi
+  color: "#991B1B"
