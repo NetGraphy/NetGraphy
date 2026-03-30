@@ -71,7 +71,7 @@ class UserCreate(BaseModel):
     email: str | None = Field(default=None, description="Optional email address.")
     password: str = Field(
         ...,
-        min_length=8,
+        min_length=1,
         description="Plain-text password (will be hashed before storage).",
     )
     role: RoleType = Field(default="viewer", description="Initial RBAC role.")
@@ -93,14 +93,14 @@ class UserUpdate(BaseModel):
 class PasswordReset(BaseModel):
     """Payload for admin-initiated password reset."""
 
-    new_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=1)
 
 
 class PasswordChange(BaseModel):
     """Payload for user-initiated password change."""
 
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=1)
 
 
 class UserInDB(BaseModel):

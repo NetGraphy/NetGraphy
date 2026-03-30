@@ -281,6 +281,8 @@ function UsersTab() {
 
 function CreateUserForm({ onSubmit, isPending, error }: { onSubmit: (u: Record<string, unknown>) => void; isPending: boolean; error: unknown }) {
   const [form, setForm] = useState({ username: "", email: "", password: "", role: "viewer", first_name: "", last_name: "" });
+  const { data: authSettings } = useQuery({ queryKey: ["auth-settings"], queryFn: () => api.get("/auth/settings") });
+  const minPw = authSettings?.data?.data?.min_password_length ?? 1;
   return (
     <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <h3 className="mb-3 text-sm font-semibold">Create User</h3>
@@ -288,7 +290,7 @@ function CreateUserForm({ onSubmit, isPending, error }: { onSubmit: (u: Record<s
         {[
           { key: "username", label: "Username" },
           { key: "email", label: "Email" },
-          { key: "password", label: "Password (min 8 chars)", type: "password" },
+          { key: "password", label: minPw > 1 ? `Password (min ${minPw} chars)` : "Password", type: "password" },
           { key: "first_name", label: "First Name" },
           { key: "last_name", label: "Last Name" },
         ].map((f) => (

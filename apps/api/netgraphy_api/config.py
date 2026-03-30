@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     secret_key: str = "CHANGE-ME-IN-PRODUCTION"
     access_token_expire_minutes: int = 1440  # 24 hours
     algorithm: str = "HS256"
+    min_password_length: int = 1  # Set to 8+ for production
 
     # --- Workers ---
     celery_broker_url: str = "redis://localhost:6379/1"

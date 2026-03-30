@@ -126,6 +126,17 @@ def _build_token_pair(user: dict[str, Any]) -> TokenPair:
     )
 
 
+def _validate_password(password: str) -> None:
+    """Validate password against configured minimum length."""
+    min_len = settings.min_password_length
+    if len(password) < min_len:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=422,
+            detail=f"Password must be at least {min_len} characters",
+        )
+
+
 def _sanitize_user(user: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": user.get("id", ""),
@@ -256,6 +267,7 @@ async def create_user(
 ):
     """Create a new user account (admin only)."""
     rbac.require_permission(auth, "manage", "user:create")
+    _validate_password(body.password)
 
     existing = await _find_user_by_username(driver, body.username)
     if existing is not None:
@@ -356,6 +368,7 @@ async def reset_password(
 ):
     """Admin-initiated password reset."""
     rbac.require_permission(auth, "manage", "user:update")
+    _validate_password(body.new_password)
 
     result = await driver.execute_write(
         "MATCH (u:_User {id: $id}) "
@@ -385,6 +398,7 @@ async def change_password(
 
     if not verify_password(body.current_password, user.get("password_hash", "")):
         raise AuthenticationError("Current password is incorrect")
+    _validate_password(body.new_password)
 
     await driver.execute_write(
         "MATCH (u:_User {id: $id}) "
@@ -607,6 +621,12 @@ async def delete_permission(
 # --------------------------------------------------------------------------- #
 #  Roles                                                                       #
 # --------------------------------------------------------------------------- #
+
+
+@router.get("/settings")
+async def get_auth_settings():
+    """Get public auth settings (password policy, etc.)."""
+    return {"data": {"min_password_length": settings.min_password_length}}
 
 
 @router.get("/rbac/roles")
