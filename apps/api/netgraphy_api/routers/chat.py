@@ -184,6 +184,14 @@ async def chat(
     conv_id = body.get("conversation_id")
     system_instruction = body.get("system_instruction", "")
 
+    # Load configured system prompt from Neo4j if no override provided
+    if not system_instruction:
+        prompt_result = await driver.execute_read(
+            "MATCH (s:_AgentConfig {key: 'system_prompt'}) RETURN s.value AS prompt", {}
+        )
+        if prompt_result.rows and prompt_result.rows[0].get("prompt"):
+            system_instruction = prompt_result.rows[0]["prompt"]
+
     # Create or load conversation
     if not conv_id:
         conv = await conv_svc.create_conversation(actor.user_id, title=message[:80])
@@ -448,3 +456,48 @@ async def delete_provider(
     await driver.execute_write(
         "MATCH (p:_AgentProvider {id: $id}) DELETE p", {"id": provider_id}
     )
+
+
+# --------------------------------------------------------------------------- #
+#  System Prompt Configuration                                                 #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/system-prompt")
+async def get_system_prompt(
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Get the configured system prompt for the AI assistant."""
+    result = await driver.execute_read(
+        "MATCH (s:_AgentConfig {key: 'system_prompt'}) RETURN s", {}
+    )
+    if result.rows:
+        cfg = result.rows[0]["s"]
+        return {"data": {"system_prompt": cfg.get("value", ""), "updated_at": cfg.get("updated_at", "")}}
+    return {"data": {"system_prompt": "", "updated_at": ""}}
+
+
+@router.put("/system-prompt")
+async def set_system_prompt(
+    body: dict[str, Any],
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+    rbac: PermissionChecker = Depends(get_rbac),
+):
+    """Set the system prompt for the AI assistant.
+
+    Body:
+        system_prompt: str — the custom system prompt text
+    """
+    rbac.require_permission(actor, "manage", "user:*")
+
+    prompt_text = body.get("system_prompt", "")
+    now = datetime.now(timezone.utc).isoformat()
+
+    await driver.execute_write(
+        "MERGE (s:_AgentConfig {key: 'system_prompt'}) "
+        "SET s.value = $value, s.updated_at = $now, s.updated_by = $user",
+        {"value": prompt_text, "now": now, "user": actor.username},
+    )
+    return {"data": {"system_prompt": prompt_text, "updated_at": now}}

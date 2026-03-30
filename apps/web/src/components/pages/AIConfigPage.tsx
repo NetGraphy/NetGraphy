@@ -2,7 +2,7 @@
  * AIConfigPage — Admin UI for managing AI providers, models, and agent settings.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
 
@@ -22,12 +22,35 @@ export function AIConfigPage() {
     name: "", provider_type: "anthropic", api_key: "", api_base: "",
     default_model: "claude-sonnet-4-20250514", enabled: true,
   });
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [promptSaved, setPromptSaved] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["ai-providers"],
     queryFn: () => api.get("/agent/providers"),
   });
   const providers = data?.data?.data || [];
+
+  // System prompt
+  const { data: promptData } = useQuery({
+    queryKey: ["system-prompt"],
+    queryFn: () => api.get("/agent/system-prompt"),
+  });
+
+  // Sync prompt data into local state when loaded
+  const loadedPrompt = promptData?.data?.data?.system_prompt || "";
+  useEffect(() => {
+    if (loadedPrompt) setSystemPrompt(loadedPrompt);
+  }, [loadedPrompt]);
+
+  const savePromptMutation = useMutation({
+    mutationFn: (prompt: string) => api.put("/agent/system-prompt", { system_prompt: prompt }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["system-prompt"] });
+      setPromptSaved(true);
+      setTimeout(() => setPromptSaved(false), 2000);
+    },
+  });
 
   const createMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) => api.post("/agent/providers", body),
@@ -71,6 +94,38 @@ export function AIConfigPage() {
         <p className="mt-2 text-xs text-gray-500">
           You can also set ANTHROPIC_API_KEY or OPENAI_API_KEY as environment variables for quick setup.
         </p>
+      </div>
+
+      {/* System Prompt */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">System Prompt</h2>
+            <p className="text-xs text-gray-500">
+              Custom instructions that guide the AI assistant's behavior. This is prepended to every conversation.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {promptSaved && <span className="text-xs text-green-600">Saved</span>}
+            <button
+              onClick={() => savePromptMutation.mutate(systemPrompt)}
+              disabled={savePromptMutation.isPending}
+              className="rounded bg-brand-600 px-3 py-1.5 text-xs text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              {savePromptMutation.isPending ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+        <textarea
+          value={systemPrompt}
+          onChange={(e) => setSystemPrompt(e.target.value)}
+          placeholder="Enter custom system instructions for the AI assistant...&#10;&#10;Examples:&#10;- You are a network operations assistant for Acme Corp&#10;- Always check device status before suggesting changes&#10;- Prefer showing results in table format&#10;- Our primary data center is in Dallas (DAL-DC1)"
+          rows={8}
+          className="w-full rounded border border-gray-300 px-3 py-2 text-sm font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        />
+        <div className="mt-2 text-[10px] text-gray-400">
+          This prompt is combined with the platform's built-in safety and query behavior rules. It cannot override security restrictions.
+        </div>
       </div>
 
       {/* Add provider */}

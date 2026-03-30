@@ -119,12 +119,31 @@ class MCPToolExecutor:
             raise ToolExecutionError(f"Unknown tool: {tool_name}", tool_name)
 
         except QueryValidationError as e:
-            return {"error": True, "message": str(e), "validation_errors": e.errors}
+            logger.warning("tool_validation_error", tool=tool_name, errors=e.errors)
+            return {
+                "error": True,
+                "message": f"Query validation failed: {'; '.join(e.errors)}",
+                "validation_errors": e.errors,
+                "hint": (
+                    "Try a different approach: "
+                    "1) Search for the related object first using a direct query, "
+                    "2) Then use the object's ID to find connected nodes. "
+                    "For example, first query_locations with a name/city filter, "
+                    "then use the location ID to query_devices with a direct filter."
+                ),
+            }
         except ToolExecutionError:
             raise
         except Exception as e:
             logger.error("tool_execution_failed", tool=tool_name, error=str(e))
-            return {"error": True, "message": f"Tool execution failed: {e}"}
+            return {
+                "error": True,
+                "message": f"Tool execution failed: {e}",
+                "hint": (
+                    "Try a simpler approach: use direct attribute filters or "
+                    "search for objects individually rather than relationship traversal."
+                ),
+            }
 
     # ---------------------------------------------------------------------- #
     #  Query tool execution                                                    #
@@ -135,14 +154,40 @@ class MCPToolExecutor:
         tool_name: str,
         tool_input: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute a query_<entities> tool call."""
+        """Execute a query_<entities> tool call.
+
+        If validation fails for relationship filters, falls back to
+        direct attribute-only query to still return useful results.
+        """
         entity = self._resolve_entity_from_tool(tool_name, prefix="query_")
 
         # Build QueryAST from tool input
         ast = self._build_query_ast(entity, tool_input)
 
-        # Validate
-        resolved_paths = self._validator.validate(ast)
+        # Validate — with fallback for relationship filter failures
+        try:
+            resolved_paths = self._validator.validate(ast)
+        except QueryValidationError as e:
+            logger.warning("query_validation_fallback", entity=entity, errors=e.errors)
+            # Try falling back to direct filters only (strip relationship paths)
+            direct_conditions = []
+            for f in tool_input.get("filters", []):
+                path = f.get("path", "")
+                if "." not in path:  # Direct attribute only
+                    direct_conditions.append(f)
+
+            if direct_conditions:
+                fallback_input = {**tool_input, "filters": direct_conditions}
+                fallback_ast = self._build_query_ast(entity, fallback_input)
+                try:
+                    resolved_paths = self._validator.validate(fallback_ast)
+                    ast = fallback_ast
+                except QueryValidationError:
+                    raise e  # Re-raise original error
+            else:
+                # No direct filters — try unfiltered with pagination
+                ast = self._build_query_ast(entity, {"limit": tool_input.get("limit", 50)})
+                resolved_paths = self._validator.validate(ast)
         default_fields = self._validator.get_default_fields(entity)
 
         # Compile
