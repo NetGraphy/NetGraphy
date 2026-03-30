@@ -24,6 +24,7 @@ import { IaCDashboardPage } from "@/components/pages/IaCDashboardPage";
 import { UserManagementPage } from "@/components/pages/UserManagementPage";
 import { GeneratedArtifactsPage } from "@/components/pages/GeneratedArtifactsPage";
 import { AIConfigPage } from "@/components/pages/AIConfigPage";
+import { DocsPage } from "@/components/pages/DocsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +82,7 @@ export function App() {
                 <Route path="/admin/users" element={<UserManagementPage />} />
                 <Route path="/admin/generated" element={<GeneratedArtifactsPage />} />
                 <Route path="/admin/ai" element={<AIConfigPage />} />
+                <Route path="/docs" element={<DocsPage />} />
 
                 {/* Graph */}
                 <Route path="/graph" element={<GraphExplorerPage />} />

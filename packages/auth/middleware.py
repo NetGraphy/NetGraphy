@@ -35,6 +35,10 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/api/v1/openapi.json",
     "/api/v1/schema",  # Schema metadata must be public for dynamic UI
     "/api/v1/generated/metrics",  # Prometheus scrape endpoint
+    "/api/v1/docs/pages",  # Docs reading is public
+    "/api/v1/docs/nav",  # Docs navigation is public
+    "/api/v1/docs/search",  # Docs search is public
+    "/api/v1/docs/for",  # Schema-linked docs lookup is public
 )
 
 

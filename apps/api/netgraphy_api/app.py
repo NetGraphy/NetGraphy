@@ -25,6 +25,7 @@ from netgraphy_api.routers import (
     auth,
     chat,
     dev,
+    docs,
     edges,
     generated,
     git_sources,
@@ -189,6 +190,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(
         chat.router, prefix=f"{prefix}/agent", tags=["AI Agent"]
+    )
+    app.include_router(
+        docs.router, prefix=f"{prefix}/docs", tags=["Documentation"]
     )
 
     return app

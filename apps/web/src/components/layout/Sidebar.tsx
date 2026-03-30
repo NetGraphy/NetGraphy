@@ -68,16 +68,26 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {/* Dashboard */}
+        {/* Dashboard & Docs */}
         <Link
           to="/"
-          className={`mb-4 block rounded-md px-3 py-2 text-sm font-medium ${
+          className={`mb-1 block rounded-md px-3 py-2 text-sm font-medium ${
             isActive("/")
               ? "bg-brand-50 text-brand-700"
               : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
           }`}
         >
           Dashboard
+        </Link>
+        <Link
+          to="/docs"
+          className={`mb-4 block rounded-md px-3 py-2 text-sm font-medium ${
+            isActive("/docs")
+              ? "bg-brand-50 text-brand-700"
+              : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+          }`}
+        >
+          Documentation
         </Link>
 
         {/* Dynamic categories from schema */}
