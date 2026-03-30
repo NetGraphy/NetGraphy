@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\(''/Users/jasonmercer/Code/NetGraphy/scripts/seed.py''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''scripts/seed.py''\\).read\\(\\)\\); print\\(''Syntax OK''\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''''dependencies'''',{}\\), indent=2\\)\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit --pretty)",
+      "Bash(find /Users/jasonmercer/Code/NetGraphy -path *worker* -o -path *celery* -o -path *nats*)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(find /Users/jasonmercer/Code/NetGraphy -name *test* -type f -path */job*)",
+      "Bash(find /Users/jasonmercer/Code/NetGraphy -path *parsers* -name *.py -o -path *ingestion* -name *.py)",
+      "Bash(grep -r \"dispatch\\\\|queue\\\\|celery.delay\" /Users/jasonmercer/Code/NetGraphy --include=*.py)",
+      "Bash(grep -A 10 -B 5 \"nornir\\\\|netmiko\\\\|napalm\" /Users/jasonmercer/Code/NetGraphy/docs/architecture/*.md)",
+      "Bash(ls -la /Users/jasonmercer/Code/NetGraphy/apps/api/netgraphy_api/*.py)",
+      "Bash(python -c \":*)",
+      "Bash(python -m pytest tests/unit/ingestion/test_filters.py tests/unit/ingestion/test_custom_filters.py tests/unit/ingestion/test_jinja2_engine.py -v)",
+      "Bash(python -m pytest tests/unit/ -v --timeout=30)",
+      "Bash(python -m pytest tests/unit/ -v)",
+      "Bash(python -m pytest tests/unit/ -v --ignore=tests/unit/ingestion/test_parsers.py)",
+      "Bash(python3 -c \"import py_compile; py_compile.compile\\(''scripts/seed.py'', doraise=True\\)\")",
+      "Bash(npx vite:*)",
+      "Bash(grep -n \"^export.*function\\\\|^export.*const\" /Users/jasonmercer/Code/NetGraphy/apps/web/src/components/dev-workbench/*.tsx)",
+      "WebFetch(domain:web-staging-a5b7.up.railway.app)",
+      "WebSearch",
+      "WebFetch(domain:docs.nautobot.com)",
+      "Bash(find /Users/jasonmercer/Code/NetGraphy/schemas/core -name \"*.yaml\" -exec grep -l \"^kind: NodeType\" {})",
+      "Bash(grep -E \"^[a-z_]+\\\\.yaml$\")",
+      "Bash(wc -l /Users/jasonmercer/Code/NetGraphy/packages/**/*.py)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:networktocode.com)",
+      "Read(//private/tmp/**)",
+      "Bash(gh api:*)",
+      "Bash(python3 -c \"import sys,json; [print\\(f[''''name'''']\\) for f in json.load\\(sys.stdin\\)]\")",
+      "Read(//Users/jasonmercer/Code/NetGraphy/**)"
+    ]
+  }
+}
