@@ -43,11 +43,16 @@ import {
 // YAML Serialization / Deserialization
 // ========================================================================
 
-function schemaToYaml(schema: CanonicalSchema, getNodeById: (id: string) => SchemaNode | undefined): string {
+function schemaToYaml(
+  schema: CanonicalSchema,
+  getNodeById: (id: string) => SchemaNode | undefined,
+  importedNames: Set<string> = new Set(),
+): string {
   const lines: string[] = [];
 
-  // Node types
-  for (const node of [...schema.nodes].sort((a, b) => a.name.localeCompare(b.name))) {
+  // Node types — only NEW nodes (skip imported existing ones)
+  const newNodes = schema.nodes.filter((n) => !importedNames.has(n.name));
+  for (const node of [...newNodes].sort((a, b) => a.name.localeCompare(b.name))) {
     lines.push("---");
     lines.push("kind: NodeType");
     lines.push("version: v1");
@@ -461,102 +466,55 @@ export function SchemaDesignerPage() {
     undo, redo, resetSchema, getNodeById,
   } = store;
 
-  // Load existing schema from API on mount
+  // Load existing node types for the "Import" picker (NOT auto-placed on canvas)
   const { data: nodeTypesData } = useQuery({
     queryKey: ["schema-node-types"],
     queryFn: () => api.get("/schema/node-types"),
   });
-  const { data: edgeTypesData } = useQuery({
-    queryKey: ["schema-edge-types"],
-    queryFn: () => api.get("/schema/edge-types"),
-  });
-  const [schemaLoaded, setSchemaLoaded] = useState(false);
+  const existingNodeTypes: any[] = nodeTypesData?.data?.data || [];
+  // Track which nodes are imported (read-only references) vs new
+  const [importedNames, setImportedNames] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    if (schemaLoaded || !nodeTypesData?.data?.data || !edgeTypesData?.data?.data) return;
-    if (schema.nodes.length > 0) { setSchemaLoaded(true); return; } // Already has data
+  const importExistingNode = useCallback((nt: any) => {
+    const name = nt.metadata?.name || nt.name;
+    if (schema.nodes.find((n) => n.name === name)) return; // Already on canvas
 
-    const nodeTypes: any[] = nodeTypesData.data.data;
-    const edgeTypes: any[] = edgeTypesData.data.data;
+    const attrs: SchemaAttribute[] = Object.entries(nt.attributes || {}).map(([attrName, def]: [string, any]) => ({
+      id: crypto.randomUUID(),
+      name: attrName,
+      type: def.type || "string",
+      required: def.required || false,
+      unique: def.unique || false,
+      indexed: def.indexed || false,
+      default_value: def.default !== undefined ? String(def.default) : null,
+      enum_values: def.enum_values || null,
+      description: def.description || "",
+    }));
 
-    // Layout nodes in a grid
-    const cols = Math.ceil(Math.sqrt(nodeTypes.length));
-    const nodes: SchemaNode[] = nodeTypes.map((nt: any, i: number) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const attrs: SchemaAttribute[] = Object.entries(nt.attributes || {}).map(([name, def]: [string, any]) => ({
-        id: crypto.randomUUID(),
-        name,
-        type: def.type || "string",
-        required: def.required || false,
-        unique: def.unique || false,
-        indexed: def.indexed || false,
-        default_value: def.default !== undefined ? String(def.default) : null,
-        enum_values: def.enum_values || null,
-        description: def.description || "",
-      }));
+    const nodeCount = schema.nodes.length;
+    const col = nodeCount % 4;
+    const row = Math.floor(nodeCount / 4);
 
-      return {
-        id: crypto.randomUUID(),
-        name: nt.metadata?.name || nt.name,
-        display_name: nt.metadata?.display_name || nt.metadata?.name || nt.name,
+    addNode(name, { x: 100 + col * 280, y: 100 + row * 200 });
+    // Find the newly added node and update its full data
+    const newId = store.getState().schema.nodes.find((n) => n.name === name)?.id;
+    if (newId) {
+      updateNode(newId, {
+        display_name: nt.metadata?.display_name || name,
         description: nt.metadata?.description || "",
         category: nt.metadata?.category || "",
         icon: nt.metadata?.icon || "box",
-        color: nt.metadata?.color || "#6366F1",
+        color: nt.metadata?.color || "#94A3B8",
         tags: nt.metadata?.tags || [],
-        attributes: attrs,
         mixins: nt.mixins || [],
-        position: { x: 50 + col * 280, y: 50 + row * 250 },
-      };
-    });
-
-    // Build a name→ID lookup
-    const nameToId: Record<string, string> = {};
-    nodes.forEach((n) => { nameToId[n.name] = n.id; });
-
-    const edges: SchemaEdge[] = [];
-    for (const et of edgeTypes) {
-      const edgeName = et.metadata?.name || et.name;
-      const srcTypes: string[] = et.source?.node_types || [];
-      const tgtTypes: string[] = et.target?.node_types || [];
-
-      for (const src of srcTypes) {
-        for (const tgt of tgtTypes) {
-          if (nameToId[src] && nameToId[tgt]) {
-            edges.push({
-              id: crypto.randomUUID(),
-              name: edgeName,
-              display_name: et.metadata?.display_name || edgeName,
-              description: et.metadata?.description || "",
-              from_node_id: nameToId[src],
-              to_node_id: nameToId[tgt],
-              cardinality: et.cardinality || "many_to_many",
-              inverse_name: et.inverse_name || "",
-              attributes: Object.entries(et.attributes || {}).map(([name, def]: [string, any]) => ({
-                id: crypto.randomUUID(),
-                name,
-                type: def.type || "string",
-                required: def.required || false,
-                unique: false,
-                indexed: false,
-                default_value: null,
-                enum_values: def.enum_values || null,
-                description: def.description || "",
-              })),
-              constraints: {
-                unique_source: et.constraints?.unique_source || false,
-                unique_target: et.constraints?.unique_target || false,
-              },
-            });
-          }
-        }
+      });
+      // Add attributes
+      for (const attr of attrs) {
+        store.getState().addAttribute(newId, attr);
       }
     }
-
-    loadSchema({ nodes, edges });
-    setSchemaLoaded(true);
-  }, [nodeTypesData, edgeTypesData, schemaLoaded, schema.nodes.length, loadSchema]);
+    setImportedNames((prev) => new Set([...prev, name]));
+  }, [schema.nodes, addNode, updateNode, store]);
 
   const [showYaml, setShowYaml] = useState(true);
   const [yamlValue, setYamlValue] = useState("");
@@ -571,6 +529,9 @@ export function SchemaDesignerPage() {
   const [manualEdgeTo, setManualEdgeTo] = useState("");
   const [manualEdgeName, setManualEdgeName] = useState("");
   const [manualEdgeCardinality, setManualEdgeCardinality] = useState("many_to_many");
+  // Import existing node picker
+  const [showImport, setShowImport] = useState(false);
+  const [importSearch, setImportSearch] = useState("");
 
   // --- Sync store → React Flow nodes ---
   const rfNodes: Node[] = useMemo(() =>
@@ -609,7 +570,7 @@ export function SchemaDesignerPage() {
 
   // Sync YAML
   useEffect(() => {
-    setYamlValue(schemaToYaml(schema, getNodeById));
+    setYamlValue(schemaToYaml(schema, getNodeById, importedNames));
   }, [schema, getNodeById]);
 
   // --- Handlers ---
@@ -706,6 +667,10 @@ export function SchemaDesignerPage() {
                   + Add Node
                 </button>
               )}
+              <button onClick={() => { setShowImport(true); setImportSearch(""); }}
+                className="rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700">
+                Import Existing
+              </button>
               <button onClick={() => { setShowAddEdge(true); setManualEdgeFrom(""); setManualEdgeTo(""); setManualEdgeName(""); setManualEdgeCardinality("many_to_many"); }}
                 disabled={schema.nodes.length < 1}
                 className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50">
@@ -807,6 +772,59 @@ export function SchemaDesignerPage() {
             </div>
           </div>
         )}
+
+        {/* Import Existing Node picker */}
+        {showImport && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96 max-h-[500px] flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold">Import Existing Node Type</h3>
+                <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-600 text-xs">Close</button>
+              </div>
+              <input value={importSearch} onChange={(e) => setImportSearch(e.target.value)}
+                placeholder="Search node types..."
+                autoFocus
+                className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm mb-3 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              <div className="flex-1 overflow-y-auto space-y-1">
+                {existingNodeTypes
+                  .filter((nt) => {
+                    const name = (nt.metadata?.name || nt.name || "").toLowerCase();
+                    const display = (nt.metadata?.display_name || "").toLowerCase();
+                    const search = importSearch.toLowerCase();
+                    return !search || name.includes(search) || display.includes(search);
+                  })
+                  .map((nt) => {
+                    const name = nt.metadata?.name || nt.name;
+                    const alreadyOnCanvas = !!schema.nodes.find((n) => n.name === name);
+                    const category = nt.metadata?.category || "";
+                    const attrCount = Object.keys(nt.attributes || {}).length;
+                    return (
+                      <button key={name} onClick={() => { importExistingNode(nt); }}
+                        disabled={alreadyOnCanvas}
+                        className={`w-full flex items-center justify-between rounded px-3 py-2 text-left text-xs ${
+                          alreadyOnCanvas
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700"
+                            : "hover:bg-brand-50 text-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                        }`}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: nt.metadata?.color || "#94A3B8" }} />
+                          <span className="font-medium">{name}</span>
+                          {category && <span className="text-gray-400">({category})</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">{attrCount} attrs</span>
+                          {alreadyOnCanvas && <span className="text-green-500 text-[10px]">on canvas</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+              <div className="mt-3 text-[10px] text-gray-400">
+                Imported nodes appear on the canvas as references. Only new nodes appear in the generated YAML.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* YAML Editor */}
@@ -815,7 +833,9 @@ export function SchemaDesignerPage() {
           <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-gray-500 uppercase">Generated YAML</span>
-              <span className="text-[10px] text-gray-400">{schema.nodes.length} nodes, {schema.edges.length} edges</span>
+              <span className="text-[10px] text-gray-400">
+                {schema.nodes.filter((n) => !importedNames.has(n.name)).length} new, {importedNames.size} imported, {schema.edges.length} edges
+              </span>
             </div>
           </div>
           <div className="flex-1">
