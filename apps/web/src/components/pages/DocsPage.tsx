@@ -37,7 +37,7 @@ export function DocsPage() {
   // Navigation
   const { data: navData } = useQuery({
     queryKey: ["docs-nav"],
-    queryFn: () => api.get("/docs/nav"),
+    queryFn: () => api.get("/documentation/nav"),
   });
   const nav: NavCategory[] = navData?.data?.data || [];
 
@@ -51,14 +51,14 @@ export function DocsPage() {
   // Search
   const { data: searchData } = useQuery({
     queryKey: ["docs-search", searchQuery],
-    queryFn: () => api.get("/docs/search", { params: { q: searchQuery } }),
+    queryFn: () => api.get("/documentation/search", { params: { q: searchQuery } }),
     enabled: searchQuery.length >= 2,
   });
   const searchResults = searchData?.data?.data || [];
 
   // Generate docs
   const generateMutation = useMutation({
-    mutationFn: () => api.post("/docs/generate"),
+    mutationFn: () => api.post("/documentation/generate"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["docs-nav"] });
       queryClient.invalidateQueries({ queryKey: ["docs-page"] });

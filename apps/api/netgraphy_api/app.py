@@ -192,7 +192,7 @@ def create_app() -> FastAPI:
         chat.router, prefix=f"{prefix}/agent", tags=["AI Agent"]
     )
     app.include_router(
-        docs.router, prefix=f"{prefix}/docs", tags=["Documentation"]
+        docs.router, prefix=f"{prefix}/documentation", tags=["Documentation"]
     )
 
     return app

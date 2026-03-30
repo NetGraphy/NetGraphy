@@ -30,7 +30,7 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/api/v1/auth/token",
     "/api/v1/auth/settings",
     "/api/v1/auth/rbac/roles",
-    "/api/v1/docs",
+    "/api/v1/docs",  # FastAPI Swagger docs
     "/api/v1/redoc",
     "/api/v1/openapi.json",
     "/api/v1/schema",  # Schema metadata must be public for dynamic UI
