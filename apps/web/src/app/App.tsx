@@ -22,6 +22,7 @@ import { FilterEditorPage } from "@/components/pages/FilterEditorPage";
 import { DevWorkbenchPage } from "@/components/pages/DevWorkbenchPage";
 import { IaCDashboardPage } from "@/components/pages/IaCDashboardPage";
 import { UserManagementPage } from "@/components/pages/UserManagementPage";
+import { GeneratedArtifactsPage } from "@/components/pages/GeneratedArtifactsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,6 +78,7 @@ export function App() {
                 <Route path="/admin/audit" element={<AuditLogPage />} />
                 <Route path="/admin/schema-validator" element={<SchemaValidatorPage />} />
                 <Route path="/admin/users" element={<UserManagementPage />} />
+                <Route path="/admin/generated" element={<GeneratedArtifactsPage />} />
 
                 {/* Graph */}
                 <Route path="/graph" element={<GraphExplorerPage />} />

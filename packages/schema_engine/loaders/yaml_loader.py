@@ -30,11 +30,15 @@ def load_schema_file(path: Path) -> list[dict[str, Any]]:
 
 def parse_attributes(raw_attrs: dict[str, Any]) -> dict[str, AttributeDefinition]:
     """Parse raw attribute dictionaries into AttributeDefinition models."""
+    from packages.schema_engine.models import AttributeHealthMetadata
+
     attributes = {}
     for attr_name, attr_data in (raw_attrs or {}).items():
         ui_data = attr_data.pop("ui", {})
         ui = UIAttributeMetadata(**ui_data) if ui_data else UIAttributeMetadata()
-        attributes[attr_name] = AttributeDefinition(name=attr_name, ui=ui, **attr_data)
+        health_data = attr_data.pop("health", {})
+        health = AttributeHealthMetadata(**health_data) if health_data else AttributeHealthMetadata()
+        attributes[attr_name] = AttributeDefinition(name=attr_name, ui=ui, health=health, **attr_data)
     return attributes
 
 
@@ -55,6 +59,9 @@ def parse_schema_object(raw: dict[str, Any]) -> NodeTypeDefinition | EdgeTypeDef
             graph=raw.get("graph", {}),
             api=raw.get("api", {}),
             permissions=raw.get("permissions", {}),
+            mcp=raw.get("mcp", {}),
+            agent=raw.get("agent", {}),
+            health=raw.get("health", {}),
         )
 
     elif kind == SchemaKind.EDGE_TYPE:
@@ -71,6 +78,9 @@ def parse_schema_object(raw: dict[str, Any]) -> NodeTypeDefinition | EdgeTypeDef
             graph=raw.get("graph", {}),
             api=raw.get("api", {}),
             permissions=raw.get("permissions", {}),
+            mcp=raw.get("mcp", {}),
+            agent=raw.get("agent", {}),
+            health=raw.get("health", {}),
         )
 
     elif kind == SchemaKind.MIXIN:

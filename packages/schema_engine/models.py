@@ -1,4 +1,9 @@
-"""Schema definition models — the in-memory representation of YAML schemas."""
+"""Schema definition models — the in-memory representation of YAML schemas.
+
+The schema model is the canonical source of truth for the entire platform.
+It drives data structure, APIs, MCP tools, agent capabilities, validation
+rules, and observability — all derived programmatically from these models.
+"""
 
 from __future__ import annotations
 
@@ -103,27 +108,70 @@ class PermissionsMetadata(BaseModel):
 
 
 class DetailTabDefinition(BaseModel):
-    """Custom tab on the detail page for a node type.
-
-    Allows the schema to define dedicated tabs that show related nodes
-    via a specific edge type in a table view with filterable columns.
-
-    Example YAML::
-
-        detail_tabs:
-          - label: Interfaces
-            edge_type: HAS_INTERFACE
-            target_type: Interface
-            columns: [name, interface_type, enabled, oper_status, speed_mbps, ip_addresses]
-            filters: [interface_type, enabled, oper_status]
-            default_sort: name
-    """
+    """Custom tab on the detail page showing related nodes via an edge type."""
     label: str
     edge_type: str
     target_type: str
     columns: list[str] = Field(default_factory=list)
     filters: list[str] = Field(default_factory=list)
     default_sort: str | None = None
+
+
+# --------------------------------------------------------------------------- #
+#  Generation Control Metadata                                                 #
+# --------------------------------------------------------------------------- #
+
+class MCPMetadata(BaseModel):
+    """Controls MCP tool generation from the schema.
+
+    When a node or edge type has mcp.exposed=true, the generation engine
+    produces MCP tool definitions (create, get, list, update, delete, search)
+    that LLMs and agents can use to interact with the graph.
+    """
+    exposed: bool = True
+    allow_create: bool = True
+    allow_update: bool = True
+    allow_delete: bool = True
+    allow_search: bool = True
+    tool_name_prefix: str | None = None  # Override auto-generated tool names
+
+
+class AgentMetadata(BaseModel):
+    """Controls AI agent capability generation from the schema.
+
+    Agent capabilities are higher-level semantic actions built on top of
+    MCP tools — e.g., "onboard a device" rather than just "create_device".
+    """
+    exposed: bool = True
+    capabilities: list[str] = Field(
+        default_factory=list,
+        description="Custom capability names to generate (e.g., 'onboard', 'decommission')",
+    )
+    sensitive: bool = False  # Suppress from agent unless explicitly allowed
+
+
+class HealthMetadata(BaseModel):
+    """Controls observability rule generation from the schema.
+
+    Defines what 'healthy' looks like for this type — what to count,
+    what to alert on, what freshness expectations exist.
+    """
+    enabled: bool = True
+    required_for_health: bool = False  # Include in global health score
+    freshness_hours: int | None = None  # Alert if no updates within N hours
+    min_count: int | None = None  # Alert if fewer than N exist
+    max_count: int | None = None  # Alert if more than N exist
+    alert_on_orphan: bool = False  # Alert if node has no relationships
+    alert_severity: str = "warning"  # warning | critical
+
+
+class AttributeHealthMetadata(BaseModel):
+    """Per-attribute health/generation control."""
+    sensitive: bool = False  # Mask in agent responses, exclude from search
+    required_for_health: bool = False  # Alert if this field is empty
+    editable: bool = True  # Whether agents/MCP can modify this field
+    searchable: bool = True  # Include in search/filter tools
+    display_priority: int = 0  # Higher = more prominent in agent responses
 
 
 # --------------------------------------------------------------------------- #
@@ -149,6 +197,7 @@ class AttributeDefinition(BaseModel):
     auto_set: str | None = None  # "create", "update", "actor"
     validation_regex: str | None = None
     ui: UIAttributeMetadata = Field(default_factory=UIAttributeMetadata)
+    health: AttributeHealthMetadata = Field(default_factory=AttributeHealthMetadata)
 
 
 class SchemaMetadata(BaseModel):
@@ -163,7 +212,12 @@ class SchemaMetadata(BaseModel):
 
 
 class NodeTypeDefinition(BaseModel):
-    """Complete definition of a node type as loaded from YAML."""
+    """Complete definition of a node type as loaded from YAML.
+
+    This is the canonical source. The generation engine reads these
+    definitions and produces MCP tools, agent capabilities, validation
+    rules, and observability checks.
+    """
     kind: str = SchemaKind.NODE_TYPE
     version: str = "v1"
     metadata: SchemaMetadata
@@ -174,6 +228,9 @@ class NodeTypeDefinition(BaseModel):
     graph: GraphMetadata = Field(default_factory=GraphMetadata)
     api: APIMetadata = Field(default_factory=APIMetadata)
     permissions: PermissionsMetadata = Field(default_factory=PermissionsMetadata)
+    mcp: MCPMetadata = Field(default_factory=MCPMetadata)
+    agent: AgentMetadata = Field(default_factory=AgentMetadata)
+    health: HealthMetadata = Field(default_factory=HealthMetadata)
 
     @property
     def name(self) -> str:
@@ -193,6 +250,15 @@ class EdgeConstraints(BaseModel):
     max_count: int | None = None
 
 
+class EdgeHealthMetadata(BaseModel):
+    """Health/observability metadata for edge types."""
+    enabled: bool = True
+    required: bool = False  # Every source node MUST have this edge
+    alert_if_missing: bool = False  # Alert when a node lacks this edge
+    alert_severity: str = "warning"
+    max_count: int | None = None  # Alert if edge count exceeds
+
+
 class EdgeTypeDefinition(BaseModel):
     """Complete definition of an edge type as loaded from YAML."""
     kind: str = SchemaKind.EDGE_TYPE
@@ -207,6 +273,9 @@ class EdgeTypeDefinition(BaseModel):
     graph: GraphMetadata = Field(default_factory=GraphMetadata)
     api: APIMetadata = Field(default_factory=APIMetadata)
     permissions: PermissionsMetadata = Field(default_factory=PermissionsMetadata)
+    mcp: MCPMetadata = Field(default_factory=MCPMetadata)
+    agent: AgentMetadata = Field(default_factory=AgentMetadata)
+    health: EdgeHealthMetadata = Field(default_factory=EdgeHealthMetadata)
 
     @property
     def name(self) -> str:
@@ -251,8 +320,8 @@ class EnumTypeDefinition(BaseModel):
 
 class SchemaChange(BaseModel):
     """A single change detected between schema versions."""
-    change_type: str  # "add_node_type", "add_attribute", "remove_attribute", etc.
-    target: str  # e.g., "Device.hostname" or "HAS_INTERFACE"
+    change_type: str
+    target: str
     risk_level: RiskLevel
     description: str
     details: dict[str, Any] = Field(default_factory=dict)
@@ -260,7 +329,7 @@ class SchemaChange(BaseModel):
 
 class MigrationOperation(BaseModel):
     """A database operation to execute as part of a migration."""
-    operation: str  # "create_index", "drop_index", "create_constraint", etc.
+    operation: str
     cypher: str
     params: dict[str, Any] = Field(default_factory=dict)
     reversible: bool = True
