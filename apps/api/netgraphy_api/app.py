@@ -23,6 +23,7 @@ from netgraphy_api.middleware.request_id import RequestIdMiddleware
 from netgraphy_api.routers import (
     audit,
     auth,
+    dev,
     edges,
     git_sources,
     health,
@@ -162,6 +163,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(auth.router, prefix=f"{prefix}/auth", tags=["Auth"])
     app.include_router(audit.router, prefix=f"{prefix}/audit", tags=["Audit"])
+    app.include_router(
+        dev.router, prefix=f"{prefix}/dev", tags=["Dev Workbench"]
+    )
 
     return app
 

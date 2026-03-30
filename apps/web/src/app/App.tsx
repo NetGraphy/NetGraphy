@@ -19,6 +19,7 @@ import { GitSourcesPage } from "@/components/pages/GitSourcesPage";
 import { GraphExplorerPage } from "@/components/pages/GraphExplorerPage";
 import { SchemaValidatorPage } from "@/components/pages/SchemaValidatorPage";
 import { FilterEditorPage } from "@/components/pages/FilterEditorPage";
+import { DevWorkbenchPage } from "@/components/pages/DevWorkbenchPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ export function App() {
                 {/* Automation */}
                 <Route path="/parsers" element={<ParserRegistryPage />} />
                 <Route path="/filters" element={<FilterEditorPage />} />
+                <Route path="/dev" element={<DevWorkbenchPage />} />
                 <Route path="/jobs" element={<JobRegistryPage />} />
                 <Route path="/ingestion" element={<PlaceholderPage title="Ingestion Runs" description="Monitor data ingestion pipeline runs and their results." />} />
 

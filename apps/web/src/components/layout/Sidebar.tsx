@@ -10,11 +10,11 @@ import { useSchemaStore } from "@/stores/schemaStore";
 
 const SPECIAL_SECTIONS = [
   {
-    title: "Operations",
+    title: "Development",
     items: [
+      { label: "Dev Workbench", path: "/dev" },
       { label: "Query Workbench", path: "/query" },
       { label: "Graph Explorer", path: "/graph" },
-      { label: "Saved Queries", path: "/query/saved" },
     ],
   },
   {
