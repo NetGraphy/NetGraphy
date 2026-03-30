@@ -344,3 +344,210 @@ async def prometheus_metrics(
             pass
 
     return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain")
+
+
+# --------------------------------------------------------------------------- #
+#  Policy & RBAC Resources                                                     #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/policy")
+async def get_policy_manifest(
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Full policy manifest: RBAC resources, tool auth rules, field visibility, agent boundaries."""
+    manifest = engine.generate()
+    return {"data": manifest.policy}
+
+
+@router.get("/policy/resources")
+async def list_rbac_resources(
+    category: str | None = None,
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """List all schema-derived RBAC resource definitions with default permissions."""
+    manifest = engine.generate()
+    resources = manifest.policy.get("resources", [])
+    if category:
+        resources = [r for r in resources if r.get("category") == category]
+    return {"data": resources, "meta": {"total": len(resources)}}
+
+
+@router.get("/policy/tool-auth")
+async def list_tool_auth_rules(
+    destructive: bool | None = None,
+    agent_callable: bool | None = None,
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """List authorization requirements for every generated MCP tool."""
+    manifest = engine.generate()
+    rules = manifest.policy.get("tool_auth_rules", [])
+    if destructive is not None:
+        rules = [r for r in rules if r.get("destructive") == destructive]
+    if agent_callable is not None:
+        rules = [r for r in rules if r.get("agent_callable") == agent_callable]
+    return {"data": rules, "meta": {"total": len(rules)}}
+
+
+@router.get("/policy/field-visibility")
+async def list_field_visibility_rules(
+    node_type: str | None = None,
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """List field-level visibility and sensitivity rules."""
+    manifest = engine.generate()
+    rules = manifest.policy.get("field_visibility", [])
+    if node_type:
+        rules = [r for r in rules if r.get("node_type") == node_type]
+    return {"data": rules, "meta": {"total": len(rules)}}
+
+
+@router.get("/policy/agent-boundaries")
+async def get_agent_boundaries(
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Get the complete agent safety boundary specification.
+
+    Defines exactly what an agent can and cannot do, derived from schema.
+    The core rule: an agent inherits the acting user's permissions and
+    may never exceed them.
+    """
+    manifest = engine.generate()
+    return {"data": manifest.policy.get("agent_boundaries", {})}
+
+
+# --------------------------------------------------------------------------- #
+#  Permission Introspection                                                    #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/permissions/effective")
+async def get_effective_permissions(
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Get the effective permissions for the current user.
+
+    Shows exactly what the user (and an agent acting on their behalf) can do.
+    Combines role-based permissions with group-based object permissions and
+    evaluates them against all generated tools and resources.
+    """
+    from packages.auth.rbac import PermissionChecker
+
+    manifest = engine.generate()
+    checker = PermissionChecker()
+
+    # Evaluate every tool
+    tool_results: list[dict[str, Any]] = []
+    for tool in manifest.mcp_tools:
+        auth = tool.get("auth", {})
+        required_perm = auth.get("required_permission", "")
+        if required_perm:
+            parts = required_perm.split(":", 1)
+            action = parts[0] if parts else ""
+            resource = parts[1] if len(parts) > 1 else ""
+            allowed = checker.check_permission(actor, action, resource)
+        else:
+            allowed = True
+
+        tool_results.append({
+            "tool": tool["name"],
+            "allowed": allowed,
+            "required_permission": required_perm,
+            "destructive": auth.get("destructive", False),
+            "agent_callable": auth.get("agent_callable", True) and allowed,
+        })
+
+    allowed_count = sum(1 for t in tool_results if t["allowed"])
+    denied_count = len(tool_results) - allowed_count
+
+    # Evaluate node type permissions
+    node_perms: list[dict[str, Any]] = []
+    for resource in manifest.policy.get("resources", []):
+        if not resource["resource"].startswith("node_type:"):
+            continue
+        node_type = resource["resource"].split(":", 1)[1]
+        ops = {}
+        for op in ["view", "create", "update", "delete"]:
+            action = "read" if op in ("view", "list") else "write"
+            ops[op] = checker.check_permission(actor, action, f"node:{node_type}")
+        node_perms.append({
+            "node_type": node_type,
+            "display_name": resource.get("display_name", node_type),
+            "category": resource.get("category", ""),
+            **ops,
+        })
+
+    return {
+        "data": {
+            "user": {
+                "user_id": actor.user_id,
+                "username": actor.username,
+                "role": actor.role,
+                "groups": actor.groups,
+                "auth_backend": actor.auth_backend,
+            },
+            "summary": {
+                "tools_allowed": allowed_count,
+                "tools_denied": denied_count,
+                "total_tools": len(tool_results),
+            },
+            "node_permissions": node_perms,
+            "tool_permissions": tool_results,
+            "agent_note": (
+                "An agent acting on your behalf has exactly these permissions. "
+                "It cannot see, create, update, or delete anything you cannot."
+            ),
+        }
+    }
+
+
+@router.get("/permissions/check")
+async def check_permission(
+    action: str = Query(..., description="Action: read, write, execute, manage"),
+    resource: str = Query(..., description="Resource: node:Device, edge:CONNECTED_TO, job:backup"),
+    engine=Depends(_get_engine),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Check whether the current user has a specific permission.
+
+    Returns the decision with an explanation of why it was allowed or denied.
+    Useful for debugging agent refusals.
+    """
+    from packages.auth.rbac import PermissionChecker, get_role_permissions
+
+    checker = PermissionChecker()
+    allowed = checker.check_permission(actor, action, resource)
+
+    explanation: list[str] = []
+    if actor.role == "superadmin":
+        explanation.append("Allowed: superadmin has global wildcard permission")
+    else:
+        role_perms = get_role_permissions(actor.role)
+        matching = [p for p in role_perms if p == "*" or f"{action}:{resource}".startswith(p.replace("*", ""))]
+        if matching:
+            explanation.append(f"Allowed by role '{actor.role}' via: {', '.join(matching)}")
+        else:
+            explanation.append(f"Not granted by role '{actor.role}'")
+
+        # Check object permissions
+        for perm in actor.object_permissions:
+            if perm.get("enabled"):
+                explanation.append(f"Group permission '{perm.get('name', '?')}' evaluated")
+
+    return {
+        "data": {
+            "allowed": allowed,
+            "action": action,
+            "resource": resource,
+            "actor": actor.username,
+            "role": actor.role,
+            "groups": actor.groups,
+            "explanation": explanation,
+        }
+    }

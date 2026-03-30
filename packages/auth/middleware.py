@@ -1,13 +1,13 @@
 """FastAPI / Starlette authentication middleware and request dependencies.
 
 The middleware extracts a Bearer JWT from the ``Authorization`` header,
-validates it, and attaches an :class:`AuthContext` to ``request.state``
-so that downstream route handlers and dependencies can retrieve it
-without repeating token logic.
+validates it, and attaches an :class:`AuthContext` to ``request.state``.
+It also loads group memberships and object permissions from Neo4j so that
+downstream services can enforce schema-driven per-model access control.
 
-Configuration (``secret_key``, ``algorithm``) is injected at middleware
-instantiation time — this package never imports application config
-directly.
+Key security invariant:
+    An agent acting on behalf of a user inherits the user's permissions
+    and may never exceed them. The agent is NOT a privileged superuser.
 """
 
 from __future__ import annotations
@@ -28,26 +28,22 @@ _PUBLIC_PATH_PREFIXES: tuple[str, ...] = (
     "/health",
     "/api/v1/auth/login",
     "/api/v1/auth/token",
+    "/api/v1/auth/settings",
+    "/api/v1/auth/rbac/roles",
     "/api/v1/docs",
     "/api/v1/redoc",
     "/api/v1/openapi.json",
     "/api/v1/schema",  # Schema metadata must be public for dynamic UI
+    "/api/v1/generated/metrics",  # Prometheus scrape endpoint
 )
 
 
-# --------------------------------------------------------------------------- #
-#  Middleware                                                                   #
-# --------------------------------------------------------------------------- #
-
 class AuthMiddleware(BaseHTTPMiddleware):
-    """Starlette middleware that authenticates requests via JWT Bearer tokens.
+    """Authenticates requests via JWT or API tokens and builds full AuthContext.
 
-    Args:
-        app: The ASGI application to wrap.
-        secret_key: HMAC key used to verify token signatures.
-        algorithm: JWT signing algorithm (default ``"HS256"``).
-        public_paths: Additional path prefixes that should be publicly
-            accessible without a token.
+    After token validation, loads group memberships and object permissions
+    from Neo4j so the PermissionChecker can enforce schema-driven per-model
+    and per-field access control.
     """
 
     def __init__(
@@ -62,20 +58,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         self._algorithm = algorithm
         self._public_paths = _PUBLIC_PATH_PREFIXES + (public_paths or ())
 
-    # ------------------------------------------------------------------ #
-
     async def dispatch(
         self,
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
-        """Extract and validate the JWT, then forward the request."""
-
-        # Always allow CORS preflight (OPTIONS) through — CORSMiddleware handles these.
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Allow public endpoints through without authentication.
         if self._is_public(request.url.path):
             return await call_next(request)
 
@@ -89,7 +79,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         token = parts[1]
 
-        # Try JWT first, then fall back to API token lookup
         if self._looks_like_jwt(token):
             try:
                 payload = decode_token(
@@ -112,30 +101,75 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 token_type="access",
             )
         else:
-            # API token: resolve from Neo4j via app state
             auth_context = await self._resolve_api_token(request, token)
             if auth_context is None:
                 return self._unauthorized("Invalid API token")
 
+        # Load groups and object permissions from Neo4j
+        auth_context = await self._enrich_auth_context(request, auth_context)
+
         request.state.auth_context = auth_context
         return await call_next(request)
 
-    # ------------------------------------------------------------------ #
-    #  Helpers                                                             #
-    # ------------------------------------------------------------------ #
-
     def _is_public(self, path: str) -> bool:
-        """Return ``True`` if *path* matches a public prefix."""
         return any(path.startswith(prefix) for prefix in self._public_paths)
 
     @staticmethod
     def _looks_like_jwt(token: str) -> bool:
-        """JWTs have 3 dot-separated base64 segments."""
         return token.count(".") == 2
 
     @staticmethod
+    async def _enrich_auth_context(request: Request, ctx: AuthContext) -> AuthContext:
+        """Load group memberships and object permissions from Neo4j.
+
+        This is the critical step that enables schema-driven per-model
+        access control. Without it, object_permissions would be empty
+        and group-based RBAC would not work.
+        """
+        driver = getattr(request.app.state, "neo4j_driver", None)
+        if driver is None:
+            return ctx
+
+        try:
+            import json
+
+            # Load groups
+            groups_result = await driver.execute_read(
+                "MATCH (u:_User {id: $uid})-[:MEMBER_OF]->(g:_Group) RETURN g.name as name",
+                {"uid": ctx.user_id},
+            )
+            groups = [row["name"] for row in groups_result.rows]
+
+            # Load object permissions from all groups
+            perms_result = await driver.execute_read(
+                "MATCH (u:_User {id: $uid})-[:MEMBER_OF]->(g:_Group)"
+                "-[:HAS_PERMISSION]->(p:_ObjectPermission) "
+                "WHERE p.enabled = true "
+                "RETURN DISTINCT p",
+                {"uid": ctx.user_id},
+            )
+            object_perms = []
+            for row in perms_result.rows:
+                p = row["p"]
+                for field in ["object_types", "allowed_jobs"]:
+                    val = p.get(field, "[]")
+                    if isinstance(val, str):
+                        try:
+                            p[field] = json.loads(val)
+                        except (json.JSONDecodeError, TypeError):
+                            p[field] = []
+                object_perms.append(p)
+
+            ctx.groups = groups
+            ctx.object_permissions = object_perms
+
+        except Exception as e:
+            logger.warning("auth.enrich_failed", user_id=ctx.user_id, error=str(e))
+
+        return ctx
+
+    @staticmethod
     async def _resolve_api_token(request: Request, token: str) -> AuthContext | None:
-        """Look up an API token in Neo4j and return an AuthContext."""
         import hashlib
         driver = getattr(request.app.state, "neo4j_driver", None)
         if driver is None:
@@ -154,7 +188,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
         t = result.rows[0].get("t", {})
         u = result.rows[0].get("u", {})
 
-        # Update last_used timestamp (fire and forget)
         from datetime import datetime, timezone
         try:
             await driver.execute_write(
@@ -172,11 +205,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
             role=u.get("role", "viewer"),
             permissions=permissions,
             token_type="api_token",
+            auth_backend=u.get("auth_backend", "local"),
         )
 
     @staticmethod
     def _unauthorized(message: str) -> JSONResponse:
-        """Return a 401 JSON response."""
         return JSONResponse(
             status_code=401,
             content={
@@ -194,13 +227,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 # --------------------------------------------------------------------------- #
 
 def get_auth_context(request: Request) -> AuthContext:
-    """FastAPI dependency — return the current :class:`AuthContext`.
-
-    Must be used on protected routes (behind :class:`AuthMiddleware`).
-
-    Raises:
-        AuthenticationError: If no auth context is present on the request.
-    """
+    """FastAPI dependency — return the current AuthContext with groups and permissions loaded."""
     auth_context: AuthContext | None = getattr(request.state, "auth_context", None)
     if auth_context is None:
         raise AuthenticationError("Authentication required")
@@ -208,9 +235,5 @@ def get_auth_context(request: Request) -> AuthContext:
 
 
 def get_optional_auth_context(request: Request) -> AuthContext | None:
-    """FastAPI dependency — return the :class:`AuthContext` or ``None``.
-
-    Useful for endpoints that behave differently for authenticated vs.
-    anonymous callers.
-    """
+    """FastAPI dependency — return the AuthContext or None."""
     return getattr(request.state, "auth_context", None)
