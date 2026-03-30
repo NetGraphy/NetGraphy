@@ -9,6 +9,7 @@ provider and model based on tenant, use case, and routing policy.
 
 from __future__ import annotations
 
+import json
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -237,7 +238,24 @@ class OpenAICompatibleProvider(BaseProvider):
         client = openai.AsyncOpenAI(**client_kwargs)
         start = time.monotonic()
 
-        api_messages = [{"role": m.role, "content": m.content} for m in messages]
+        api_messages = []
+        for m in messages:
+            msg: dict[str, Any] = {"role": m.role, "content": m.content or ""}
+            if m.role == "assistant" and m.tool_calls:
+                # OpenAI requires tool_calls on the assistant message
+                msg["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {"name": tc.name, "arguments": json.dumps(tc.arguments) if isinstance(tc.arguments, dict) else tc.arguments},
+                    }
+                    for tc in m.tool_calls
+                ]
+            if m.role == "tool" and m.tool_call_id:
+                msg["tool_call_id"] = m.tool_call_id
+                msg["name"] = m.name or ""
+            api_messages.append(msg)
+
         api_tools = None
         if tools:
             api_tools = [
@@ -258,7 +276,6 @@ class OpenAICompatibleProvider(BaseProvider):
         choice = response.choices[0]
         tool_calls = []
         if choice.message.tool_calls:
-            import json
             for tc in choice.message.tool_calls:
                 args = tc.function.arguments
                 if isinstance(args, str):
