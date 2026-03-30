@@ -22,6 +22,7 @@ const SPECIAL_SECTIONS = [
     items: [
       { label: "Jobs", path: "/jobs" },
       { label: "Parsers", path: "/parsers" },
+      { label: "Jinja2 Filters", path: "/filters" },
       { label: "Ingestion Runs", path: "/ingestion" },
     ],
   },

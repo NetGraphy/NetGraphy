@@ -1,5 +1,5 @@
 kind: CommandBundle
-version: v1
+version: v2
 metadata:
   name: cisco_ios_base
   description: "Base fact collection for Cisco IOS/IOS-XE devices"
@@ -8,26 +8,25 @@ metadata:
 
 commands:
   - command: "show version"
+    collector_type: cli
     parser: cisco_ios_show_version
     mapping: cisco_ios_version_to_graph
     description: "Collect device hardware, software, and hostname info"
 
-  - command: "show interfaces"
-    parser: cisco_ios_show_interfaces
-    mapping: cisco_ios_interfaces_to_graph
-    description: "Collect interface status and counters"
-
   - command: "show ip interface brief"
+    collector_type: cli
     parser: cisco_ios_show_ip_int_brief
     mapping: cisco_ios_ip_int_brief_to_graph
-    description: "Collect interface IP addresses and status"
+    description: "Collect interface IP and status summary"
 
   - command: "show cdp neighbors detail"
+    collector_type: cli
     parser: cisco_ios_show_cdp_neighbors_detail
     mapping: cisco_ios_cdp_to_graph
     description: "Discover physical connections via CDP"
 
   - command: "show inventory"
+    collector_type: cli
     parser: cisco_ios_show_inventory
     mapping: cisco_ios_inventory_to_graph
-    description: "Collect hardware inventory (modules, power supplies, fans)"
+    description: "Collect hardware inventory (modules, PSUs, SFPs)"

@@ -1245,6 +1245,163 @@ def seed_circuits():
              "active", 100_000, 100_000, "SEA-BR1")
 
 
+def seed_parsers_and_ingestion():
+    """Register TextFSM parsers, command bundles, mappings, and custom filters.
+
+    Creates _Parser, _CommandBundle, _MappingDef, and _JinjaFilter nodes via
+    the API so the ingestion pipeline has working seed data for testing.
+    """
+    import json as _json
+    import pathlib
+    import yaml
+
+    print("\n=== Parsers & Ingestion Pipeline ===")
+
+    parsers_root = pathlib.Path(__file__).resolve().parent.parent / "parsers"
+
+    # ---- 1. Register TextFSM parsers via POST /parsers ----
+    parser_defs = [
+        {
+            "name": "cisco_ios_show_version",
+            "platform": "cisco_ios",
+            "command": "show version",
+            "description": "Parse Cisco IOS 'show version' output",
+            "template_file": "templates/cisco_ios_show_version.textfsm",
+        },
+        {
+            "name": "cisco_ios_show_ip_int_brief",
+            "platform": "cisco_ios",
+            "command": "show ip interface brief",
+            "description": "Parse Cisco IOS 'show ip interface brief' output",
+            "template_file": "templates/cisco_ios_show_ip_int_brief.textfsm",
+        },
+        {
+            "name": "cisco_ios_show_inventory",
+            "platform": "cisco_ios",
+            "command": "show inventory",
+            "description": "Parse Cisco IOS 'show inventory' output",
+            "template_file": "templates/cisco_ios_show_inventory.textfsm",
+        },
+        {
+            "name": "cisco_ios_show_cdp_neighbors_detail",
+            "platform": "cisco_ios",
+            "command": "show cdp neighbors detail",
+            "description": "Parse Cisco IOS 'show cdp neighbors detail' output",
+            "template_file": "templates/cisco_ios_show_cdp_neighbors_detail.textfsm",
+        },
+    ]
+
+    for pdef in parser_defs:
+        tpl_path = parsers_root / pdef["template_file"]
+        if not tpl_path.exists():
+            print(f"  WARN template not found: {tpl_path}")
+            continue
+        template_content = tpl_path.read_text()
+        body = {
+            "name": pdef["name"],
+            "platform": pdef["platform"],
+            "command": pdef["command"],
+            "description": pdef["description"],
+            "template": template_content,
+        }
+        resp = SESSION.post(f"{BASE_URL}/parsers", json=body)
+        if resp.status_code == 201:
+            print(f"  Parser registered: {pdef['name']}")
+        else:
+            print(f"  WARN parser {pdef['name']}: {resp.status_code} {resp.text[:200]}")
+
+    # ---- 2. Register command bundles via Cypher ----
+    bundle_files = [
+        "commands/cisco_ios_base.yaml",
+        "commands/f5_ltm_base.yaml",
+    ]
+
+    for bf in bundle_files:
+        bf_path = parsers_root / bf
+        if not bf_path.exists():
+            print(f"  WARN bundle not found: {bf_path}")
+            continue
+        bundle = yaml.safe_load(bf_path.read_text())
+        meta = bundle.get("metadata", {})
+        bundle_name = meta.get("name", bf)
+        cypher = (
+            "MERGE (cb:_CommandBundle {name: $name}) "
+            "SET cb.description = $description, cb.platform = $platform, "
+            "    cb.tags = $tags, cb.version = $version, "
+            "    cb.commands_json = $commands_json, cb.managed_by = 'seed'"
+        )
+        params = {
+            "name": bundle_name,
+            "description": meta.get("description", ""),
+            "platform": meta.get("platform", ""),
+            "tags": meta.get("tags", []),
+            "version": bundle.get("version", "v2"),
+            "commands_json": _json.dumps(bundle.get("commands", [])),
+        }
+        resp = SESSION.post(f"{BASE_URL}/query/cypher", json={"query": cypher, "parameters": params})
+        if resp.status_code == 200:
+            print(f"  CommandBundle registered: {bundle_name}")
+        else:
+            print(f"  WARN bundle {bundle_name}: {resp.status_code} {resp.text[:200]}")
+
+    # ---- 3. Register mapping definitions via Cypher ----
+    mapping_files = [
+        "mappings/cisco_ios_version_to_graph.yaml",
+        "mappings/cisco_ios_inventory_to_graph.yaml",
+        "mappings/cisco_ios_cdp_to_graph.yaml",
+    ]
+
+    for mf in mapping_files:
+        mf_path = parsers_root / mf
+        if not mf_path.exists():
+            print(f"  WARN mapping not found: {mf_path}")
+            continue
+        mapping = yaml.safe_load(mf_path.read_text())
+        meta = mapping.get("metadata", {})
+        mapping_name = meta.get("name", mf)
+        cypher = (
+            "MERGE (m:_MappingDef {name: $name}) "
+            "SET m.description = $description, m.parser = $parser, "
+            "    m.platform = $platform, m.version = $version, "
+            "    m.definition_json = $definition_json, m.managed_by = 'seed'"
+        )
+        params = {
+            "name": mapping_name,
+            "description": meta.get("description", ""),
+            "parser": meta.get("parser", ""),
+            "platform": meta.get("platform", ""),
+            "version": mapping.get("version", "v2"),
+            "definition_json": _json.dumps(mapping.get("mappings", [])),
+        }
+        resp = SESSION.post(f"{BASE_URL}/query/cypher", json={"query": cypher, "parameters": params})
+        if resp.status_code == 200:
+            print(f"  MappingDef registered: {mapping_name}")
+        else:
+            print(f"  WARN mapping {mapping_name}: {resp.status_code} {resp.text[:200]}")
+
+    # ---- 4. Register custom Jinja2 filter via Cypher ----
+    filter_path = parsers_root / "filters" / "network_filters.py"
+    if filter_path.exists():
+        source = filter_path.read_text()
+        cypher = (
+            "MERGE (f:_JinjaFilter {name: $name}) "
+            "SET f.python_source = $source, f.description = $description, "
+            "    f.is_active = true, f.managed_by = 'seed'"
+        )
+        params = {
+            "name": "classify_inventory_type",
+            "source": source,
+            "description": "Classify inventory item NAME into item_type enum value",
+        }
+        resp = SESSION.post(f"{BASE_URL}/query/cypher", json={"query": cypher, "parameters": params})
+        if resp.status_code == 200:
+            print("  JinjaFilter registered: classify_inventory_type")
+        else:
+            print(f"  WARN filter classify_inventory_type: {resp.status_code} {resp.text[:200]}")
+    else:
+        print(f"  WARN filter file not found: {filter_path}")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -1270,6 +1427,7 @@ def main():
     seed_cloud()
     seed_services()
     seed_architectures()
+    seed_parsers_and_ingestion()
     seed_cables_and_connections()
     seed_circuits()
 

@@ -1,0 +1,7 @@
+Value INTERFACE (\S+)
+Value IPADDRESS (\d+\.\d+\.\d+\.\d+|\w+)
+Value STATUS (up|down|administratively down)
+Value PROTOCOL (up|down)
+
+Start
+  ^${INTERFACE}\s+${IPADDRESS}\s+\S+\s+\S+\s+${STATUS}\s+${PROTOCOL} -> Record

@@ -1,0 +1,24 @@
+kind: MappingDefinition
+version: v2
+metadata:
+  name: cisco_ios_cdp_to_graph
+  description: "Maps CDP neighbor discovery to CONNECTED_TO edges"
+  parser: cisco_ios_show_cdp_neighbors_detail
+  platform: cisco_ios
+
+mappings:
+  - target_node_type: Device
+    match_on: [hostname]
+    attributes:
+      hostname: "{{ parsed.NEIGHBOR_NAME | extract_hostname }}"
+      management_ip: "{{ parsed.MANAGEMENT_IP }}"
+
+  - target_edge_type: CONNECTED_TO
+    source:
+      node_type: Interface
+      match_on:
+        name: "{{ parsed.LOCAL_INTERFACE | normalize_interface_name }}"
+    target:
+      node_type: Interface
+      match_on:
+        name: "{{ parsed.NEIGHBOR_INTERFACE | normalize_interface_name }}"

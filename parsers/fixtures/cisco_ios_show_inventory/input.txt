@@ -1,0 +1,14 @@
+NAME: "Chassis", DESCR: "Cisco ISR4321/K9 chassis"
+PID: ISR4321/K9        , VID: V04  , SN: FDO2234N0P1
+
+NAME: "Power Supply Module 0", DESCR: "Cisco ISR4321 AC Power Supply"
+PID: PWR-4320-AC       , VID: V02  , SN: DCA2234P001
+
+NAME: "Fan Tray", DESCR: "Cisco ISR4321 Fan Assembly"
+PID: ACS-4320-FAN      , VID: V01  , SN: N/A
+
+NAME: "module 0", DESCR: "Cisco ISR4321 Built-In NIM controller"
+PID: ISR4321-NIM       , VID: V01  , SN: FOC2134M001
+
+NAME: "NIM subslot 0/0", DESCR: "NIM-2GE-CU-SFP - 2-port GE WAN NIM"
+PID: NIM-2GE-CU-SFP   , VID: V01  , SN: FOC2134N001

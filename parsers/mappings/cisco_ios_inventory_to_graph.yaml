@@ -1,0 +1,30 @@
+kind: MappingDefinition
+version: v2
+metadata:
+  name: cisco_ios_inventory_to_graph
+  description: "Maps 'show inventory' to InventoryItem nodes linked to Device"
+  parser: cisco_ios_show_inventory
+  platform: cisco_ios
+
+mappings:
+  - target_node_type: InventoryItem
+    match_on: [name, serial_number]
+    attributes:
+      name: "{{ parsed.NAME }}"
+      part_number: "{{ parsed.PID }}"
+      serial_number: "{{ parsed.SN }}"
+      description: "{{ parsed.DESCR }}"
+      hardware_revision: "{{ parsed.VID }}"
+      item_type: "other"
+      status: "installed"
+
+  - target_edge_type: HAS_INVENTORY_ITEM
+    source:
+      node_type: Device
+      match_on:
+        hostname: "{{ context.hostname }}"
+    target:
+      node_type: InventoryItem
+      match_on:
+        name: "{{ parsed.NAME }}"
+        serial_number: "{{ parsed.SN }}"

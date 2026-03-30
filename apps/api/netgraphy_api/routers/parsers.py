@@ -195,3 +195,179 @@ async def list_mappings(
         "MATCH (m:_MappingDef) RETURN m ORDER BY m.name", {}
     )
     return {"data": [row["m"] for row in result.rows]}
+
+
+# --------------------------------------------------------------------------- #
+#  Custom Jinja2 Filters                                                       #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/filters")
+async def list_filters(
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """List all custom Jinja2 filters."""
+    result = await driver.execute_read(
+        "MATCH (f:_JinjaFilter) RETURN f ORDER BY f.name", {}
+    )
+    filters = [
+        {
+            "id": row["f"]["id"],
+            "name": row["f"]["name"],
+            "description": row["f"].get("description", ""),
+            "python_source": row["f"]["python_source"],
+            "is_active": row["f"].get("is_active", True),
+            "created_at": row["f"].get("created_at"),
+        }
+        for row in result.rows
+    ]
+    return {"data": filters}
+
+
+@router.post("/filters", status_code=201)
+async def create_filter(
+    body: dict[str, Any],
+    driver: Neo4jDriver = Depends(get_graph_driver),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Create or update a custom Jinja2 filter. Validates Python source via AST."""
+    from packages.ingestion.mappers.custom_filters import CustomFilterLoader
+
+    name = body.get("name", "")
+    source = body.get("python_source", "")
+    description = body.get("description", "")
+
+    # Validate AST safety
+    errors = CustomFilterLoader.validate_filter_source(source)
+    if errors:
+        raise HTTPException(status_code=400, detail={"validation_errors": errors})
+
+    # Test compilation
+    try:
+        CustomFilterLoader.load_from_source(name, source)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail={"compilation_error": str(e)})
+
+    # Upsert to Neo4j
+    filter_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    await driver.execute_write(
+        "MERGE (f:_JinjaFilter {name: $name}) "
+        "ON CREATE SET f.id = $id, f.created_at = $now "
+        "SET f.python_source = $source, f.description = $desc, "
+        "    f.is_active = true, f.updated_at = $now, f.updated_by = $user",
+        {
+            "name": name,
+            "id": filter_id,
+            "source": source,
+            "desc": description,
+            "now": now,
+            "user": actor.username,
+        },
+    )
+    return {"data": {"name": name, "message": "Filter saved"}}
+
+
+@router.delete("/filters/{filter_name}", status_code=204)
+async def delete_filter(
+    filter_name: str,
+    driver: Neo4jDriver = Depends(get_graph_driver),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Delete a custom filter."""
+    await driver.execute_write(
+        "MATCH (f:_JinjaFilter {name: $name}) DELETE f",
+        {"name": filter_name},
+    )
+
+
+@router.post("/filters/{filter_name}/test")
+async def test_filter(
+    filter_name: str,
+    body: dict[str, Any],
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Test a filter with sample input."""
+    from packages.ingestion.mappers.custom_filters import CustomFilterLoader
+
+    # Load filter source from Neo4j
+    result = await driver.execute_read(
+        "MATCH (f:_JinjaFilter {name: $name}) RETURN f",
+        {"name": filter_name},
+    )
+    if not result.rows:
+        raise HTTPException(status_code=404, detail="Filter not found")
+
+    source = result.rows[0]["f"]["python_source"]
+    fn = CustomFilterLoader.load_from_source(filter_name, source)
+
+    test_input = body.get("input", "")
+    test_args = body.get("args", {})
+    try:
+        output = fn(test_input, **test_args)
+        return {"data": {"input": test_input, "output": output}}
+    except Exception as e:
+        return {"data": {"input": test_input, "error": str(e)}}
+
+
+# --------------------------------------------------------------------------- #
+#  Test Mapping Chain                                                           #
+# --------------------------------------------------------------------------- #
+
+
+@router.post("/{parser_id}/test-mapping")
+async def test_parser_mapping(
+    parser_id: str,
+    body: dict[str, Any],
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Test the full parse -> map chain. Returns parsed records and generated mutations."""
+    import json as _json
+
+    from packages.ingestion.mappers.jinja2_engine import Jinja2MappingEngine
+
+    raw_output = body.get("raw_output", "")
+
+    # Load parser template
+    result = await driver.execute_read(
+        "MATCH (p:_Parser) WHERE p.id = $id OR p.name = $id RETURN p",
+        {"id": parser_id},
+    )
+    if not result.rows:
+        raise HTTPException(status_code=404, detail="Parser not found")
+
+    template = body.get("template") or result.rows[0]["p"]["template"]
+    parser_name = result.rows[0]["p"]["name"]
+
+    # Parse
+    records = parse_output_from_string(template, raw_output)
+
+    # Load mapping if available
+    mapping_result = await driver.execute_read(
+        "MATCH (m:_MappingDef) WHERE m.parser = $parser RETURN m",
+        {"parser": parser_name},
+    )
+
+    mutations: list[dict[str, Any]] = []
+    if mapping_result.rows:
+        mapping_def = _json.loads(mapping_result.rows[0]["m"]["definition_json"])
+        engine = Jinja2MappingEngine()
+        mapped = engine.render_mapping(mapping_def, records)
+        mutations = [
+            {
+                "operation": m.operation,
+                "node_type": m.node_type,
+                "edge_type": m.edge_type,
+                "match_on": m.match_on,
+                "attributes": m.attributes,
+            }
+            for m in mapped.mutations
+        ]
+
+    return {
+        "data": {
+            "records": records,
+            "record_count": len(records),
+            "mutations": mutations,
+        }
+    }

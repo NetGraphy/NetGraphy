@@ -1,0 +1,12 @@
+Value NEIGHBOR_NAME (\S+)
+Value LOCAL_INTERFACE (.+?)
+Value NEIGHBOR_INTERFACE (.+?)
+Value MANAGEMENT_IP (\d+\.\d+\.\d+\.\d+)
+Value PLATFORM (.+?)
+Value CAPABILITY (.+?)
+
+Start
+  ^Device\s+ID:\s+${NEIGHBOR_NAME} -> Continue
+  ^\s+IP\s+address:\s+${MANAGEMENT_IP}
+  ^Platform:\s+${PLATFORM}\s*,\s*Capabilities:\s+${CAPABILITY}
+  ^Interface:\s+${LOCAL_INTERFACE}\s*,\s*Port\s+ID\s+\(outgoing\s+port\):\s+${NEIGHBOR_INTERFACE} -> Record

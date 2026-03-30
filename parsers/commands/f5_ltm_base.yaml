@@ -1,0 +1,28 @@
+kind: CommandBundle
+version: v2
+metadata:
+  name: f5_ltm_base
+  description: "Collect virtual servers and pools from F5 LTM via REST API"
+  platform: f5_ltm
+  tags: [f5, ltm, load-balancer, api]
+
+commands:
+  - command: "virtual_servers"
+    collector_type: api
+    method: GET
+    url_template: "/mgmt/tm/ltm/virtual"
+    response_path: "items"
+    auth_type: basic
+    parser: f5_ltm_virtual_servers
+    mapping: f5_ltm_virtual_to_graph
+    description: "Collect virtual server configuration"
+
+  - command: "pools"
+    collector_type: api
+    method: GET
+    url_template: "/mgmt/tm/ltm/pool"
+    response_path: "items"
+    auth_type: basic
+    parser: f5_ltm_pools
+    mapping: f5_ltm_pools_to_graph
+    description: "Collect pool and member status"

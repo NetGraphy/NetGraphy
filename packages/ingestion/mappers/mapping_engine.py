@@ -6,14 +6,19 @@ to produce node and edge upsert operations for the graph database.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import Any
 
 import structlog
 import yaml
+from jinja2.sandbox import SandboxedEnvironment
 
 logger = structlog.get_logger()
+
+# Module-level sandboxed Jinja2 environment for resolve_template().
+# This replaces the previous regex-based resolver and is fully backward-
+# compatible because ``{{ parsed.HOSTNAME }}`` is valid Jinja2 syntax.
+_env = SandboxedEnvironment()
 
 
 @dataclass
@@ -43,19 +48,15 @@ def load_mapping(path: str) -> dict[str, Any]:
 
 
 def resolve_template(template: str, parsed_record: dict[str, Any]) -> str:
-    """Resolve a Jinja-like template expression against parsed data.
+    """Resolve a Jinja2 template expression against parsed data.
 
-    Supports simple {{ parsed.field_name }} syntax.
+    The ``parsed_record`` dict is exposed inside the template as ``parsed``,
+    so ``{{ parsed.HOSTNAME }}`` renders the ``HOSTNAME`` field.  This is
+    backward-compatible with the previous regex-based resolver and now
+    supports the full Jinja2 feature set (filters, conditionals, etc.).
     """
-    def replacer(match):
-        expr = match.group(1).strip()
-        if expr.startswith("parsed."):
-            field_name = expr[len("parsed."):]
-            value = parsed_record.get(field_name, "")
-            return str(value) if value is not None else ""
-        return match.group(0)
-
-    return re.sub(r"\{\{\s*(.+?)\s*\}\}", replacer, template)
+    tmpl = _env.from_string(template)
+    return tmpl.render(parsed=parsed_record)
 
 
 def apply_mapping(

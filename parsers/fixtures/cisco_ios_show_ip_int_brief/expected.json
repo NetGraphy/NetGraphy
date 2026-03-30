@@ -1,0 +1,7 @@
+[
+  {"INTERFACE": "GigabitEthernet0/0/0", "IPADDRESS": "10.1.1.1", "STATUS": "up", "PROTOCOL": "up"},
+  {"INTERFACE": "GigabitEthernet0/0/1", "IPADDRESS": "10.1.2.1", "STATUS": "up", "PROTOCOL": "up"},
+  {"INTERFACE": "GigabitEthernet0/0/2", "IPADDRESS": "unassigned", "STATUS": "administratively down", "PROTOCOL": "down"},
+  {"INTERFACE": "Loopback0", "IPADDRESS": "10.1.255.1", "STATUS": "up", "PROTOCOL": "up"},
+  {"INTERFACE": "Management0", "IPADDRESS": "10.1.0.1", "STATUS": "up", "PROTOCOL": "up"}
+]
