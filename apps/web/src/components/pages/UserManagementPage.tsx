@@ -288,7 +288,7 @@ function CreateUserForm({ onSubmit, isPending, error }: { onSubmit: (u: Record<s
         {[
           { key: "username", label: "Username" },
           { key: "email", label: "Email" },
-          { key: "password", label: "Password", type: "password" },
+          { key: "password", label: "Password (min 8 chars)", type: "password" },
           { key: "first_name", label: "First Name" },
           { key: "last_name", label: "Last Name" },
         ].map((f) => (
@@ -307,7 +307,7 @@ function CreateUserForm({ onSubmit, isPending, error }: { onSubmit: (u: Record<s
           </select>
         </div>
       </div>
-      {error && <div className="mt-2 text-sm text-red-500">{String(error)}</div>}
+      {error && <div className="mt-2 text-sm text-red-500">{extractErrorMessage(error)}</div>}
       <div className="mt-3 flex justify-end">
         <button onClick={() => onSubmit(form)} disabled={isPending || !form.username || !form.password}
           className="rounded bg-brand-600 px-4 py-1.5 text-sm text-white hover:bg-brand-700 disabled:opacity-50">
@@ -787,6 +787,21 @@ function AuthConfigTab() {
       </div>
     </div>
   );
+}
+
+function extractErrorMessage(error: unknown): string {
+  const err = error as { response?: { data?: { detail?: unknown } } };
+  const detail = err?.response?.data?.detail;
+  if (Array.isArray(detail)) {
+    // Pydantic validation errors: [{loc: [...], msg: "...", type: "..."}]
+    return detail.map((e: { loc?: string[]; msg?: string }) => {
+      const field = e.loc?.slice(-1)[0] || "field";
+      return `${field}: ${e.msg}`;
+    }).join("; ");
+  }
+  if (typeof detail === "string") return detail;
+  if (typeof detail === "object" && detail !== null) return JSON.stringify(detail);
+  return String(error);
 }
 
 function RoleBadge({ role }: { role: string }) {
