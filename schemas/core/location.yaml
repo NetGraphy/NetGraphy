@@ -129,3 +129,12 @@ permissions:
   default_read: authenticated
   default_write: editor
   default_delete: admin
+
+query:
+  default_list_fields: [name, location_type, status, city, country]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  primary_search_fields: [name, city, country]
+  relationship_filters_enabled: true
+  max_traversal_depth: 3

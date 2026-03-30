@@ -71,7 +71,7 @@ async def list_mcp_tools(
     GPT, etc.) to enable AI interaction with the graph.
 
     Filters:
-        category: crud | search | relationship | traversal
+        category: crud | query | aggregate | lookup | search | relationship | traversal
         node_type: Filter tools for a specific node type
     """
     manifest = engine.generate()

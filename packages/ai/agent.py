@@ -306,120 +306,52 @@ class AgentRuntime:
         return step
 
     async def _route_tool_call(self, tc: ToolCall, actor: AuthContext) -> Any:
-        """Route a tool call to the platform's CRUD/query operations."""
+        """Route a tool call to the platform's query engine or CRUD operations.
+
+        New query/find/count/lookup tools are routed through the MCPToolExecutor
+        which provides relationship-aware filtering and safe pagination.
+        Legacy CRUD tools are also handled by the executor.
+        """
+        from packages.query_engine.tool_executor import MCPToolExecutor
+
         name = tc.name
         args = tc.arguments
 
-        # Node CRUD tools
-        if name.startswith("create_"):
-            node_type = self._resolve_node_type(name[7:])
+        # Permission pre-check based on tool name pattern
+        self._check_tool_permission(name, actor)
+
+        # Route all tools through the MCPToolExecutor
+        executor = MCPToolExecutor(self._driver, self._registry)
+        return await executor.execute_tool(name, args)
+
+    def _check_tool_permission(self, tool_name: str, actor: AuthContext) -> None:
+        """Pre-check permissions before tool execution (defense in depth)."""
+        # Write operations
+        if any(tool_name.startswith(p) for p in ("create_", "update_", "delete_", "connect_", "disconnect_")):
+            node_type = self._resolve_node_type_from_tool(tool_name)
             if node_type:
                 self._rbac.require_permission(actor, "write", f"node:{node_type}")
-                return await self._create_node(node_type, args, actor)
+            return
 
-        if name.startswith("get_"):
-            node_type = self._resolve_node_type(name[4:])
-            if node_type and "id" in args:
-                self._rbac.require_permission(actor, "read", f"node:{node_type}")
-                return await self._get_node(node_type, args["id"])
+        # Read operations (query, find, count, get, list, search, lookup)
+        node_type = self._resolve_node_type_from_tool(tool_name)
+        if node_type:
+            self._rbac.require_permission(actor, "read", f"node:{node_type}")
 
-        if name.startswith("list_"):
-            node_type = self._resolve_node_type_plural(name[5:])
-            if node_type:
-                self._rbac.require_permission(actor, "read", f"node:{node_type}")
-                return await self._list_nodes(node_type, args)
-
-        if name.startswith("delete_"):
-            node_type = self._resolve_node_type(name[7:])
-            if node_type and "id" in args:
-                self._rbac.require_permission(actor, "write", f"node:{node_type}")
-                return await self._delete_node(node_type, args["id"])
-
-        if name.startswith("connect_"):
-            return await self._handle_connect(name, args, actor)
-
-        if name.startswith("search_"):
-            node_type = self._resolve_node_type_plural(name[7:])
-            if node_type:
-                self._rbac.require_permission(actor, "read", f"node:{node_type}")
-                return await self._search_nodes(node_type, args.get("query", ""), args.get("limit", 10))
-
-        return {"error": f"Unknown tool: {name}", "type": "unknown_tool"}
-
-    # --- Node operations ---
-
-    async def _create_node(self, node_type: str, properties: dict, actor: AuthContext) -> dict:
-        now = datetime.now(timezone.utc).isoformat()
-        props = {**properties, "id": str(uuid.uuid4()), "created_at": now, "updated_at": now,
-                 "created_by": actor.username, "updated_by": actor.username}
-        await self._driver.execute_write(
-            f"CREATE (n:{node_type} $props) RETURN n", {"props": props}
-        )
-        return {"id": props["id"], "node_type": node_type, "created": True}
-
-    async def _get_node(self, node_type: str, node_id: str) -> dict:
-        result = await self._driver.execute_read(
-            f"MATCH (n:{node_type} {{id: $id}}) RETURN n", {"id": node_id}
-        )
-        return result.rows[0]["n"] if result.rows else {"error": "Not found"}
-
-    async def _list_nodes(self, node_type: str, args: dict) -> dict:
-        page = args.get("page", 1)
-        page_size = min(args.get("page_size", 25), 100)
-        skip = (page - 1) * page_size
-
-        # Build filter conditions
-        filters = {k: v for k, v in args.items() if k not in ("page", "page_size", "sort")}
-        where = ""
-        params: dict[str, Any] = {"skip": skip, "limit": page_size}
-        if filters:
-            conditions = []
-            for i, (k, v) in enumerate(filters.items()):
-                param = f"f{i}"
-                conditions.append(f"n.{k} = ${param}")
-                params[param] = v
-            where = " WHERE " + " AND ".join(conditions)
-
-        result = await self._driver.execute_read(
-            f"MATCH (n:{node_type}){where} RETURN n SKIP $skip LIMIT $limit", params
-        )
-        return {"items": [row["n"] for row in result.rows], "count": len(result.rows)}
-
-    async def _delete_node(self, node_type: str, node_id: str) -> dict:
-        await self._driver.execute_write(
-            f"MATCH (n:{node_type} {{id: $id}}) DETACH DELETE n", {"id": node_id}
-        )
-        return {"id": node_id, "deleted": True}
-
-    async def _search_nodes(self, node_type: str, query: str, limit: int) -> dict:
-        nt = self._registry.get_node_type(node_type)
-        if not nt or not nt.search.search_fields:
-            return {"items": [], "query": query}
-
-        conditions = " OR ".join(f"toLower(n.{f}) CONTAINS toLower($q)" for f in nt.search.search_fields)
-        result = await self._driver.execute_read(
-            f"MATCH (n:{node_type}) WHERE {conditions} RETURN n LIMIT $limit",
-            {"q": query, "limit": limit},
-        )
-        return {"items": [row["n"] for row in result.rows], "query": query}
-
-    async def _handle_connect(self, tool_name: str, args: dict, actor: AuthContext) -> dict:
-        source_id = args.get("source_id", "")
-        target_id = args.get("target_id", "")
-        if not source_id or not target_id:
-            return {"error": "source_id and target_id required"}
-
-        # Parse edge type from tool name (connect_x_to_y maps to edge)
-        for et in self._registry._edge_types.values():
-            self._rbac.require_permission(actor, "write", f"edge:{et.metadata.name}")
-            await self._driver.execute_write(
-                f"MATCH (a {{id: $src}}), (b {{id: $tgt}}) "
-                f"MERGE (a)-[:{et.metadata.name}]->(b)",
-                {"src": source_id, "tgt": target_id},
-            )
-            return {"connected": True, "edge_type": et.metadata.name}
-
-        return {"error": "Could not resolve edge type"}
+    def _resolve_node_type_from_tool(self, tool_name: str) -> str | None:
+        """Resolve the node type a tool operates on."""
+        # Strip known prefixes
+        for prefix in ("query_", "find_", "count_", "create_", "get_",
+                        "list_", "update_", "delete_", "search_"):
+            if tool_name.startswith(prefix):
+                slug = tool_name[len(prefix):]
+                # For find_ tools, extract the entity part (find_devices_by_location → devices)
+                if prefix == "find_" and "_by_" in slug:
+                    slug = slug.split("_by_")[0]
+                nt = self._resolve_node_type_plural(slug) or self._resolve_node_type(slug)
+                if nt:
+                    return nt
+        return None
 
     # --- Type resolution helpers ---
 
@@ -439,9 +371,16 @@ class AgentRuntime:
         return self._resolve_node_type(slug.rstrip("s"))
 
     def _build_system_prompt(self, custom_instruction: str, actor: AuthContext) -> str:
-        """Build the system prompt with schema context and safety rules."""
+        """Build the system prompt with schema context, query behavior rules, and safety rules."""
         node_types = sorted(self._registry._node_types.keys())
         edge_types = sorted(self._registry._edge_types.keys())
+
+        # Build relationship summary for key types
+        rel_summary: list[str] = []
+        for et in list(self._registry._edge_types.values())[:25]:
+            src = ", ".join(et.source.node_types[:2])
+            tgt = ", ".join(et.target.node_types[:2])
+            rel_summary.append(f"  {et.metadata.name}: {src} → {tgt}")
 
         parts = [
             "You are the NetGraphy AI assistant — an intelligent agent for a graph-native "
@@ -449,17 +388,36 @@ class AgentRuntime:
             "data using the platform's schema-driven tools.",
             "",
             f"Current user: {actor.username} (role: {actor.role})",
-            f"Authentication: {actor.token_type}",
             "",
-            "IMPORTANT SAFETY RULES:",
+            "SAFETY RULES:",
             "- You act strictly as an extension of the authenticated user",
             "- You may NEVER exceed the user's permissions",
             "- You may NEVER fabricate tool results",
             "- For destructive actions (delete), ask for confirmation first",
-            "- Show tool invocations transparently",
+            "",
+            "QUERY BEHAVIOR RULES (CRITICAL):",
+            "- ALWAYS prefer explicit relationship filters over naming conventions",
+            "- NEVER infer location from hostname prefixes when a located_at relationship exists",
+            "- ALWAYS use query_* tools with structured filters for filtered searches",
+            "- ALWAYS use find_*_by_* tools for relationship-based lookups",
+            "- NEVER pull broad data and post-filter — use backend filters",
+            "- ALWAYS ground answers in explicit query results",
+            "- For relationship-based questions (e.g., 'devices in Dallas'), use relationship",
+            "  filter paths like located_in.Location.city, NOT hostname matching",
+            "- For aggregation questions (e.g., 'how many devices'), use count_* tools",
+            "- For exact lookups (e.g., 'find device DAL-RTR01'), use get_*_by_* tools",
+            "",
+            "FILTER PATH SYNTAX:",
+            "- Direct attribute: {\"path\": \"status\", \"operator\": \"eq\", \"value\": \"active\"}",
+            "- Relationship traversal: {\"path\": \"located_in.Location.city\", \"operator\": \"contains\", \"value\": \"Dallas\"}",
+            "- Relationship existence: {\"path\": \"has_interface\", \"operator\": \"exists\"}",
+            "- Relationship count: {\"path\": \"has_interface\", \"operator\": \"count_gt\", \"value\": 10}",
             "",
             f"Available node types ({len(node_types)}): {', '.join(node_types[:30])}{'...' if len(node_types) > 30 else ''}",
             f"Available edge types ({len(edge_types)}): {', '.join(edge_types[:20])}{'...' if len(edge_types) > 20 else ''}",
+            "",
+            "Key relationships:",
+            *rel_summary[:20],
         ]
 
         if custom_instruction:

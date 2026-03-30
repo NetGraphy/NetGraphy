@@ -121,15 +121,29 @@ async def _get_tools_for_user(
             if word in desc:
                 score += 3
 
-        # Always include CRUD tools for core types
+        # Always include tools for core types
         core_types = {"device", "interface", "prefix", "ipaddress", "vlan", "site", "location", "circuit", "provider"}
         if node_type in core_types:
             score += 5
 
-        # Boost list/search tools (most useful for chat)
+        # Strongly boost query/find/count tools (relationship-aware, production grade)
+        if category == "query":
+            score += 6
+        if category == "aggregate":
+            score += 5
+        if category == "lookup":
+            score += 4
         if category in ("crud", "search"):
             score += 2
-        if name.startswith("list_") or name.startswith("search_"):
+
+        # Prefer query tools over list tools
+        if name.startswith("query_"):
+            score += 4
+        elif name.startswith("find_"):
+            score += 3
+        elif name.startswith("count_"):
+            score += 3
+        elif name.startswith("get_") and "_by_" in name:
             score += 3
 
         scored.append((score, tool))

@@ -30,7 +30,7 @@ def load_schema_file(path: Path) -> list[dict[str, Any]]:
 
 def parse_attributes(raw_attrs: dict[str, Any]) -> dict[str, AttributeDefinition]:
     """Parse raw attribute dictionaries into AttributeDefinition models."""
-    from packages.schema_engine.models import AttributeHealthMetadata
+    from packages.schema_engine.models import AttributeHealthMetadata, QueryAttributeMetadata
 
     attributes = {}
     for attr_name, attr_data in (raw_attrs or {}).items():
@@ -38,7 +38,28 @@ def parse_attributes(raw_attrs: dict[str, Any]) -> dict[str, AttributeDefinition
         ui = UIAttributeMetadata(**ui_data) if ui_data else UIAttributeMetadata()
         health_data = attr_data.pop("health", {})
         health = AttributeHealthMetadata(**health_data) if health_data else AttributeHealthMetadata()
-        attributes[attr_name] = AttributeDefinition(name=attr_name, ui=ui, health=health, **attr_data)
+        query_data = attr_data.pop("query", {})
+        query = QueryAttributeMetadata(**query_data) if query_data else QueryAttributeMetadata()
+
+        # Auto-derive query metadata from attribute type and flags
+        attr_type = attr_data.get("type", "string")
+        if not query_data:
+            # String/text types support contains and prefix by default
+            if attr_type in ("string", "text", "ip_address", "cidr", "mac_address", "url", "email"):
+                query.supports_contains = True
+                query.supports_prefix = True
+            # Numeric/date types support range by default
+            if attr_type in ("integer", "float", "datetime", "date"):
+                query.supports_range = True
+            # Indexed fields are filterable and sortable
+            if attr_data.get("indexed"):
+                query.filterable = True
+                query.sortable = True
+            # UI list columns are default return fields
+            if ui_data.get("list_column"):
+                query.default_return_field = True
+
+        attributes[attr_name] = AttributeDefinition(name=attr_name, ui=ui, health=health, query=query, **attr_data)
     return attributes
 
 
@@ -62,6 +83,7 @@ def parse_schema_object(raw: dict[str, Any]) -> NodeTypeDefinition | EdgeTypeDef
             mcp=raw.get("mcp", {}),
             agent=raw.get("agent", {}),
             health=raw.get("health", {}),
+            query=raw.get("query", {}),
         )
 
     elif kind == SchemaKind.EDGE_TYPE:
@@ -81,6 +103,7 @@ def parse_schema_object(raw: dict[str, Any]) -> NodeTypeDefinition | EdgeTypeDef
             mcp=raw.get("mcp", {}),
             agent=raw.get("agent", {}),
             health=raw.get("health", {}),
+            query=raw.get("query", {}),
         )
 
     elif kind == SchemaKind.MIXIN:

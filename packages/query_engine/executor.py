@@ -1,4 +1,10 @@
-"""Query executor — handles Cypher and structured query execution."""
+"""Query executor — handles Cypher, structured, and AST-based query execution.
+
+Supports three query modes:
+1. Raw Cypher — direct execution with read/write routing
+2. Legacy structured queries — JSON DSL (backwards compatible)
+3. QueryAST pipeline — validate → compile → execute (production path)
+"""
 
 from __future__ import annotations
 
@@ -16,6 +22,9 @@ from packages.graph_db.builders.cypher_builder import (
     ReturnField,
 )
 from packages.graph_db.driver import Neo4jDriver
+from packages.query_engine.compiler import QueryCompiler
+from packages.query_engine.models import QueryAST, QueryResult
+from packages.query_engine.validator import QueryValidator, QueryValidationError
 from packages.schema_engine.registry import SchemaRegistry
 
 logger = structlog.get_logger()
@@ -27,6 +36,72 @@ class QueryExecutor:
     def __init__(self, driver: Neo4jDriver, registry: SchemaRegistry):
         self._driver = driver
         self._registry = registry
+        self._validator = QueryValidator(registry)
+        self._compiler = QueryCompiler()
+
+    # ---------------------------------------------------------------------- #
+    #  AST-based query execution (production path)                             #
+    # ---------------------------------------------------------------------- #
+
+    async def execute_ast(self, ast: QueryAST) -> QueryResult:
+        """Execute a query through the full AST pipeline.
+
+        1. Validate against schema (paths, operators, limits)
+        2. Compile to parameterized Cypher
+        3. Execute against Neo4j
+        4. Return structured QueryResult
+        """
+        # Validate
+        resolved_paths = self._validator.validate(ast)
+        default_fields = self._validator.get_default_fields(ast.entity)
+
+        # Compile
+        compiled = self._compiler.compile(ast, resolved_paths, default_fields)
+
+        logger.debug(
+            "ast_query_compiled",
+            entity=ast.entity,
+            cypher=compiled.data_query,
+            param_count=len(compiled.data_params),
+        )
+
+        # Execute data query
+        data_result = await self._driver.execute_read(
+            compiled.data_query, compiled.data_params,
+        )
+
+        # Extract items
+        items = []
+        for row in data_result.rows:
+            if "n" in row and isinstance(row["n"], dict):
+                items.append(row["n"])
+            else:
+                items.append(row)
+
+        # Execute count query
+        total_count = None
+        if compiled.count_query and compiled.count_params is not None:
+            count_result = await self._driver.execute_read(
+                compiled.count_query, compiled.count_params,
+            )
+            if count_result.rows:
+                total_count = count_result.rows[0].get("total", len(items))
+
+        return QueryResult(
+            items=items,
+            total_count=total_count,
+            page_info=ast.pagination,
+            entity=ast.entity,
+            fields_returned=ast.fields or default_fields,
+            query_metadata={
+                "cypher": compiled.data_query,
+                "param_count": len(compiled.data_params),
+            },
+        )
+
+    # ---------------------------------------------------------------------- #
+    #  Raw Cypher execution                                                    #
+    # ---------------------------------------------------------------------- #
 
     async def execute(
         self,
@@ -42,7 +117,6 @@ class QueryExecutor:
             plan = await self._driver.execute_query_plan(query, parameters)
             return {"plan": plan}
 
-        # Determine if this is a read or write query
         query_upper = query.strip().upper()
         is_write = any(
             keyword in query_upper
@@ -56,48 +130,31 @@ class QueryExecutor:
 
         return result.to_dict()
 
+    # ---------------------------------------------------------------------- #
+    #  Legacy structured query execution (backwards compatible)                #
+    # ---------------------------------------------------------------------- #
+
     async def execute_structured(
         self,
         structured_query: dict[str, Any],
     ) -> dict[str, Any]:
         """Convert a structured query definition to Cypher and execute.
 
-        Structured query format:
-        {
-            "node_type": "Device",
-            "filters": [
-                {"field": "status", "operator": "eq", "value": "active"},
-                {"field": "role", "operator": "in", "value": ["router", "switch"]}
-            ],
-            "relationships": [
-                {
-                    "edge_type": "LOCATED_IN",
-                    "direction": "outgoing",
-                    "target_type": "Location",
-                    "target_filters": [...]
-                }
-            ],
-            "return_fields": ["hostname", "management_ip", "status"],
-            "order_by": "hostname",
-            "limit": 50,
-            "include_graph": true
-        }
+        Legacy format — kept for backwards compatibility with existing
+        query workbench and API consumers.
         """
         node_type = structured_query.get("node_type")
         if not node_type:
             raise ValueError("node_type is required")
 
-        # Validate node_type exists
         if not self._registry.get_node_type(node_type):
             raise ValueError(f"Unknown node type: {node_type}")
 
         builder = CypherBuilder()
         params: dict[str, Any] = {}
 
-        # Primary match
         builder.match(MatchPattern("n", [node_type]))
 
-        # Filters
         conditions = []
         for i, f in enumerate(structured_query.get("filters", [])):
             param_key = f"p_{i}"
@@ -131,7 +188,6 @@ class QueryExecutor:
         if conditions:
             builder.where(conditions)
 
-        # Relationship traversals
         for j, rel in enumerate(structured_query.get("relationships", [])):
             rel_var = f"r_{j}"
             target_var = f"m_{j}"
@@ -145,33 +201,28 @@ class QueryExecutor:
                 MatchPattern(target_var, [target_type] if target_type else None),
             )
 
-            # Target filters
             for k, tf in enumerate(rel.get("target_filters", [])):
                 param_key = f"tp_{j}_{k}"
                 conditions.append(Condition(f"{target_var}.{tf['field']} = ${param_key}"))
                 params[param_key] = tf["value"]
 
-        # Return
         return_fields = structured_query.get("return_fields", [])
         if return_fields:
             builder.return_clause([ReturnField(f"n.{f} as {f}") for f in return_fields])
         else:
             builder.return_clause([ReturnField("n")])
 
-        # Order
         if structured_query.get("order_by"):
             order = structured_query["order_by"]
             desc = order.startswith("-")
             field_name = order.lstrip("-")
             builder.order_by([OrderField(f"n.{field_name}", descending=desc)])
 
-        # Pagination
         if structured_query.get("skip"):
             builder.skip(structured_query["skip"])
         if structured_query.get("limit"):
             builder.limit(structured_query["limit"])
 
-        # Set all params
         for k, v in params.items():
             builder.set_param(k, v)
 

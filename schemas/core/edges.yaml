@@ -35,3 +35,9 @@ graph:
 
 api:
   exposed: true
+
+query:
+  traversable: true
+  query_alias: has_interface
+  supports_existence_filter: true
+  supports_count_filter: true

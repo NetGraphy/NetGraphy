@@ -6,15 +6,25 @@ writing type-specific code.
 
 All operations go through NodeService which enforces:
   validate → authorize → execute → audit → emit
+
+The query endpoint (/query/{node_type}) provides the production-grade AST
+pipeline with structured filters, relationship traversal, and pagination.
 """
 
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from netgraphy_api.dependencies import get_node_service, get_auth_context
+from netgraphy_api.dependencies import (
+    get_node_service,
+    get_auth_context,
+    get_graph_driver,
+    get_schema_registry,
+)
 from netgraphy_api.services.node_service import NodeService
 from packages.auth.models import AuthContext
+from packages.graph_db.driver import Neo4jDriver
+from packages.schema_engine.registry import SchemaRegistry
 
 router = APIRouter()
 
@@ -55,6 +65,133 @@ async def list_nodes(
             "total_count": result["total_count"],
             "page": page,
             "page_size": page_size,
+        },
+    }
+
+
+@router.post("/query/{node_type}")
+async def query_nodes(
+    node_type: str,
+    body: dict[str, Any],
+    driver: Neo4jDriver = Depends(get_graph_driver),
+    registry: SchemaRegistry = Depends(get_schema_registry),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Execute a structured query against a node type using the AST pipeline.
+
+    Supports:
+    - Structured filters with relationship traversal
+    - Pagination with safe defaults
+    - Sorting and field selection
+    - Total count
+
+    Body:
+    {
+        "filters": [
+            {"path": "status", "operator": "eq", "value": "active"},
+            {"path": "located_at.Location.city", "operator": "contains", "value": "Dallas"}
+        ],
+        "sort": "hostname",
+        "sort_direction": "asc",
+        "limit": 50,
+        "offset": 0,
+        "fields": ["id", "hostname", "status"],
+        "include_total": true
+    }
+    """
+    from packages.query_engine.models import (
+        FilterCondition,
+        FilterGroup,
+        FilterOperator,
+        LogicalOperator,
+        Pagination,
+        QueryAST,
+        SortDirection,
+        SortField,
+    )
+    from packages.query_engine.validator import QueryValidationError
+    from packages.query_engine.executor import QueryExecutor
+
+    # Build QueryAST from request body
+    conditions = []
+    for f in body.get("filters", []):
+        conditions.append(FilterCondition(
+            path=f.get("path", ""),
+            operator=FilterOperator(f.get("operator", "eq")),
+            value=f.get("value"),
+        ))
+
+    filters = FilterGroup(op=LogicalOperator.AND, conditions=conditions) if conditions else None
+
+    sort_fields = []
+    if body.get("sort"):
+        sort_field = body["sort"]
+        direction = SortDirection(body.get("sort_direction", "asc"))
+        if sort_field.startswith("-"):
+            sort_field = sort_field[1:]
+            direction = SortDirection.DESC
+        sort_fields.append(SortField(field=sort_field, direction=direction))
+
+    nt = registry.get_node_type(node_type)
+    max_page = nt.query.max_page_size if nt else 200
+
+    ast = QueryAST(
+        entity=node_type,
+        filters=filters,
+        sort=sort_fields,
+        pagination=Pagination(
+            limit=min(body.get("limit", 50), max_page),
+            offset=body.get("offset", 0),
+        ),
+        fields=body.get("fields"),
+        include_total=body.get("include_total", True),
+    )
+
+    executor = QueryExecutor(driver, registry)
+
+    try:
+        result = executor._validator.validate(ast)
+    except QueryValidationError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail={"errors": e.errors})
+
+    query_result = await executor.execute_ast(ast)
+
+    return {
+        "data": query_result.items,
+        "meta": {
+            "total_count": query_result.total_count,
+            "limit": ast.pagination.limit,
+            "offset": ast.pagination.offset,
+            "entity": node_type,
+            "fields_returned": query_result.fields_returned,
+        },
+    }
+
+
+@router.get("/query/{node_type}/filter-paths")
+async def get_filter_paths(
+    node_type: str,
+    registry: SchemaRegistry = Depends(get_schema_registry),
+    actor: AuthContext = Depends(get_auth_context),
+):
+    """Return all valid filter paths and operators for a node type.
+
+    Used by the UI query builder and for MCP tool documentation.
+    """
+    from packages.query_engine.validator import QueryValidator
+
+    validator = QueryValidator(registry)
+    paths = validator.get_allowed_filter_paths(node_type)
+    sortable = validator.get_sortable_fields(node_type)
+    defaults = validator.get_default_fields(node_type)
+
+    return {
+        "data": {
+            "entity": node_type,
+            "filter_paths": paths,
+            "sortable_fields": sortable,
+            "default_fields": defaults,
         },
     }
 

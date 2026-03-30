@@ -163,3 +163,13 @@ permissions:
   default_read: authenticated
   default_write: editor
   default_delete: admin
+
+query:
+  default_list_fields: [hostname, status, role, management_ip]
+  default_sort_field: hostname
+  default_page_size: 50
+  max_page_size: 200
+  primary_search_fields: [hostname, management_ip, serial_number]
+  relationship_filters_enabled: true
+  max_traversal_depth: 3
+  max_filter_nesting: 4

@@ -40,6 +40,12 @@ graph:
 api:
   exposed: true
 
+query:
+  traversable: true
+  query_alias: located_in
+  supports_existence_filter: true
+  supports_count_filter: true
+
 ---
 # --------------------------------------------------------------------------- #
 # PARENT_OF — Location → Location (one-to-many, hierarchical)                #
@@ -71,3 +77,9 @@ graph:
 
 api:
   exposed: true
+
+query:
+  traversable: true
+  query_alias: parent_of
+  supports_existence_filter: true
+  supports_count_filter: true

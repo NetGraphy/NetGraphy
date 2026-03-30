@@ -30,6 +30,10 @@ graph:
 api:
   exposed: true
 
+query:
+  traversable: true
+  query_alias: circuit_has_type
+
 ---
 # --------------------------------------------------------------------------- #
 # CIRCUIT_FROM_PROVIDER — Circuit → Provider (many-to-one)                    #
@@ -61,6 +65,12 @@ graph:
 
 api:
   exposed: true
+
+query:
+  traversable: true
+  query_alias: circuit_from_provider
+  supports_existence_filter: true
+  supports_count_filter: true
 
 ---
 # --------------------------------------------------------------------------- #
