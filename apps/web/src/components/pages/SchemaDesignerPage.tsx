@@ -466,6 +466,12 @@ export function SchemaDesignerPage() {
   const [connectingName, setConnectingName] = useState("");
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
+  // Manual edge creation via toolbar
+  const [showAddEdge, setShowAddEdge] = useState(false);
+  const [manualEdgeFrom, setManualEdgeFrom] = useState("");
+  const [manualEdgeTo, setManualEdgeTo] = useState("");
+  const [manualEdgeName, setManualEdgeName] = useState("");
+  const [manualEdgeCardinality, setManualEdgeCardinality] = useState("many_to_many");
 
   // --- Sync store → React Flow nodes ---
   const rfNodes: Node[] = useMemo(() =>
@@ -601,6 +607,11 @@ export function SchemaDesignerPage() {
                   + Add Node
                 </button>
               )}
+              <button onClick={() => { setShowAddEdge(true); setManualEdgeFrom(""); setManualEdgeTo(""); setManualEdgeName(""); setManualEdgeCardinality("many_to_many"); }}
+                disabled={schema.nodes.length < 1}
+                className="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-50">
+                + Add Edge
+              </button>
               <button onClick={undo} title="Undo (Ctrl+Z)" className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">Undo</button>
               <button onClick={redo} title="Redo (Ctrl+Shift+Z)" className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">Redo</button>
               <button onClick={() => setShowYaml(!showYaml)}
@@ -632,6 +643,67 @@ export function SchemaDesignerPage() {
                   className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-600">Cancel</button>
                 <button onClick={confirmConnect} disabled={!connectingName.trim()}
                   className="rounded bg-brand-600 px-3 py-1 text-xs text-white disabled:opacity-50">Create</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Edge dialog (toolbar-triggered) */}
+        {showAddEdge && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96">
+              <h3 className="text-sm font-bold mb-3">Add Relationship</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">Relationship Name</label>
+                  <input value={manualEdgeName} onChange={(e) => setManualEdgeName(e.target.value)}
+                    placeholder="e.g., HAS_INTERFACE, LOCATED_IN"
+                    autoFocus
+                    className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-gray-500 block mb-1">From (Source)</label>
+                    <select value={manualEdgeFrom} onChange={(e) => setManualEdgeFrom(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                      <option value="">Select node...</option>
+                      {schema.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs font-medium text-gray-500 block mb-1">To (Target)</label>
+                    <select value={manualEdgeTo} onChange={(e) => setManualEdgeTo(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                      <option value="">Select node...</option>
+                      {schema.nodes.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">Cardinality</label>
+                  <select value={manualEdgeCardinality} onChange={(e) => setManualEdgeCardinality(e.target.value)}
+                    className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                    <option value="one_to_one">One to One (1:1)</option>
+                    <option value="one_to_many">One to Many (1:N)</option>
+                    <option value="many_to_one">Many to One (N:1)</option>
+                    <option value="many_to_many">Many to Many (N:N)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button onClick={() => setShowAddEdge(false)}
+                  className="rounded border border-gray-300 px-3 py-1.5 text-xs text-gray-600">Cancel</button>
+                <button
+                  onClick={() => {
+                    if (manualEdgeName.trim() && manualEdgeFrom && manualEdgeTo) {
+                      addSchemaEdge(manualEdgeName.trim(), manualEdgeFrom, manualEdgeTo, manualEdgeCardinality);
+                      setShowAddEdge(false);
+                    }
+                  }}
+                  disabled={!manualEdgeName.trim() || !manualEdgeFrom || !manualEdgeTo}
+                  className="rounded bg-brand-600 px-3 py-1.5 text-xs text-white disabled:opacity-50">
+                  Create Relationship
+                </button>
               </div>
             </div>
           </div>
