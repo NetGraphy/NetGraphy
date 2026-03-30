@@ -299,11 +299,143 @@ class OpenAICompatibleProvider(BaseProvider):
                 yield ChatChunk(done=True, finish_reason=chunk.choices[0].finish_reason)
 
 
+class VertexAIProvider(BaseProvider):
+    """Google Cloud Vertex AI provider (Gemini models)."""
+
+    async def chat(self, messages, model, tools=None, temperature=0.7, max_tokens=4096, **kwargs):
+        try:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel, Content, Part
+        except ImportError:
+            raise RuntimeError("google-cloud-aiplatform package not installed")
+
+        start = time.monotonic()
+
+        if self.config.project_id:
+            vertexai.init(project=self.config.project_id, location=self.config.region or "us-central1")
+
+        gen_model = GenerativeModel(model)
+
+        # Convert messages to Vertex format
+        contents = []
+        for msg in messages:
+            if msg.role == "system":
+                continue  # Vertex handles system differently
+            role = "user" if msg.role == "user" else "model"
+            contents.append(Content(role=role, parts=[Part.from_text(msg.content)]))
+
+        response = gen_model.generate_content(contents, generation_config={"temperature": temperature, "max_output_tokens": max_tokens})
+        elapsed = int((time.monotonic() - start) * 1000)
+
+        return ChatResponse(
+            content=response.text or "", tool_calls=[],
+            finish_reason="stop", usage={},
+            model=model, provider="vertex", latency_ms=elapsed,
+        )
+
+    async def chat_stream(self, messages, model, tools=None, temperature=0.7, max_tokens=4096, **kwargs):
+        try:
+            import vertexai
+            from vertexai.generative_models import GenerativeModel, Content, Part
+        except ImportError:
+            raise RuntimeError("google-cloud-aiplatform package not installed")
+
+        if self.config.project_id:
+            vertexai.init(project=self.config.project_id, location=self.config.region or "us-central1")
+
+        gen_model = GenerativeModel(model)
+        contents = []
+        for msg in messages:
+            if msg.role == "system":
+                continue
+            role = "user" if msg.role == "user" else "model"
+            contents.append(Content(role=role, parts=[Part.from_text(msg.content)]))
+
+        response = gen_model.generate_content(contents, generation_config={"temperature": temperature, "max_output_tokens": max_tokens}, stream=True)
+        for chunk in response:
+            if chunk.text:
+                yield ChatChunk(content=chunk.text)
+        yield ChatChunk(done=True, finish_reason="stop")
+
+    async def list_models(self):
+        return ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
+
+
+class BedrockProvider(BaseProvider):
+    """AWS Bedrock provider (Claude, Llama, Titan, etc.)."""
+
+    async def chat(self, messages, model, tools=None, temperature=0.7, max_tokens=4096, **kwargs):
+        try:
+            import boto3
+            import json as _json
+        except ImportError:
+            raise RuntimeError("boto3 package not installed")
+
+        start = time.monotonic()
+        client = boto3.client(
+            "bedrock-runtime",
+            region_name=self.config.region or "us-east-1",
+            aws_access_key_id=self.config.api_key or None,
+            aws_secret_access_key=self.config.extra.get("aws_secret_key") or None,
+        )
+
+        # Build messages for Bedrock Converse API
+        bedrock_messages = []
+        system_text = ""
+        for msg in messages:
+            if msg.role == "system":
+                system_text = msg.content
+            else:
+                bedrock_messages.append({
+                    "role": msg.role,
+                    "content": [{"text": msg.content}],
+                })
+
+        converse_kwargs: dict[str, Any] = {
+            "modelId": model,
+            "messages": bedrock_messages,
+            "inferenceConfig": {"temperature": temperature, "maxTokens": max_tokens},
+        }
+        if system_text:
+            converse_kwargs["system"] = [{"text": system_text}]
+
+        import asyncio
+        response = await asyncio.to_thread(client.converse, **converse_kwargs)
+        elapsed = int((time.monotonic() - start) * 1000)
+
+        content = ""
+        for block in response.get("output", {}).get("message", {}).get("content", []):
+            if "text" in block:
+                content += block["text"]
+
+        usage = response.get("usage", {})
+        return ChatResponse(
+            content=content, tool_calls=[],
+            finish_reason=response.get("stopReason", ""),
+            usage={"prompt_tokens": usage.get("inputTokens", 0), "completion_tokens": usage.get("outputTokens", 0)},
+            model=model, provider="bedrock", latency_ms=elapsed,
+        )
+
+    async def chat_stream(self, messages, model, tools=None, temperature=0.7, max_tokens=4096, **kwargs):
+        # Bedrock streaming uses ConverseStream — fall back to non-streaming for now
+        response = await self.chat(messages, model, tools, temperature, max_tokens, **kwargs)
+        yield ChatChunk(content=response.content)
+        yield ChatChunk(done=True, finish_reason=response.finish_reason)
+
+    async def list_models(self):
+        return ["anthropic.claude-sonnet-4-20250514-v1:0", "anthropic.claude-haiku-4-20250414-v1:0",
+                "meta.llama3-70b-instruct-v1:0", "amazon.titan-text-premier-v1:0"]
+
+
 def create_provider(config: ProviderConfig) -> BaseProvider:
     """Factory function to create a provider from config."""
     if config.provider_type == "anthropic":
         return AnthropicProvider(config)
     elif config.provider_type in ("openai", "azure", "vllm", "ollama", "openai_compatible"):
         return OpenAICompatibleProvider(config)
+    elif config.provider_type == "vertex":
+        return VertexAIProvider(config)
+    elif config.provider_type == "bedrock":
+        return BedrockProvider(config)
     else:
         raise ValueError(f"Unknown provider type: {config.provider_type}")

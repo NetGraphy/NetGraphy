@@ -10,6 +10,8 @@ const PROVIDER_TYPES = [
   { value: "anthropic", label: "Anthropic (Claude)" },
   { value: "openai", label: "OpenAI" },
   { value: "azure", label: "Azure OpenAI" },
+  { value: "vertex", label: "Google Vertex AI (Gemini)" },
+  { value: "bedrock", label: "AWS Bedrock" },
   { value: "openai_compatible", label: "OpenAI-Compatible (vLLM, Ollama, etc.)" },
 ];
 
