@@ -145,6 +145,25 @@ export function ChatPanel({
     }
   };
 
+  const [copySuccess, setCopySuccess] = useState(false);
+  const copyConversation = useCallback(() => {
+    const formatted = messages
+      .map((msg) => {
+        const label =
+          msg.role === "user"
+            ? "User"
+            : msg.role === "assistant"
+              ? "NetGraphy AI"
+              : "System";
+        return `${label}:\n${msg.content}`;
+      })
+      .join("\n\n---\n\n");
+    navigator.clipboard.writeText(formatted).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    });
+  }, [messages]);
+
   if (!isOpen) return null;
 
   return (
@@ -158,6 +177,20 @@ export function ChatPanel({
           <span className="text-sm font-semibold text-gray-900 dark:text-white">AI Assistant</span>
         </div>
         <div className="flex items-center gap-1">
+          {messages.length > 0 && (
+            <button onClick={copyConversation} title="Copy conversation"
+              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700">
+              {copySuccess ? (
+                <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
+          )}
           <button onClick={() => setShowHistory(!showHistory)}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

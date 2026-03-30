@@ -185,9 +185,9 @@ class MCPToolExecutor:
                 except QueryValidationError:
                     raise e  # Re-raise original error
             else:
-                # No direct filters — try unfiltered with pagination
-                ast = self._build_query_ast(entity, {"limit": tool_input.get("limit", 50)})
-                resolved_paths = self._validator.validate(ast)
+                # No direct filters available — do NOT fall back to unfiltered.
+                # Return the error with guidance for the agent.
+                raise e
         default_fields = self._validator.get_default_fields(entity)
 
         # Compile
