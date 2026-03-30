@@ -47,19 +47,20 @@ const PLATFORM_COLORS: Record<string, string> = {
   f5_tmsh: "bg-red-500/20 text-red-300",
 };
 
-const SAMPLE_TEMPLATE = `Value HOSTNAME (\\S+)
-Value VERSION ([\\d.]+\\S*)
-Value SERIAL (\\S+)
-Value HARDWARE (\\S+)
-Value UPTIME (.+)
-
-Start
-  ^\\s*${HOSTNAME}\\s+uptime\\s+is\\s+${UPTIME} -> Continue
-  ^.*Version\\s+${VERSION} -> Continue
-  ^.*[Pp]rocessor\\s+board\\s+ID\\s+${SERIAL} -> Continue
-  ^.*cisco\\s+${HARDWARE}\\s+ -> Continue
-  ^\\s*$$
-`;
+const SAMPLE_TEMPLATE = [
+  "Value HOSTNAME (\\S+)",
+  "Value VERSION ([\\d.]+\\S*)",
+  "Value SERIAL (\\S+)",
+  "Value HARDWARE (\\S+)",
+  "Value UPTIME (.+)",
+  "",
+  "Start",
+  "  ^\\s*${HOSTNAME}\\s+uptime\\s+is\\s+${UPTIME} -> Continue",
+  "  ^.*Version\\s+${VERSION} -> Continue",
+  "  ^.*[Pp]rocessor\\s+board\\s+ID\\s+${SERIAL} -> Continue",
+  "  ^.*cisco\\s+${HARDWARE}\\s+ -> Continue",
+  "  ^\\s*$$",
+].join("\n");
 
 const SAMPLE_OUTPUT = `Cisco IOS Software, ISR Software (X86_64_LINUX_IOSD-UNIVERSALK9-M), Version 16.09.01, RELEASE SOFTWARE (fc2)
 
