@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://beta.netgraphy.tech"><strong>Try the Live Beta</strong></a> &middot;
   <a href="#getting-started">Getting Started</a> &middot;
   <a href="#why-netgraphy-exists">Why NetGraphy</a> &middot;
   <a href="#feature-comparison">Feature Comparison</a> &middot;
