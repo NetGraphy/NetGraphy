@@ -146,7 +146,6 @@ async def get_docs_for_schema_item(
 
 @router.post("/generate", status_code=201)
 async def generate_docs(
-    body: dict[str, Any] | None = None,
     actor: AuthContext = Depends(get_auth_context),
     driver: Neo4jDriver = Depends(get_graph_driver),
     registry: SchemaRegistry = Depends(get_schema_registry),
