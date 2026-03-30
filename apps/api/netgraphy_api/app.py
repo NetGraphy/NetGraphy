@@ -23,6 +23,7 @@ from netgraphy_api.middleware.request_id import RequestIdMiddleware
 from netgraphy_api.routers import (
     audit,
     auth,
+    chat,
     dev,
     edges,
     generated,
@@ -185,6 +186,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(
         generated.router, prefix=f"{prefix}/generated", tags=["Generated Artifacts"]
+    )
+    app.include_router(
+        chat.router, prefix=f"{prefix}/agent", tags=["AI Agent"]
     )
 
     return app

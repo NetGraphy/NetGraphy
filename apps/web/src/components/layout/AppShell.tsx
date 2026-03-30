@@ -8,6 +8,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { useSchemaStore } from "@/stores/schemaStore";
 import { useAuthStore } from "@/stores/authStore";
 import { Sidebar } from "./Sidebar";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
@@ -19,6 +20,7 @@ export function AppShell() {
   const { loaded, loading, error: schemaError, loadSchema } = useSchemaStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [chatOpen, setChatOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -71,6 +73,22 @@ export function AppShell() {
             {/* Breadcrumbs placeholder */}
           </div>
           <div className="flex items-center gap-4">
+            {/* AI Chat toggle */}
+            <button
+              onClick={() => setChatOpen(!chatOpen)}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                chatOpen
+                  ? "bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-300"
+                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+              }`}
+              title="Toggle AI Assistant"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              AI
+            </button>
+
             {/* Global search */}
             <div className="relative">
               <svg
@@ -178,6 +196,9 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      {/* AI Chat Panel (docked right) */}
+      <ChatPanel isOpen={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 }
