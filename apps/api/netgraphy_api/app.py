@@ -152,13 +152,25 @@ def create_app() -> FastAPI:
 
     # --- Middleware (outermost first) -----------------------------------------
     # 1. CORS — must be outermost so pre-flight OPTIONS are handled early.
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # CORS: allow_credentials=True requires explicit origins (not "*")
+    cors_origins = settings.cors_origins
+    if cors_origins == ["*"]:
+        # Wildcard mode: disable credentials to allow "*"
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     # 2. Auth — validates JWT Bearer tokens on protected routes.
     app.add_middleware(
