@@ -42,7 +42,10 @@ export function QueryWorkbench() {
   const { data: savedData } = useQuery({
     queryKey: ["saved-queries"],
     queryFn: () =>
-      queryApi.listSaved().then((r) => r.data.data as SavedQuery[]),
+      queryApi.listSaved().then((r) => {
+        const d = r.data?.data || r.data;
+        return (d?.items || d || []) as SavedQuery[];
+      }),
   });
 
   const savedQueries = savedData || [];
