@@ -116,23 +116,20 @@ function GraphCanvasInner({
     [inputEdges],
   );
 
-  // Default visible types — Device + Interface for nodes, their key edges
-  const DEFAULT_NODE_TYPES = new Set(["Device", "Interface"]);
-  const DEFAULT_EDGE_TYPES = new Set(["HAS_INTERFACE", "CONNECTED_TO", "LOCATED_IN", "HAS_MODEL", "RUNS_PLATFORM"]);
-
+  // Default: show ALL node and edge types from the data
   const [visibleNodeTypes, setVisibleNodeTypes] = useState<Set<string>>(
-    () => new Set(allNodeTypes.filter((t) => DEFAULT_NODE_TYPES.has(t))),
+    () => new Set(allNodeTypes),
   );
   const [visibleEdgeTypes, setVisibleEdgeTypes] = useState<Set<string>>(
-    () => new Set(allEdgeTypes.filter((t) => DEFAULT_EDGE_TYPES.has(t))),
+    () => new Set(allEdgeTypes),
   );
 
-  // Add newly discovered types but don't reset user's selections
+  // Add newly discovered types automatically
   useEffect(() => {
     setVisibleNodeTypes((prev) => {
       const updated = new Set(prev);
       for (const t of allNodeTypes) {
-        if (!prev.has(t) && DEFAULT_NODE_TYPES.has(t)) updated.add(t);
+        updated.add(t);
       }
       return updated;
     });
@@ -142,7 +139,7 @@ function GraphCanvasInner({
     setVisibleEdgeTypes((prev) => {
       const updated = new Set(prev);
       for (const t of allEdgeTypes) {
-        if (!prev.has(t) && DEFAULT_EDGE_TYPES.has(t)) updated.add(t);
+        updated.add(t);
       }
       return updated;
     });
