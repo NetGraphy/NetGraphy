@@ -31,7 +31,7 @@ import { CustomNode, type CustomNodeData } from "./CustomNode";
 import { CustomEdge } from "./CustomEdge";
 import { GraphControls, type LayoutType } from "./GraphControls";
 import { GraphFilterPanel } from "./GraphFilterPanel";
-import { applyDagreLayout, applyForceLayout } from "@/lib/graphLayout";
+import { applyLayout } from "@/lib/graphLayout";
 import { applyGraphFilter } from "@/lib/graphFilterEngine";
 import { useGraphExplorerStore } from "@/stores/graphExplorerStore";
 
@@ -183,13 +183,10 @@ function GraphCanvasInner({
     [powerFiltered.edges],
   );
 
-  // Apply layout
+  // Apply layout using the unified layout dispatcher
   const laidOutNodes = useMemo(() => {
     if (rawFlowNodes.length === 0) return [];
-    if (layout === "hierarchical") {
-      return applyDagreLayout(rawFlowNodes, flowEdges, "TB");
-    }
-    return applyForceLayout(rawFlowNodes, flowEdges);
+    return applyLayout(layout as any, rawFlowNodes, flowEdges, "TB");
   }, [rawFlowNodes, flowEdges, layout]);
 
   // React Flow state

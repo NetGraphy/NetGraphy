@@ -21,6 +21,7 @@ from netgraphy_api.dependencies import init_dependencies
 from netgraphy_api.exceptions import register_exception_handlers
 from netgraphy_api.middleware.request_id import RequestIdMiddleware
 from netgraphy_api.routers import (
+    architecture,
     audit,
     auth,
     chat,
@@ -216,6 +217,9 @@ def create_app() -> FastAPI:
     )
     app.include_router(
         reports.router, prefix=f"{prefix}/reports", tags=["Reports"]
+    )
+    app.include_router(
+        architecture.router, prefix=f"{prefix}/architectures", tags=["Architecture"]
     )
 
     return app

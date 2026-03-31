@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useSchemaStore } from "@/stores/schemaStore";
 
-export type LayoutType = "hierarchical" | "force";
+export type LayoutType = "hierarchical" | "force" | "radial" | "path" | "role-tiered";
 
 interface GraphControlsProps {
   layout: LayoutType;
@@ -97,32 +97,22 @@ export function GraphControls({
     >
       {/* Layout selector */}
       <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => onLayoutChange("hierarchical")}
-          className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-            layout === "hierarchical"
-              ? "bg-indigo-100 text-indigo-700"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-          title="Hierarchical layout"
-        >
-          <LayoutGrid size={14} />
-          Hierarchical
-        </button>
-        <button
-          type="button"
-          onClick={() => onLayoutChange("force")}
-          className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-            layout === "force"
-              ? "bg-indigo-100 text-indigo-700"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-          title="Force-directed layout"
-        >
-          <Network size={14} />
-          Force
-        </button>
+        {([
+          { key: "hierarchical" as const, icon: LayoutGrid, label: "Hierarchical", title: "Dagre hierarchical layout" },
+          { key: "role-tiered" as const, icon: LayoutGrid, label: "Tiered", title: "Network topology tiers (core/spine/leaf/access/server)" },
+          { key: "force" as const, icon: Network, label: "Force", title: "Force-directed layout" },
+          { key: "radial" as const, icon: Network, label: "Radial", title: "Hub-and-spoke radial layout" },
+          { key: "path" as const, icon: Network, label: "Path", title: "Left-to-right path layout" },
+        ]).map((l) => (
+          <button key={l.key} type="button" onClick={() => onLayoutChange(l.key)}
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+              layout === l.key ? "bg-indigo-100 text-indigo-700" : "text-gray-600 hover:bg-gray-100"
+            }`}
+            title={l.title}>
+            <l.icon size={14} />
+            {l.label}
+          </button>
+        ))}
       </div>
 
       <div className="h-5 w-px bg-gray-200" />
