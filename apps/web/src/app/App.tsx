@@ -28,6 +28,7 @@ import { DocsPage } from "@/components/pages/DocsPage";
 import { ReportBuilderPage } from "@/components/pages/ReportBuilderPage";
 import { SchemaDesignerPage } from "@/components/pages/SchemaDesignerPage";
 import { GraphQueryBuilderPage } from "@/components/pages/GraphQueryBuilderPage";
+import { ArchitectureViewerPage } from "@/components/pages/ArchitectureViewerPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -92,6 +93,7 @@ export function App() {
 
                 {/* Graph */}
                 <Route path="/graph" element={<GraphExplorerPage />} />
+                <Route path="/architecture" element={<ArchitectureViewerPage />} />
               </Route>
             </Route>
           </Routes>
