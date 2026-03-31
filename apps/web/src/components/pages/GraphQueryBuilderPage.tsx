@@ -109,8 +109,13 @@ export function GraphQueryBuilderPage() {
     try {
       const params = model.parameters.length > 0 ? paramValues : undefined;
       const resp = await queryApi.executeCypher(cypher, params);
-      setResults(resp.data.data);
+      const data = resp.data.data;
+      setResults(data);
       setExecTime(Date.now() - start);
+      // Auto-switch to graph view if results contain graph nodes
+      if (data?.nodes?.length > 0) {
+        setResultView("graph");
+      }
     } catch (err: any) {
       setExecError(err?.response?.data?.detail || err.message || "Query execution failed");
       setResults(null);
@@ -368,17 +373,30 @@ export function GraphQueryBuilderPage() {
                   className="w-14 rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                   {aliases.map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
-                <select value={f.field} onChange={(e) => updateFilter(f.id, { field: e.target.value })}
-                  className="flex-1 rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                  <option value="">Select field...</option>
-                  {(() => {
-                    const aliasNode = model.nodes.find((n) => n.alias === f.targetAlias);
-                    const label = aliasNode?.labels[0];
-                    const nt = label ? (nodeTypesData?.data?.data || []).find((t: any) => (t.metadata?.name || t.name) === label) : null;
-                    const attrs = nt ? Object.keys(nt.attributes || {}) : [];
-                    return [...attrs, "id"].map((a) => <option key={a} value={a}>{a}</option>);
-                  })()}
-                </select>
+                {(() => {
+                  const aliasNode = model.nodes.find((n) => n.alias === f.targetAlias);
+                  const label = aliasNode?.labels[0];
+                  const nt = label ? (nodeTypesData?.data?.data || []).find((t: any) => (t.metadata?.name || t.name) === label) : null;
+                  const attrs = nt ? [...Object.keys(nt.attributes || {}), "id"] : ["id"];
+                  const filtered = attrs.filter((a) => !f.field || a.toLowerCase().includes(f.field.toLowerCase()));
+                  return (
+                    <div className="flex-1 relative">
+                      <input value={f.field} onChange={(e) => updateFilter(f.id, { field: e.target.value })}
+                        placeholder="Type field name..."
+                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                      {f.field && !attrs.includes(f.field) && filtered.length > 0 && (
+                        <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg max-h-32 overflow-y-auto">
+                          {filtered.slice(0, 10).map((a) => (
+                            <button key={a} onClick={() => updateFilter(f.id, { field: a })}
+                              className="block w-full text-left px-2 py-1 text-[10px] hover:bg-brand-50 dark:hover:bg-gray-700">
+                              {a}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <button onClick={() => removeFilter(f.id)} className="text-red-400 text-[10px]">x</button>
               </div>
               <div className="flex gap-1">
@@ -404,10 +422,44 @@ export function GraphQueryBuilderPage() {
               className="text-[10px] text-brand-600 hover:underline">+ Add</button>
           </div>
           {model.returnFields.map((rf) => (
-            <div key={rf.id} className="mb-1 flex gap-1 items-center">
-              <input value={rf.expression} onChange={(e) => updateReturnField(rf.id, { expression: e.target.value })}
-                placeholder="d.hostname or count(d)"
-                className="flex-1 rounded border border-gray-300 px-1 py-0.5 text-[10px] font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+            <div key={rf.id} className="mb-1 flex gap-1 items-center relative">
+              {(() => {
+                // Build suggestions: alias.field for all nodes
+                const suggestions: string[] = [];
+                for (const node of model.nodes) {
+                  suggestions.push(node.alias); // Return whole node
+                  const label = node.labels[0];
+                  const nt = label ? (nodeTypesData?.data?.data || []).find((t: any) => (t.metadata?.name || t.name) === label) : null;
+                  if (nt) {
+                    for (const attr of Object.keys(nt.attributes || {})) {
+                      suggestions.push(`${node.alias}.${attr}`);
+                    }
+                  }
+                  suggestions.push(`${node.alias}.id`);
+                  suggestions.push(`count(${node.alias})`);
+                }
+                suggestions.push("path");
+                const filtered = rf.expression
+                  ? suggestions.filter((s) => s.toLowerCase().includes(rf.expression.toLowerCase()) && s !== rf.expression)
+                  : [];
+                return (
+                  <div className="flex-1 relative">
+                    <input value={rf.expression} onChange={(e) => updateReturnField(rf.id, { expression: e.target.value })}
+                      placeholder="Type: d.hostname, count(d), path..."
+                      className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                    {rf.expression && filtered.length > 0 && filtered.length < 15 && (
+                      <div className="absolute z-10 left-0 right-0 top-full mt-0.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg max-h-32 overflow-y-auto">
+                        {filtered.slice(0, 10).map((s) => (
+                          <button key={s} onClick={() => updateReturnField(rf.id, { expression: s, alias: s.includes(".") ? s.split(".").pop() || s : s })}
+                            className="block w-full text-left px-2 py-1 text-[10px] font-mono hover:bg-brand-50 dark:hover:bg-gray-700">
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <input value={rf.alias} onChange={(e) => updateReturnField(rf.id, { alias: e.target.value })}
                 placeholder="alias"
                 className="w-20 rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
@@ -532,9 +584,10 @@ export function GraphQueryBuilderPage() {
             )}
 
             {results && resultView === "graph" && (
-              <div className="h-[500px] rounded border border-gray-200 dark:border-gray-700">
+              <div style={{ width: "100%", height: "500px" }} className="rounded border border-gray-200 dark:border-gray-700">
                 {(results.nodes?.length || 0) > 0 ? (
                   <GraphCanvas
+                    key={`graph-${results.nodes.length}-${results.edges?.length || 0}`}
                     nodes={results.nodes || []}
                     edges={results.edges || []}
                     maxNodes={500}
