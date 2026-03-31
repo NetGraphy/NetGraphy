@@ -1,0 +1,452 @@
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_VS — Device → LBVirtualServer (one-to-many)                     #
+# The load balancer device hosts virtual servers                               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_VS
+  display_name: "Has Virtual Server"
+  description: "Load balancer device hosts this virtual server"
+  category: Load Balancing
+
+source:
+  node_types: [Device]
+
+target:
+  node_types: [LBVirtualServer]
+
+cardinality: one_to_many
+inverse_name: VS_ON_DEVICE
+
+constraints:
+  unique_target: true  # Each VS belongs to one device
+
+graph:
+  style: solid
+  color: "#7C3AED"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: device_has_vs
+  supports_existence_filter: true
+  supports_count_filter: true
+
+---
+# --------------------------------------------------------------------------- #
+# VS_HAS_POOL — LBVirtualServer → LBPool (many-to-many)                      #
+# A virtual server sends traffic to pools; pools can serve multiple VS        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VS_HAS_POOL
+  display_name: "Has Pool"
+  description: "Virtual server distributes traffic to this pool"
+  category: Load Balancing
+
+source:
+  node_types: [LBVirtualServer]
+
+target:
+  node_types: [LBPool]
+
+cardinality: many_to_many
+inverse_name: POOL_SERVES_VS
+
+attributes:
+  is_default:
+    type: boolean
+    default: true
+    description: "Whether this is the default pool for the VS"
+  priority:
+    type: integer
+    default: 0
+    description: "Pool selection priority (higher = preferred)"
+
+graph:
+  style: solid
+  color: "#2563EB"
+  show_label: true
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: vs_has_pool
+
+---
+# --------------------------------------------------------------------------- #
+# POOL_HAS_MEMBER — LBPool → LBPoolMember (one-to-many)                      #
+# A pool contains backend server members                                       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: POOL_HAS_MEMBER
+  display_name: "Has Member"
+  description: "Pool contains this backend server member"
+  category: Load Balancing
+
+source:
+  node_types: [LBPool]
+
+target:
+  node_types: [LBPoolMember]
+
+cardinality: one_to_many
+inverse_name: MEMBER_OF_POOL
+
+constraints:
+  unique_target: true  # Each member belongs to one pool
+
+graph:
+  style: solid
+  color: "#059669"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: pool_has_member
+  supports_existence_filter: true
+  supports_count_filter: true
+
+---
+# --------------------------------------------------------------------------- #
+# POOL_HAS_MONITOR — LBPool → LBMonitor (many-to-many)                       #
+# Pools use monitors to check member health                                    #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: POOL_HAS_MONITOR
+  display_name: "Has Monitor"
+  description: "Pool uses this health monitor to check member availability"
+  category: Load Balancing
+
+source:
+  node_types: [LBPool]
+
+target:
+  node_types: [LBMonitor]
+
+cardinality: many_to_many
+inverse_name: MONITORS_POOL
+
+graph:
+  style: dashed
+  color: "#EA580C"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: pool_has_monitor
+
+---
+# --------------------------------------------------------------------------- #
+# VS_HAS_SNAT_POOL — LBVirtualServer → LBSNATPool (many-to-one)              #
+# Virtual server uses a SNAT pool for source address translation               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VS_HAS_SNAT_POOL
+  display_name: "Uses SNAT Pool"
+  description: "Virtual server uses this SNAT pool for source address translation"
+  category: Load Balancing
+
+source:
+  node_types: [LBVirtualServer]
+
+target:
+  node_types: [LBSNATPool]
+
+cardinality: many_to_one
+inverse_name: SNAT_POOL_FOR_VS
+
+graph:
+  style: dashed
+  color: "#0891B2"
+  show_label: true
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: vs_has_snat_pool
+
+---
+# --------------------------------------------------------------------------- #
+# VS_HAS_PROFILE — LBVirtualServer → LBProfile (many-to-many)                #
+# Virtual servers use profiles for traffic processing                          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VS_HAS_PROFILE
+  display_name: "Has Profile"
+  description: "Virtual server uses this profile for traffic processing"
+  category: Load Balancing
+
+source:
+  node_types: [LBVirtualServer]
+
+target:
+  node_types: [LBProfile]
+
+cardinality: many_to_many
+inverse_name: PROFILE_ON_VS
+
+attributes:
+  context:
+    type: enum
+    enum_values: [all, client, server]
+    default: all
+    description: "Profile application context (client-side, server-side, or both)"
+
+graph:
+  style: dashed
+  color: "#4F46E5"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: vs_has_profile
+
+---
+# --------------------------------------------------------------------------- #
+# VS_VIP_ADDRESS — LBVirtualServer → IPAddress (many-to-one)                  #
+# Links VIP to the IPAM IP Address model                                       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VS_VIP_ADDRESS
+  display_name: "VIP Address"
+  description: "Links the virtual server to its VIP in the IPAM model"
+  category: Load Balancing
+
+source:
+  node_types: [LBVirtualServer]
+
+target:
+  node_types: [IPAddress]
+
+cardinality: many_to_one
+inverse_name: VIP_FOR_VS
+
+constraints:
+  unique_source: false  # Multiple VS can share a VIP (different ports)
+
+graph:
+  style: solid
+  color: "#7C3AED"
+  show_label: true
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: vs_vip_address
+
+---
+# --------------------------------------------------------------------------- #
+# MEMBER_IP_ADDRESS — LBPoolMember → IPAddress (many-to-one)                  #
+# Links pool member to the IPAM IP Address model                               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: MEMBER_IP_ADDRESS
+  display_name: "Member IP"
+  description: "Links pool member to its IP address in the IPAM model"
+  category: Load Balancing
+
+source:
+  node_types: [LBPoolMember]
+
+target:
+  node_types: [IPAddress]
+
+cardinality: many_to_one
+inverse_name: IP_FOR_MEMBER
+
+graph:
+  style: solid
+  color: "#059669"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: member_ip_address
+
+---
+# --------------------------------------------------------------------------- #
+# SNAT_POOL_HAS_IP — LBSNATPool → IPAddress (many-to-many)                   #
+# SNAT pool contains IP addresses for source translation                       #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: SNAT_POOL_HAS_IP
+  display_name: "Has SNAT IP"
+  description: "SNAT pool includes this IP address for source translation"
+  category: Load Balancing
+
+source:
+  node_types: [LBSNATPool]
+
+target:
+  node_types: [IPAddress]
+
+cardinality: many_to_many
+inverse_name: IP_IN_SNAT_POOL
+
+graph:
+  style: dashed
+  color: "#0891B2"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: snat_pool_has_ip
+
+---
+# --------------------------------------------------------------------------- #
+# MEMBER_ON_DEVICE — LBPoolMember → Device (many-to-one)                      #
+# Links pool member to the actual server device                                #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: MEMBER_ON_DEVICE
+  display_name: "On Device"
+  description: "Pool member runs on this server device"
+  category: Load Balancing
+
+source:
+  node_types: [LBPoolMember]
+
+target:
+  node_types: [Device]
+
+cardinality: many_to_one
+inverse_name: DEVICE_IS_MEMBER
+
+graph:
+  style: dashed
+  color: "#059669"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: member_on_device
+
+---
+# --------------------------------------------------------------------------- #
+# WIP_HAS_POOL — LBWideIP → LBPool (many-to-many)                           #
+# Wide IP distributes across GSLB pools (which may map to VS pools)           #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: WIP_HAS_POOL
+  display_name: "Has GSLB Pool"
+  description: "Wide IP distributes traffic to this pool for GSLB"
+  category: Load Balancing
+
+source:
+  node_types: [LBWideIP]
+
+target:
+  node_types: [LBPool]
+
+cardinality: many_to_many
+inverse_name: POOL_IN_WIP
+
+attributes:
+  order:
+    type: integer
+    default: 0
+    description: "Pool selection order for the Wide IP"
+  ratio:
+    type: integer
+    default: 1
+    description: "Traffic ratio weight for this pool"
+
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: true
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: wip_has_pool
+
+---
+# --------------------------------------------------------------------------- #
+# WIP_HAS_VS — LBWideIP → LBVirtualServer (many-to-many)                     #
+# Wide IP maps to virtual servers across data centers                          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: WIP_HAS_VS
+  display_name: "Has Virtual Server"
+  description: "Wide IP includes this virtual server as a GSLB endpoint"
+  category: Load Balancing
+
+source:
+  node_types: [LBWideIP]
+
+target:
+  node_types: [LBVirtualServer]
+
+cardinality: many_to_many
+inverse_name: VS_IN_WIP
+
+attributes:
+  datacenter:
+    type: string
+    description: "Data center name for this VS endpoint"
+
+graph:
+  style: solid
+  color: "#DC2626"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: wip_has_vs

@@ -1,0 +1,167 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: LBWideIP
+  display_name: Wide IP (GSLB)
+  description: "A Global Server Load Balancing (GSLB) Wide IP — a DNS-based entry that distributes traffic across multiple data centers or virtual servers. Maps an FQDN to pools of virtual servers."
+  icon: globe-2
+  color: "#DC2626"
+  category: Load Balancing
+  tags: [load-balancer, wide-ip, gslb, gtm, dns-lb, f5]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Wide IP name / FQDN (e.g., app.example.com)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  fqdn:
+    type: string
+    display_name: FQDN
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Fully qualified domain name for DNS resolution"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      search_weight: 8
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [enabled, disabled]
+    default: enabled
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        enabled: green
+        disabled: gray
+
+  lb_method:
+    type: enum
+    display_name: LB Method
+    enum_values: [round_robin, ratio, topology, global_availability, return_to_dns, none]
+    default: round_robin
+    required: true
+    description: "GSLB algorithm for selecting data center / virtual server"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  alternate_lb_method:
+    type: enum
+    display_name: Alternate LB Method
+    enum_values: [round_robin, ratio, topology, global_availability, return_to_dns, none]
+    default: none
+    ui:
+      form_order: 5
+
+  fallback_lb_method:
+    type: enum
+    display_name: Fallback LB Method
+    enum_values: [round_robin, ratio, return_to_dns, fallback_ip, none]
+    default: none
+    ui:
+      form_order: 6
+
+  fallback_ip:
+    type: ip_address
+    display_name: Fallback IP
+    required: false
+    description: "IP returned when all pools are unavailable"
+    ui:
+      form_order: 7
+
+  persistence:
+    type: boolean
+    display_name: Persistence
+    default: false
+    description: "Enable GSLB persistence (return same answer to same client)"
+    ui:
+      form_order: 8
+
+  persistence_ttl:
+    type: integer
+    display_name: Persistence TTL (s)
+    required: false
+    default: 3600
+    min_value: 0
+    description: "Time in seconds to persist GSLB decisions"
+    ui:
+      form_order: 9
+
+  ttl:
+    type: integer
+    display_name: DNS TTL (s)
+    required: false
+    default: 30
+    min_value: 0
+    description: "DNS TTL for Wide IP responses"
+    ui:
+      form_order: 10
+
+  record_type:
+    type: enum
+    display_name: Record Type
+    enum_values: [a, aaaa, cname, mx, naptr, srv]
+    default: a
+    description: "DNS record type for the Wide IP"
+    ui:
+      form_order: 11
+      filter: true
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 15
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, fqdn, description]
+
+graph:
+  default_label_field: name
+  group_by: lb_method
+  color: "#DC2626"
+
+api:
+  plural_name: lb-wide-ips
+  filterable_fields: [name, fqdn, status, lb_method, record_type]
+  sortable_fields: [name, fqdn, status, lb_method]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, fqdn, status, lb_method, record_type]
+  relationship_filters_enabled: true

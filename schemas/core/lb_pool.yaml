@@ -1,0 +1,175 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: LBPool
+  display_name: Pool
+  description: "A load balancer pool — a group of backend servers that receive distributed traffic from a virtual server. Defines the load balancing method and health monitoring."
+  icon: layers
+  color: "#2563EB"
+  category: Load Balancing
+  tags: [load-balancer, pool, server-pool, f5, netscaler]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Pool name (e.g., pool_app_servers_8080)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 2
+      form_widget: textarea
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [enabled, disabled, forced_offline]
+    default: enabled
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 3
+      filter: true
+      badge_colors:
+        enabled: green
+        disabled: gray
+        forced_offline: red
+
+  lb_method:
+    type: enum
+    display_name: Load Balancing Method
+    enum_values: [round_robin, ratio, least_connections, observed, predictive, fastest, weighted_round_robin, weighted_least_connections, source_hash, destination_hash, random]
+    default: round_robin
+    required: true
+    description: "Algorithm for distributing traffic across pool members"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 4
+      filter: true
+
+  slow_ramp_time:
+    type: integer
+    display_name: Slow Ramp Time (s)
+    required: false
+    default: 10
+    min_value: 0
+    description: "Seconds to gradually increase new member's connection share"
+    ui:
+      form_order: 5
+
+  reselect_tries:
+    type: integer
+    display_name: Reselect Tries
+    required: false
+    default: 0
+    min_value: 0
+    description: "Number of times to retry member selection on failure"
+    ui:
+      form_order: 6
+
+  service_down_action:
+    type: enum
+    display_name: Service Down Action
+    enum_values: [none, reset, drop, reselect]
+    default: none
+    description: "Action when all pool members are down"
+    ui:
+      form_order: 7
+      filter: true
+
+  min_active_members:
+    type: integer
+    display_name: Min Active Members
+    required: false
+    default: 0
+    min_value: 0
+    description: "Minimum members that must be available (0 = no minimum)"
+    ui:
+      form_order: 8
+
+  priority_group_activation:
+    type: enum
+    display_name: Priority Group Activation
+    enum_values: [disabled, less_than, more_than]
+    default: disabled
+    description: "When to activate lower-priority member groups"
+    ui:
+      form_order: 9
+
+  member_count:
+    type: integer
+    display_name: Member Count
+    required: false
+    default: 0
+    description: "Number of pool members (auto-computed)"
+    ui:
+      list_column: true
+      list_column_order: 4
+
+  notes:
+    type: text
+    display_name: Notes
+    required: false
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: Members
+    edge_type: POOL_HAS_MEMBER
+    target_type: LBPoolMember
+    columns: [name, address, port, status, ratio, priority_group]
+    filters: [status]
+    default_sort: name
+
+  - label: Monitors
+    edge_type: POOL_HAS_MONITOR
+    target_type: LBMonitor
+    columns: [name, monitor_type, interval, timeout]
+    default_sort: name
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: lb_method
+  color: "#2563EB"
+
+api:
+  plural_name: lb-pools
+  filterable_fields: [name, status, lb_method, service_down_action]
+  sortable_fields: [name, status, lb_method, member_count, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, status, lb_method, member_count]
+  default_sort_field: name
+  relationship_filters_enabled: true

@@ -1,0 +1,199 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: LBMonitor
+  display_name: Health Monitor
+  description: "A load balancer health monitor — defines how pool members are checked for availability. Supports TCP, HTTP, HTTPS, ICMP, and application-specific probes."
+  icon: activity
+  color: "#EA580C"
+  category: Load Balancing
+  tags: [load-balancer, monitor, health-check, f5, netscaler]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Monitor name (e.g., mon_https_app)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  monitor_type:
+    type: enum
+    display_name: Type
+    enum_values: [tcp, udp, http, https, icmp, gateway_icmp, tcp_half_open, dns, ldap, mysql, postgresql, sip, smtp, ftp, inband, external, scripted]
+    default: http
+    required: true
+    description: "Health check protocol/method"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [enabled, disabled]
+    default: enabled
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        enabled: green
+        disabled: gray
+
+  interval:
+    type: integer
+    display_name: Interval (s)
+    required: false
+    default: 5
+    min_value: 1
+    description: "Seconds between health checks"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  timeout:
+    type: integer
+    display_name: Timeout (s)
+    required: false
+    default: 16
+    min_value: 1
+    description: "Seconds to wait for a response before marking down"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+
+  send_string:
+    type: text
+    display_name: Send String
+    required: false
+    description: "Request to send (e.g., GET /health HTTP/1.1\\r\\nHost: app.example.com\\r\\n)"
+    ui:
+      form_order: 6
+      form_widget: textarea
+
+  receive_string:
+    type: string
+    display_name: Receive String
+    required: false
+    description: "Expected response string to match for UP status"
+    ui:
+      form_order: 7
+
+  receive_disable_string:
+    type: string
+    display_name: Receive Disable String
+    required: false
+    description: "Response string that triggers graceful disable (not down)"
+    ui:
+      form_order: 8
+
+  reverse:
+    type: boolean
+    display_name: Reverse
+    default: false
+    description: "Mark as UP when receive string is NOT matched"
+    ui:
+      form_order: 9
+
+  transparent:
+    type: boolean
+    display_name: Transparent
+    default: false
+    description: "Monitor through the virtual server rather than directly"
+    ui:
+      form_order: 10
+
+  adaptive:
+    type: boolean
+    display_name: Adaptive
+    default: false
+    description: "Enable adaptive monitoring (adjust interval based on response time)"
+    ui:
+      form_order: 11
+
+  up_interval:
+    type: integer
+    display_name: Up Interval (s)
+    required: false
+    description: "Interval when member is UP (if different from default interval)"
+    ui:
+      form_order: 12
+
+  destination_address:
+    type: ip_address
+    display_name: Destination Override
+    required: false
+    description: "Override destination IP for health check (instead of member IP)"
+    ui:
+      form_order: 13
+
+  destination_port:
+    type: integer
+    display_name: Destination Port Override
+    required: false
+    min_value: 0
+    max_value: 65535
+    description: "Override destination port for health check"
+    ui:
+      form_order: 14
+
+  username:
+    type: string
+    display_name: Username
+    required: false
+    description: "Username for authenticated monitors (LDAP, MySQL, etc.)"
+    ui:
+      form_order: 15
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, monitor_type, send_string, receive_string]
+
+graph:
+  default_label_field: name
+  group_by: monitor_type
+  color: "#EA580C"
+
+api:
+  plural_name: lb-monitors
+  filterable_fields: [name, monitor_type, status, interval]
+  sortable_fields: [name, monitor_type, status, interval]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, monitor_type, status, interval, timeout]
+  relationship_filters_enabled: true

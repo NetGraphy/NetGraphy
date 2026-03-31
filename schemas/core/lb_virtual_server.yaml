@@ -1,0 +1,235 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: LBVirtualServer
+  display_name: Virtual Server (VIP)
+  description: "A load balancer virtual server — the front-end listener that receives client traffic. Binds to a VIP address and port, distributes to one or more pools."
+  icon: globe
+  color: "#7C3AED"
+  category: Load Balancing
+  tags: [load-balancer, vip, virtual-server, f5, netscaler]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Virtual server name (e.g., vs_app_https_443)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose and application context for this virtual server"
+    ui:
+      form_order: 2
+      form_widget: textarea
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [enabled, disabled, offline, maintenance]
+    default: enabled
+    required: true
+    description: "Operational status of the virtual server"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 3
+      filter: true
+      badge_colors:
+        enabled: green
+        disabled: gray
+        offline: red
+        maintenance: orange
+
+  ip_address:
+    type: ip_address
+    display_name: VIP Address
+    required: true
+    indexed: true
+    description: "Virtual IP address that clients connect to"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 4
+      search_weight: 8
+      filter: true
+
+  port:
+    type: integer
+    display_name: Port
+    required: true
+    min_value: 1
+    max_value: 65535
+    description: "Listening port number"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 5
+      filter: true
+
+  protocol:
+    type: enum
+    display_name: Protocol
+    enum_values: [tcp, udp, http, https, ftp, dns, sip, sctp, any]
+    default: tcp
+    required: true
+    description: "Network protocol for the virtual server"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 6
+      filter: true
+
+  type:
+    type: enum
+    display_name: VS Type
+    enum_values: [standard, forwarding_ip, forwarding_l2, performance_http, performance_l4, reject, stateless, dhcp_relay]
+    default: standard
+    description: "Virtual server type defining traffic handling behavior"
+    ui:
+      form_order: 7
+      filter: true
+
+  connection_limit:
+    type: integer
+    display_name: Connection Limit
+    required: false
+    min_value: 0
+    description: "Maximum concurrent connections (0 = unlimited)"
+    ui:
+      form_order: 8
+
+  rate_limit:
+    type: integer
+    display_name: Rate Limit (CPS)
+    required: false
+    min_value: 0
+    description: "Maximum connections per second (0 = unlimited)"
+    ui:
+      form_order: 9
+
+  source_address_translation:
+    type: enum
+    display_name: Source Address Translation
+    enum_values: [none, automap, snat_pool, lsn]
+    default: automap
+    description: "How source addresses are translated for server-side connections"
+    ui:
+      form_order: 10
+      filter: true
+
+  default_persistence:
+    type: enum
+    display_name: Default Persistence
+    enum_values: [none, source_addr, dest_addr, cookie, ssl_session, universal, hash]
+    default: none
+    description: "Session persistence method"
+    ui:
+      form_order: 11
+      filter: true
+
+  fallback_persistence:
+    type: enum
+    display_name: Fallback Persistence
+    enum_values: [none, source_addr, dest_addr]
+    default: none
+    description: "Fallback persistence if primary method fails"
+    ui:
+      form_order: 12
+
+  address_translation:
+    type: boolean
+    display_name: Address Translation
+    default: true
+    description: "Enable destination address translation"
+    ui:
+      form_order: 13
+
+  port_translation:
+    type: boolean
+    display_name: Port Translation
+    default: true
+    description: "Enable destination port translation"
+    ui:
+      form_order: 14
+
+  last_hop_pool:
+    type: string
+    display_name: Last Hop Pool
+    required: false
+    description: "Pool for return traffic routing"
+    ui:
+      form_order: 15
+
+  traffic_class:
+    type: string
+    display_name: Traffic Class
+    required: false
+    description: "Traffic classification or partition"
+    ui:
+      form_order: 16
+
+  notes:
+    type: text
+    display_name: Notes
+    required: false
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: Pools
+    edge_type: VS_HAS_POOL
+    target_type: LBPool
+    columns: [name, lb_method, status, member_count]
+    default_sort: name
+
+  - label: Profiles
+    edge_type: VS_HAS_PROFILE
+    target_type: LBProfile
+    columns: [name, profile_type, status]
+    default_sort: name
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, ip_address, description]
+
+graph:
+  default_label_field: name
+  group_by: protocol
+  color: "#7C3AED"
+
+api:
+  plural_name: lb-virtual-servers
+  filterable_fields: [name, status, ip_address, port, protocol, type, source_address_translation, default_persistence]
+  sortable_fields: [name, status, ip_address, port, protocol, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, status, ip_address, port, protocol]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true

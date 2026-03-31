@@ -1,0 +1,168 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: LBPoolMember
+  display_name: Pool Member
+  description: "A backend server in a load balancer pool. Represents a specific IP:port combination that receives distributed traffic. Links to the IPAddress model in IPAM."
+  icon: server
+  color: "#059669"
+  category: Load Balancing
+  tags: [load-balancer, pool-member, backend, server, f5, netscaler]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    indexed: true
+    max_length: 255
+    description: "Member name or node reference (e.g., server01:8080)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  address:
+    type: ip_address
+    display_name: Member IP
+    required: true
+    indexed: true
+    description: "Backend server IP address"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      search_weight: 8
+      filter: true
+
+  port:
+    type: integer
+    display_name: Port
+    required: true
+    min_value: 1
+    max_value: 65535
+    description: "Backend server port"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  status:
+    type: enum
+    display_name: Admin Status
+    enum_values: [enabled, disabled, forced_offline]
+    default: enabled
+    required: true
+    description: "Administrative status of this pool member"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+      badge_colors:
+        enabled: green
+        disabled: gray
+        forced_offline: red
+
+  monitor_status:
+    type: enum
+    display_name: Monitor Status
+    enum_values: [up, down, checking, unchecked, unknown]
+    default: unchecked
+    description: "Health monitor result for this member"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      filter: true
+      badge_colors:
+        up: green
+        down: red
+        checking: blue
+        unchecked: gray
+        unknown: orange
+
+  ratio:
+    type: integer
+    display_name: Ratio
+    required: false
+    default: 1
+    min_value: 1
+    max_value: 65535
+    description: "Traffic weight for ratio-based load balancing"
+    ui:
+      form_order: 6
+
+  priority_group:
+    type: integer
+    display_name: Priority Group
+    required: false
+    default: 0
+    min_value: 0
+    description: "Priority group for priority-based activation (higher = preferred)"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 7
+
+  connection_limit:
+    type: integer
+    display_name: Connection Limit
+    required: false
+    default: 0
+    min_value: 0
+    description: "Max concurrent connections to this member (0 = unlimited)"
+    ui:
+      form_order: 8
+
+  rate_limit:
+    type: integer
+    display_name: Rate Limit (CPS)
+    required: false
+    default: 0
+    min_value: 0
+    description: "Max connections per second (0 = unlimited)"
+    ui:
+      form_order: 9
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, address, description]
+
+graph:
+  default_label_field: name
+  group_by: status
+  color: "#059669"
+
+api:
+  plural_name: lb-pool-members
+  filterable_fields: [name, address, port, status, monitor_status, priority_group]
+  sortable_fields: [name, address, port, status, monitor_status, priority_group]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, address, port, status, monitor_status, ratio, priority_group]
+  default_sort_field: name
+  relationship_filters_enabled: true
