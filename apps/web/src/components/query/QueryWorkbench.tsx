@@ -17,7 +17,8 @@ import type { QueryResult } from "@/types/schema";
 interface SavedQuery {
   id: string;
   name: string;
-  query: string;
+  query?: string;
+  cypher?: string;
   description?: string;
 }
 
@@ -128,20 +129,38 @@ export function QueryWorkbench() {
             </div>
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {savedQueries.map((sq: SavedQuery) => (
-                <button
+                <div
                   key={sq.id}
-                  onClick={() => setQuery(sq.query)}
-                  className="block w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {sq.name}
-                  </div>
-                  {sq.description && (
-                    <div className="mt-0.5 truncate text-xs text-gray-500">
-                      {sq.description}
+                  <button
+                    onClick={() => setQuery(sq.cypher || sq.query || "")}
+                    className="flex-1 text-left"
+                  >
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {sq.name}
                     </div>
-                  )}
-                </button>
+                    {(sq.cypher || sq.query) && (
+                      <div className="mt-0.5 truncate text-[10px] text-gray-400 max-w-[200px] font-mono">
+                        {(sq.cypher || sq.query || "").slice(0, 50)}...
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Delete "${sq.name}"?`)) {
+                        try {
+                          await queryApi.deleteSaved(sq.id);
+                          queryClient.invalidateQueries({ queryKey: ["saved-queries"] });
+                        } catch { /* ignore */ }
+                      }
+                    }}
+                    className="ml-2 flex-shrink-0 text-[10px] text-red-400 hover:text-red-600"
+                    title="Delete query"
+                  >
+                    x
+                  </button>
+                </div>
               ))}
               {savedQueries.length === 0 && (
                 <div className="px-3 py-4 text-center text-xs text-gray-400">

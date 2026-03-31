@@ -118,4 +118,5 @@ export const queryApi = {
   listSaved: () => api.get("/query/saved"),
   saveQuery: (data: Record<string, unknown>) =>
     api.post("/query/saved", data),
+  deleteSaved: (id: string) => api.delete(`/query/saved/${id}`),
 };
