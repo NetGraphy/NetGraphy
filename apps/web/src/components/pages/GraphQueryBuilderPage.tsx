@@ -12,12 +12,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, queryApi } from "@/api/client";
 import Editor from "@monaco-editor/react";
-import {
-  useQueryBuilderStore,
-  generateCypher,
-  QueryNodePattern,
-  QueryRelPattern,
-} from "@/stores/queryBuilderStore";
+import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
 
 const OPERATORS = [
   { value: "eq", label: "=" },
@@ -153,7 +148,11 @@ export function GraphQueryBuilderPage() {
   return (
     <div className="flex h-[calc(100vh-64px)]">
       {/* LEFT — Pattern Builder */}
-      <div className="w-[340px] flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+      <div className="w-[380px] flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-y-auto">
+        <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-white">Cypher Builder</h2>
+          <p className="text-[10px] text-gray-500">Build graph patterns visually, generate Cypher</p>
+        </div>
         {/* Toolbar */}
         <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-1.5">
           <button onClick={() => setShowAddNode(true)}
@@ -345,7 +344,7 @@ export function GraphQueryBuilderPage() {
         <div className="border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-900">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500">Generated Cypher</span>
+              <span className="text-xs font-semibold text-gray-500">Generated Cypher (live)</span>
               <button onClick={copyCypher}
                 className="rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400">
                 {copied ? "Copied" : "Copy"}
