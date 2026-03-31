@@ -30,10 +30,16 @@ New to NetGraphy? Start here.
 
 ## Core Concepts
 
-- [Schema Engine](schema-designer/) -- YAML-driven schema definitions that control the entire platform.
-- [Graph Operations](graph-operations/) -- Querying, traversal, and manipulation of graph data.
-- [Data Modeling](data-modeling/) -- Nodes, edges, cardinality, mixins, and attribute types.
-- [Core Concepts](core-concepts/) -- Node types, edge types, mixins, provenance, and lifecycle.
+- [Nodes](core-concepts/nodes.md), [Edges](core-concepts/edges.md), [Attributes](core-concepts/attributes.md) -- The building blocks of the graph data model.
+- [Schema Model](core-concepts/canonical-schema-model.md) -- How YAML schema definitions drive the entire platform.
+- [Generated Tools](core-concepts/generated-tools.md) -- MCP tools auto-generated from schema for AI agent use.
+- [Validation](core-concepts/validation.md) and [Observability](core-concepts/observability.md) -- Schema-derived health checks and constraint enforcement.
+
+## Development Tools
+
+- [Cypher Builder](core-concepts/cypher-builder.md) -- Visual graph query builder with live Cypher generation, path traversal, and graph visualization. Build MAC-to-MAC paths, topology queries, and aggregations visually.
+- [Visual Schema Designer](schema-designer/visual-designer.md) -- ERD-style visual editor for creating node types, edge types, and generating YAML schema definitions.
+- [Report Builder](reports/) -- Advanced filtering and reporting with relationship-native CSV export.
 
 ## API and Agent Interfaces
 
