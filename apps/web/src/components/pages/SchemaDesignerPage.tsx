@@ -571,7 +571,7 @@ export function SchemaDesignerPage() {
   // Sync YAML
   useEffect(() => {
     setYamlValue(schemaToYaml(schema, getNodeById, importedNames));
-  }, [schema, getNodeById]);
+  }, [schema, getNodeById, importedNames]);
 
   // --- Handlers ---
 
@@ -691,8 +691,9 @@ export function SchemaDesignerPage() {
 
         {/* Connect dialog */}
         {showConnectDialog && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-80">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50"
+            onClick={() => { setShowConnectDialog(false); setPendingConnection(null); }}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-80" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-sm font-bold mb-2">Create Relationship</h3>
               <p className="text-xs text-gray-500 mb-3">
                 {getNodeById(pendingConnection?.source || "")?.name} &rarr; {getNodeById(pendingConnection?.target || "")?.name}
@@ -714,8 +715,9 @@ export function SchemaDesignerPage() {
 
         {/* Add Edge dialog (toolbar-triggered) */}
         {showAddEdge && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50"
+            onClick={() => setShowAddEdge(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-sm font-bold mb-3">Add Relationship</h3>
               <div className="space-y-3">
                 <div>
@@ -775,8 +777,10 @@ export function SchemaDesignerPage() {
 
         {/* Import Existing Node picker */}
         {showImport && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96 max-h-[500px] flex flex-col">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50"
+            onClick={() => setShowImport(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96 max-h-[500px] flex flex-col"
+              onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold">Import Existing Node Type</h3>
                 <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-600 text-xs">Close</button>
