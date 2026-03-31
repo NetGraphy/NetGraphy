@@ -275,10 +275,8 @@ function generatePathCypher(model: VisualQueryModel, paramValues?: Record<string
     );
     lines.push(`RETURN ${fields.join(", ")}`);
   } else {
-    // Default: return the path + endpoint details
-    lines.push("RETURN path,");
-    lines.push(`  [n IN nodes(path) | labels(n)[0] + ': ' + coalesce(n.hostname, n.name, n.address, n.id)] AS node_labels,`);
-    lines.push(`  length(path) AS hops`);
+    // Default: return path for graph visualization
+    lines.push("RETURN path");
   }
 
   if (model.limit > 0) lines.push(`LIMIT ${model.limit}`);
@@ -579,8 +577,8 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
           ],
           pathStartNodeId: srcId,
           pathEndNodeId: dstId,
-          pathDepthLimit: 15,
-          pathRelTypes: ["MAC_ON_INTERFACE", "HAS_INTERFACE", "CONNECTED_TO"],
+          pathDepthLimit: 30,
+          pathRelTypes: ["MAC_ON_INTERFACE", "HAS_INTERFACE", "CONNECTED_TO", "CIRCUIT_HAS_TERMINATION", "TERMINATION_CONNECTED_TO"],
           parameters: [
             { name: "src_mac", label: "Source MAC", type: "string", required: true, defaultValue: "", enumValues: [], description: "Source MAC address" },
             { name: "dst_mac", label: "Destination MAC", type: "string", required: true, defaultValue: "", enumValues: [], description: "Destination MAC address" },
