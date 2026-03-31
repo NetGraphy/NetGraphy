@@ -1,12 +1,15 @@
-"""Schema discovery and management endpoints."""
+"""Schema discovery, management, and designer endpoints."""
 
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-from netgraphy_api.dependencies import get_schema_registry, get_auth_context
+from netgraphy_api.dependencies import get_schema_registry, get_auth_context, get_graph_driver
 from netgraphy_api.exceptions import SchemaNotFoundError
 from packages.auth.models import AuthContext
+from packages.graph_db.driver import Neo4jDriver
 from packages.schema_engine.registry import SchemaRegistry
 
 router = APIRouter()
@@ -176,3 +179,79 @@ async def apply_migration(
     PermissionChecker().require_permission(actor, "manage", "schema")
     # Schema migration is a complex operation — deferred to Phase 2
     return {"data": {"status": "not_implemented", "message": "Schema migration will be available in a future release"}}
+
+
+# --------------------------------------------------------------------------- #
+#  Schema Designer — saved designs                                             #
+# --------------------------------------------------------------------------- #
+
+
+@router.get("/designs")
+async def list_designs(
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """List saved schema designs for the current user."""
+    result = await driver.execute_read(
+        "MATCH (d:_SchemaDesign) WHERE d.owner = $user OR d.visibility = 'shared' "
+        "RETURN d ORDER BY d.updated_at DESC",
+        {"user": actor.user_id},
+    )
+    return {"data": [row["d"] for row in result.rows]}
+
+
+@router.post("/designs", status_code=201)
+async def save_design(
+    body: dict[str, Any],
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Save a schema design."""
+    now = datetime.now(timezone.utc).isoformat()
+    name = body.get("name", "Untitled Design")
+
+    # Upsert by name + owner
+    result = await driver.execute_read(
+        "MATCH (d:_SchemaDesign {name: $name, owner: $owner}) RETURN d.id AS id",
+        {"name": name, "owner": actor.user_id},
+    )
+
+    if result.rows:
+        # Update existing
+        design_id = result.rows[0]["id"]
+        await driver.execute_write(
+            "MATCH (d:_SchemaDesign {id: $id}) "
+            "SET d.schema = $schema, d.imported_names = $imported, d.updated_at = $now",
+            {"id": design_id, "schema": body.get("schema", "{}"),
+             "imported": body.get("imported_names", "[]"), "now": now},
+        )
+    else:
+        # Create new
+        design_id = str(uuid.uuid4())
+        props = {
+            "id": design_id,
+            "name": name,
+            "schema": body.get("schema", "{}"),
+            "imported_names": body.get("imported_names", "[]"),
+            "owner": actor.user_id,
+            "owner_name": actor.username,
+            "visibility": "personal",
+            "created_at": now,
+            "updated_at": now,
+        }
+        await driver.execute_write("CREATE (d:_SchemaDesign $props)", {"props": props})
+
+    return {"data": {"id": design_id, "name": name, "saved": True}}
+
+
+@router.delete("/designs/{design_id}", status_code=204)
+async def delete_design(
+    design_id: str,
+    actor: AuthContext = Depends(get_auth_context),
+    driver: Neo4jDriver = Depends(get_graph_driver),
+):
+    """Delete a saved schema design."""
+    await driver.execute_write(
+        "MATCH (d:_SchemaDesign {id: $id, owner: $owner}) DELETE d",
+        {"id": design_id, "owner": actor.user_id},
+    )

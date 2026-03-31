@@ -532,6 +532,11 @@ export function SchemaDesignerPage() {
   // Import existing node picker
   const [showImport, setShowImport] = useState(false);
   const [importSearch, setImportSearch] = useState("");
+  // Save/Load
+  const [showSaveLoad, setShowSaveLoad] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveFeedback, setSaveFeedback] = useState("");
+  const [savedDesigns, setSavedDesigns] = useState<any[]>([]);
 
   // --- Sync store → React Flow nodes ---
   const rfNodes: Node[] = useMemo(() =>
@@ -610,6 +615,58 @@ export function SchemaDesignerPage() {
     setShowAddNode(false);
   }, [newNodeName, addNode]);
 
+  // Save design to backend
+  const saveDesign = useCallback(async () => {
+    const name = saveName.trim() || "Untitled Design";
+    try {
+      const payload = {
+        name,
+        schema: JSON.stringify(schema),
+        imported_names: JSON.stringify([...importedNames]),
+      };
+      await api.post("/schema/designs", payload);
+      setSaveFeedback("Saved");
+      setTimeout(() => setSaveFeedback(""), 2000);
+    } catch {
+      setSaveFeedback("Failed");
+      setTimeout(() => setSaveFeedback(""), 2000);
+    }
+  }, [saveName, schema, importedNames]);
+
+  // Load saved designs list
+  const loadDesignsList = useCallback(async () => {
+    try {
+      const resp = await api.get("/schema/designs");
+      setSavedDesigns(resp.data?.data || []);
+    } catch { setSavedDesigns([]); }
+  }, []);
+
+  // Load a specific design
+  const loadDesign = useCallback((design: any) => {
+    try {
+      const parsed = typeof design.schema === "string" ? JSON.parse(design.schema) : design.schema;
+      const imported = typeof design.imported_names === "string" ? JSON.parse(design.imported_names) : (design.imported_names || []);
+      loadSchema(parsed);
+      setImportedNames(new Set(imported));
+      setSaveName(design.name || "");
+      setShowSaveLoad(false);
+    } catch (e) {
+      alert("Failed to load design");
+    }
+  }, [loadSchema]);
+
+  // Download YAML as file
+  const downloadYaml = useCallback(() => {
+    const yaml = schemaToYaml(schema, getNodeById, importedNames);
+    const blob = new Blob([yaml], { type: "text/yaml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${saveName.trim() || "schema"}.yaml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [schema, getNodeById, importedNames, saveName]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -681,6 +738,16 @@ export function SchemaDesignerPage() {
               <button onClick={() => setShowYaml(!showYaml)}
                 className={`rounded border px-2 py-1 text-xs ${showYaml ? "border-brand-500 text-brand-600 bg-brand-50" : "border-gray-300 text-gray-600"}`}>
                 YAML
+              </button>
+              <div className="border-l border-gray-300 dark:border-gray-600 h-4 mx-1" />
+              <button onClick={downloadYaml} disabled={schema.nodes.length === 0}
+                title="Download generated YAML"
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300">
+                Download
+              </button>
+              <button onClick={() => { setShowSaveLoad(true); loadDesignsList(); }}
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
+                Save / Load
               </button>
               {validationErrors.length > 0 && (
                 <span className="text-[10px] text-red-500">{validationErrors.length} error(s)</span>
@@ -825,6 +892,51 @@ export function SchemaDesignerPage() {
               </div>
               <div className="mt-3 text-[10px] text-gray-400">
                 Imported nodes appear on the canvas as references. Only new nodes appear in the generated YAML.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Save/Load dialog */}
+        {showSaveLoad && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-50"
+            onClick={() => setShowSaveLoad(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 w-96 max-h-[500px] flex flex-col"
+              onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-sm font-bold mb-3">Save / Load Design</h3>
+
+              {/* Save section */}
+              <div className="border-b border-gray-200 dark:border-gray-600 pb-3 mb-3">
+                <label className="text-xs font-medium text-gray-500 block mb-1">Save Current Design</label>
+                <div className="flex gap-2">
+                  <input value={saveName} onChange={(e) => setSaveName(e.target.value)}
+                    placeholder="Design name..."
+                    className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                  <button onClick={saveDesign} disabled={schema.nodes.length === 0}
+                    className="rounded bg-brand-600 px-3 py-1.5 text-xs text-white disabled:opacity-50 hover:bg-brand-700">
+                    {saveFeedback || "Save"}
+                  </button>
+                </div>
+                <div className="text-[10px] text-gray-400 mt-1">
+                  {schema.nodes.filter((n) => !importedNames.has(n.name)).length} new nodes, {importedNames.size} imported, {schema.edges.length} edges
+                </div>
+              </div>
+
+              {/* Load section */}
+              <label className="text-xs font-medium text-gray-500 block mb-1">Load Saved Design</label>
+              <div className="flex-1 overflow-y-auto space-y-1">
+                {savedDesigns.map((d) => (
+                  <button key={d.id} onClick={() => loadDesign(d)}
+                    className="w-full flex items-center justify-between rounded px-3 py-2 text-left text-xs hover:bg-brand-50 dark:hover:bg-gray-700">
+                    <div>
+                      <div className="font-medium text-gray-700 dark:text-gray-200">{d.name || "Untitled"}</div>
+                      <div className="text-[10px] text-gray-400">{d.created_at ? new Date(d.created_at).toLocaleDateString() : ""}</div>
+                    </div>
+                  </button>
+                ))}
+                {savedDesigns.length === 0 && (
+                  <div className="text-xs text-gray-400 text-center py-4">No saved designs yet</div>
+                )}
               </div>
             </div>
           </div>
