@@ -1,0 +1,302 @@
+# Core Contact Types — seeded on first deployment
+# Users can create additional custom types via the UI
+
+contact_types:
+  # Phone
+  - name: Work Phone
+    slug: work_phone
+    category: phone
+    icon: phone
+    url_template: "tel:{value}"
+    is_core: true
+    sort_order: 10
+
+  - name: Mobile Phone
+    slug: mobile_phone
+    category: phone
+    icon: smartphone
+    url_template: "tel:{value}"
+    is_core: true
+    sort_order: 11
+
+  - name: Home Phone
+    slug: home_phone
+    category: phone
+    icon: phone
+    url_template: "tel:{value}"
+    is_core: true
+    sort_order: 12
+
+  # Email
+  - name: Work Email
+    slug: work_email
+    category: email
+    icon: mail
+    url_template: "mailto:{value}"
+    is_core: true
+    sort_order: 20
+
+  - name: Personal Email
+    slug: personal_email
+    category: email
+    icon: mail
+    url_template: "mailto:{value}"
+    is_core: true
+    sort_order: 21
+
+  - name: Distribution List
+    slug: distribution_list
+    category: email
+    icon: mail
+    url_template: "mailto:{value}"
+    is_core: true
+    sort_order: 22
+
+  # Paging / On-Call
+  - name: Pager
+    slug: pager
+    category: paging
+    icon: bell
+    is_core: true
+    sort_order: 30
+
+  - name: PagerDuty
+    slug: pagerduty
+    category: paging
+    icon: bell-ring
+    url_template: "https://app.pagerduty.com/users/{value}"
+    is_core: true
+    sort_order: 31
+
+  - name: OpsGenie
+    slug: opsgenie
+    category: paging
+    icon: bell-ring
+    url_template: "https://app.opsgenie.com/users/{value}"
+    is_core: true
+    sort_order: 32
+
+  - name: VictorOps / Splunk On-Call
+    slug: victorops
+    category: paging
+    icon: bell-ring
+    is_core: true
+    sort_order: 33
+
+  # Messaging / Chat
+  - name: Slack
+    slug: slack
+    category: messaging
+    icon: message-circle
+    url_template: "https://slack.com/app_redirect?channel={value}"
+    is_core: true
+    sort_order: 40
+
+  - name: Microsoft Teams
+    slug: ms_teams
+    category: messaging
+    icon: message-square
+    is_core: true
+    sort_order: 41
+
+  - name: Webex Teams
+    slug: webex
+    category: messaging
+    icon: message-square
+    is_core: true
+    sort_order: 42
+
+  # Ticketing / ITSM
+  - name: ServiceNow Group
+    slug: servicenow_group
+    category: ticketing
+    icon: ticket
+    url_template: "https://instance.service-now.com/nav_to.do?uri=sys_user_group.do?sys_id={value}"
+    is_core: true
+    sort_order: 50
+
+  - name: ServiceNow User
+    slug: servicenow_user
+    category: ticketing
+    icon: ticket
+    url_template: "https://instance.service-now.com/nav_to.do?uri=sys_user.do?sys_id={value}"
+    is_core: true
+    sort_order: 51
+
+  - name: Jira User
+    slug: jira_user
+    category: ticketing
+    icon: ticket
+    url_template: "https://jira.example.com/secure/ViewProfile.jspa?name={value}"
+    is_core: true
+    sort_order: 52
+
+  - name: Jira Service Desk Queue
+    slug: jira_queue
+    category: ticketing
+    icon: ticket
+    is_core: true
+    sort_order: 53
+
+  # Social / Profile
+  - name: GitHub
+    slug: github
+    category: social
+    icon: github
+    url_template: "https://github.com/{value}"
+    is_core: true
+    sort_order: 60
+
+  - name: LinkedIn
+    slug: linkedin
+    category: social
+    icon: linkedin
+    url_template: "https://linkedin.com/in/{value}"
+    is_core: true
+    sort_order: 61
+
+  # Video / Conference
+  - name: Zoom
+    slug: zoom
+    category: video
+    icon: video
+    is_core: true
+    sort_order: 70
+
+  - name: Webex Meeting
+    slug: webex_meeting
+    category: video
+    icon: video
+    is_core: true
+    sort_order: 71
+
+  # URL
+  - name: URL / Portal
+    slug: url
+    category: url
+    icon: link
+    url_template: "{value}"
+    is_core: true
+    sort_order: 80
+
+  - name: Vendor Portal
+    slug: vendor_portal
+    category: url
+    icon: link
+    url_template: "{value}"
+    is_core: true
+    sort_order: 81
+
+  - name: Wiki / Documentation
+    slug: wiki
+    category: url
+    icon: book
+    url_template: "{value}"
+    is_core: true
+    sort_order: 82
+
+contact_roles:
+  - name: On-Call Engineer
+    slug: on_call
+    description: "Primary on-call engineer for incidents and outages"
+    color: "#DC2626"
+    sort_order: 10
+    is_core: true
+
+  - name: Escalation Contact
+    slug: escalation
+    description: "Escalation point when primary on-call is unavailable"
+    color: "#EA580C"
+    sort_order: 20
+    is_core: true
+
+  - name: Site Manager
+    slug: site_manager
+    description: "Physical site / data center facility manager"
+    color: "#2563EB"
+    sort_order: 30
+    is_core: true
+
+  - name: Administrative Contact
+    slug: administrative
+    description: "Administrative or management contact"
+    color: "#7C3AED"
+    sort_order: 40
+    is_core: true
+
+  - name: Vendor NOC
+    slug: vendor_noc
+    description: "Vendor / provider network operations center"
+    color: "#0D9488"
+    sort_order: 50
+    is_core: true
+
+  - name: Vendor Account Manager
+    slug: vendor_account
+    description: "Vendor account or sales representative"
+    color: "#0891B2"
+    sort_order: 55
+    is_core: true
+
+  - name: Billing Contact
+    slug: billing
+    description: "Financial / billing point of contact"
+    color: "#4F46E5"
+    sort_order: 60
+    is_core: true
+
+  - name: Security Contact
+    slug: security
+    description: "Security team or incident response contact"
+    color: "#DC2626"
+    sort_order: 70
+    is_core: true
+
+  - name: Change Manager
+    slug: change_manager
+    description: "Change advisory board / change management contact"
+    color: "#D97706"
+    sort_order: 80
+    is_core: true
+
+  - name: Application Owner
+    slug: app_owner
+    description: "Owner of the application or service hosted on infrastructure"
+    color: "#059669"
+    sort_order: 90
+    is_core: true
+
+  - name: Network Engineer
+    slug: network_engineer
+    description: "Network engineering team member responsible for this infrastructure"
+    color: "#2563EB"
+    sort_order: 100
+    is_core: true
+
+  - name: System Administrator
+    slug: sysadmin
+    description: "System administrator responsible for servers/compute"
+    color: "#7C3AED"
+    sort_order: 110
+    is_core: true
+
+  - name: Facilities Contact
+    slug: facilities
+    description: "Building facilities / physical plant contact"
+    color: "#78716C"
+    sort_order: 120
+    is_core: true
+
+  - name: Emergency Contact
+    slug: emergency
+    description: "Emergency contact for critical situations"
+    color: "#B91C1C"
+    sort_order: 5
+    is_core: true
+
+  - name: Project Manager
+    slug: project_manager
+    description: "Project manager for implementations or migrations"
+    color: "#D97706"
+    sort_order: 130
+    is_core: true

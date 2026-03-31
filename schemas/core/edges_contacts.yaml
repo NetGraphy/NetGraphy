@@ -1,0 +1,219 @@
+---
+# =========================================================================== #
+# TEAM_HAS_MEMBER — Team → Contact (many-to-many)                            #
+# =========================================================================== #
+kind: EdgeType
+version: v1
+metadata:
+  name: TEAM_HAS_MEMBER
+  display_name: "Has Member"
+  description: "Team includes this contact as a member"
+  category: Organization
+
+source:
+  node_types: [Team]
+
+target:
+  node_types: [Contact]
+
+cardinality: many_to_many
+inverse_name: MEMBER_OF_TEAM
+
+attributes:
+  role_in_team:
+    type: enum
+    enum_values: [member, lead, manager, admin, on_call_primary, on_call_secondary]
+    default: member
+    description: "Contact's role within this team"
+  joined_date:
+    type: date
+    required: false
+    description: "When the contact joined this team"
+
+graph:
+  style: solid
+  color: "#3B82F6"
+  show_label: false
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: team_has_member
+  supports_count_filter: true
+
+---
+# =========================================================================== #
+# HAS_CONTACT_METHOD — Contact/Team → ContactMethod (one-to-many)            #
+# =========================================================================== #
+kind: EdgeType
+version: v1
+metadata:
+  name: HAS_CONTACT_METHOD
+  display_name: "Has Contact Method"
+  description: "Contact or team has this contact method"
+  category: Organization
+
+source:
+  node_types: [Contact, Team]
+
+target:
+  node_types: [ContactMethod]
+
+cardinality: one_to_many
+inverse_name: CONTACT_METHOD_FOR
+
+constraints:
+  unique_target: true  # Each contact method belongs to one contact/team
+
+graph:
+  style: solid
+  color: "#06B6D4"
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: has_contact_method
+  supports_count_filter: true
+
+---
+# =========================================================================== #
+# CONTACT_METHOD_TYPE — ContactMethod → ContactType (many-to-one)            #
+# =========================================================================== #
+kind: EdgeType
+version: v1
+metadata:
+  name: CONTACT_METHOD_TYPE
+  display_name: "Is Type"
+  description: "Contact method is of this type"
+  category: Organization
+
+source:
+  node_types: [ContactMethod]
+
+target:
+  node_types: [ContactType]
+
+cardinality: many_to_one
+inverse_name: TYPE_HAS_METHODS
+
+graph:
+  style: dashed
+  color: "#8B5CF6"
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: contact_method_type
+
+---
+# =========================================================================== #
+# CONTACT_ASSIGNED_TO — Contact/Team → ANY object (many-to-many)             #
+# The polymorphic contact assignment edge. Replaces Nautobot's               #
+# ContactAssociation table with a graph-native edge that can connect         #
+# contacts to any object type in the system.                                  #
+# =========================================================================== #
+kind: EdgeType
+version: v1
+metadata:
+  name: CONTACT_ASSIGNED_TO
+  display_name: "Assigned To"
+  description: "Contact or team is assigned to this object in a specific role. Use for site contacts, device owners, vendor reps, circuit support, etc."
+  category: Organization
+
+source:
+  node_types: [Contact, Team]
+
+target:
+  node_types: [Device, Location, Provider, Circuit, Tenant, LBVirtualServer, LBPool, FirewallPolicy, IPSecVPNTunnel, Architecture, Service, CloudProvider, VPC]
+
+cardinality: many_to_many
+inverse_name: HAS_CONTACT
+
+attributes:
+  role:
+    type: string
+    required: true
+    indexed: true
+    description: "Contact role for this object (references ContactRole.slug). E.g., on_call, escalation, site_manager, vendor_noc, billing"
+  status:
+    type: enum
+    enum_values: [active, inactive]
+    default: active
+    required: true
+    description: "Whether this contact assignment is currently active"
+  priority:
+    type: enum
+    enum_values: [primary, secondary, tertiary, backup]
+    default: primary
+    description: "Priority level for this contact assignment"
+  effective_date:
+    type: date
+    required: false
+    description: "When this assignment became effective"
+  expiration_date:
+    type: date
+    required: false
+    description: "When this assignment expires (for contracts, rotations)"
+  notes:
+    type: text
+    required: false
+    description: "Additional context (e.g., 'P1 escalation only', 'Business hours', 'After hours pager')"
+
+graph:
+  style: solid
+  color: "#10B981"
+  show_label: true
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: contact_assigned_to
+  supports_existence_filter: true
+  supports_count_filter: true
+  traversable_in_reports: true
+
+---
+# =========================================================================== #
+# CONTACT_ROLE_TYPE — edge linking assignment to ContactRole definition       #
+# Not needed as a separate edge — role is stored as string on                 #
+# CONTACT_ASSIGNED_TO referencing ContactRole.slug                            #
+# =========================================================================== #
+
+# =========================================================================== #
+# TEAM_PARENT — Team → Team (many-to-one, hierarchical)                      #
+# =========================================================================== #
+kind: EdgeType
+version: v1
+metadata:
+  name: TEAM_PARENT
+  display_name: "Parent Team"
+  description: "Team is a sub-team of this parent team (hierarchical)"
+  category: Organization
+
+source:
+  node_types: [Team]
+
+target:
+  node_types: [Team]
+
+cardinality: many_to_one
+inverse_name: HAS_SUB_TEAM
+
+graph:
+  style: solid
+  color: "#3B82F6"
+
+api:
+  exposed: true
+
+query:
+  traversable: true
+  query_alias: team_parent

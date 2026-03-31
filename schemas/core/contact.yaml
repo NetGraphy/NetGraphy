@@ -1,0 +1,665 @@
+---
+# =========================================================================== #
+# Contact — a person or external contact with multiple contact methods         #
+# =========================================================================== #
+kind: NodeType
+version: v1
+metadata:
+  name: Contact
+  display_name: Contact
+  description: "A person — internal engineer, vendor rep, or external contact. Has multiple contact methods (email, phone, pager, etc.) linked via ContactMethod nodes."
+  icon: user
+  color: "#10B981"
+  category: Organization
+  tags: [contact, person, team, organization]
+
+attributes:
+  first_name:
+    type: string
+    display_name: First Name
+    required: true
+    indexed: true
+    max_length: 100
+    description: "Contact's first/given name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  last_name:
+    type: string
+    display_name: Last Name
+    required: true
+    indexed: true
+    max_length: 100
+    description: "Contact's last/family name"
+    ui:
+      list_column: true
+      list_column_order: 2
+      search_weight: 10
+      form_order: 2
+
+  title:
+    type: string
+    display_name: Title
+    required: false
+    description: "Job title or role (e.g., Senior Network Engineer)"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  email:
+    type: email
+    display_name: Primary Email
+    required: false
+    indexed: true
+    description: "Primary email address"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 8
+
+  phone:
+    type: string
+    display_name: Primary Phone
+    required: false
+    description: "Primary phone number"
+    ui:
+      form_order: 5
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, inactive, on_leave]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 6
+      filter: true
+      badge_colors:
+        active: green
+        inactive: gray
+        on_leave: orange
+
+  company:
+    type: string
+    display_name: Company
+    required: false
+    indexed: true
+    description: "Company or organization name"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 7
+      filter: true
+
+  department:
+    type: string
+    display_name: Department
+    required: false
+    description: "Department within the organization"
+    ui:
+      form_order: 8
+      filter: true
+
+  address:
+    type: text
+    display_name: Address
+    required: false
+    ui:
+      form_order: 9
+
+  city:
+    type: string
+    display_name: City
+    required: false
+    indexed: true
+    ui:
+      form_order: 10
+
+  state:
+    type: string
+    display_name: State
+    required: false
+    ui:
+      form_order: 11
+
+  country:
+    type: string
+    display_name: Country
+    required: false
+    indexed: true
+    ui:
+      form_order: 12
+
+  timezone:
+    type: string
+    display_name: Timezone
+    required: false
+    description: "IANA timezone (e.g., America/Chicago)"
+    ui:
+      form_order: 13
+
+  comments:
+    type: text
+    display_name: Comments
+    required: false
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: Contact Methods
+    edge_type: HAS_CONTACT_METHOD
+    target_type: ContactMethod
+    columns: [contact_type, value, label, is_primary]
+    default_sort: contact_type
+
+  - label: Teams
+    edge_type: TEAM_HAS_MEMBER
+    target_type: Team
+    columns: [name, status, team_type]
+    default_sort: name
+
+search:
+  enabled: true
+  primary_field: last_name
+  search_fields: [first_name, last_name, email, phone, company, title]
+
+graph:
+  default_label_field: last_name
+  group_by: company
+  color: "#10B981"
+
+api:
+  plural_name: contacts
+  filterable_fields: [first_name, last_name, email, status, company, department, city, country]
+  sortable_fields: [last_name, first_name, company, status, created_at]
+  default_sort: last_name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [first_name, last_name, title, email, status, company]
+  default_sort_field: last_name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+# =========================================================================== #
+# Team — a group of contacts (NOC, Support, Engineering, etc.)                #
+# =========================================================================== #
+kind: NodeType
+version: v1
+metadata:
+  name: Team
+  display_name: Team
+  description: "A team or group of contacts — NOC team, engineering team, vendor support, on-call group, etc. Teams can be assigned to any object as contacts."
+  icon: users
+  color: "#3B82F6"
+  category: Organization
+  tags: [team, group, contact, organization]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Team name (e.g., Dallas NOC, Vendor Support - Lumen)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  team_type:
+    type: enum
+    display_name: Team Type
+    enum_values: [noc, engineering, support, operations, management, vendor, security, facilities, on_call, project, other]
+    default: other
+    required: true
+    description: "Type/function of the team"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, inactive]
+    default: active
+    required: true
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        inactive: gray
+
+  email:
+    type: email
+    display_name: Team Email
+    required: false
+    indexed: true
+    description: "Team distribution list or shared email"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  phone:
+    type: string
+    display_name: Team Phone
+    required: false
+    description: "Team phone number or bridge line"
+    ui:
+      form_order: 5
+
+  external_id:
+    type: string
+    display_name: External ID
+    required: false
+    indexed: true
+    description: "ID in external system (e.g., ServiceNow group sys_id, PagerDuty team ID)"
+    ui:
+      form_order: 6
+
+  external_system:
+    type: string
+    display_name: External System
+    required: false
+    description: "Name of the external system this team maps to"
+    ui:
+      form_order: 7
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: Members
+    edge_type: TEAM_HAS_MEMBER
+    target_type: Contact
+    columns: [first_name, last_name, title, email, status]
+    default_sort: last_name
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, email, external_id, description]
+
+graph:
+  default_label_field: name
+  group_by: team_type
+  color: "#3B82F6"
+
+api:
+  plural_name: teams
+  filterable_fields: [name, team_type, status, email, external_system]
+  sortable_fields: [name, team_type, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, team_type, status, email]
+  default_sort_field: name
+  relationship_filters_enabled: true
+
+---
+# =========================================================================== #
+# ContactType — extensible contact method types                                #
+# =========================================================================== #
+kind: NodeType
+version: v1
+metadata:
+  name: ContactType
+  display_name: Contact Type
+  description: "A type of contact method — phone, email, pager, Slack, ServiceNow group, PagerDuty, Teams, etc. Extensible: users can create custom contact types."
+  icon: tag
+  color: "#8B5CF6"
+  category: Organization
+  tags: [contact, type, extensible]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 100
+    description: "Contact type name (e.g., Work Email, Pager, Slack Handle)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    display_name: Slug
+    required: true
+    unique: true
+    indexed: true
+    max_length: 100
+    description: "URL-safe identifier (e.g., work_email, pager, slack)"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  category:
+    type: enum
+    display_name: Category
+    enum_values: [phone, email, messaging, paging, ticketing, social, video, url, other]
+    default: other
+    required: true
+    description: "General category of this contact method"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  icon:
+    type: string
+    display_name: Icon
+    required: false
+    description: "Icon identifier for UI display"
+    ui:
+      form_order: 4
+
+  url_template:
+    type: string
+    display_name: URL Template
+    required: false
+    description: "Template for generating a link from the value. Use {value} placeholder. E.g., mailto:{value}, tel:{value}, https://app.slack.com/client/{value}"
+    ui:
+      form_order: 5
+
+  validation_regex:
+    type: string
+    display_name: Validation Regex
+    required: false
+    description: "Optional regex to validate contact method values"
+    ui:
+      form_order: 6
+
+  is_core:
+    type: boolean
+    display_name: Core Type
+    default: false
+    description: "Whether this is a core (built-in) contact type that cannot be deleted"
+    ui:
+      form_order: 7
+
+  sort_order:
+    type: integer
+    display_name: Sort Order
+    default: 100
+    description: "Display ordering (lower = first)"
+    ui:
+      form_order: 8
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    ui:
+      form_order: 10
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, category]
+
+graph:
+  default_label_field: name
+  group_by: category
+  color: "#8B5CF6"
+
+api:
+  plural_name: contact-types
+  filterable_fields: [name, slug, category, is_core]
+  sortable_fields: [name, sort_order, category]
+  default_sort: sort_order
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+---
+# =========================================================================== #
+# ContactMethod — a specific contact method instance on a Contact or Team     #
+# =========================================================================== #
+kind: NodeType
+version: v1
+metadata:
+  name: ContactMethod
+  display_name: Contact Method
+  description: "A specific contact method for a person or team — a phone number, email address, Slack handle, PagerDuty ID, ServiceNow group, etc. Links to a ContactType for extensibility."
+  icon: phone
+  color: "#06B6D4"
+  category: Organization
+  tags: [contact, method, phone, email, pager]
+
+attributes:
+  value:
+    type: string
+    display_name: Value
+    required: true
+    indexed: true
+    max_length: 500
+    description: "The actual contact value (phone number, email, Slack handle, ServiceNow group ID, etc.)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  contact_type:
+    type: string
+    display_name: Contact Type
+    required: true
+    indexed: true
+    description: "Type of contact method (references ContactType.slug)"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  label:
+    type: string
+    display_name: Label
+    required: false
+    max_length: 100
+    description: "Custom label (e.g., Work, Personal, After Hours, Escalation)"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  is_primary:
+    type: boolean
+    display_name: Primary
+    default: false
+    description: "Whether this is the primary method of this type"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, inactive, unverified]
+    default: active
+    required: true
+    ui:
+      form_order: 5
+      filter: true
+      badge_colors:
+        active: green
+        inactive: gray
+        unverified: orange
+
+  notes:
+    type: text
+    display_name: Notes
+    required: false
+    description: "Additional context (e.g., 'Use for P1 only', 'Business hours only')"
+    ui:
+      form_order: 6
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: value
+  search_fields: [value, contact_type, label]
+
+graph:
+  default_label_field: value
+  group_by: contact_type
+  color: "#06B6D4"
+
+api:
+  plural_name: contact-methods
+  filterable_fields: [value, contact_type, label, is_primary, status]
+  sortable_fields: [contact_type, value, label]
+  default_sort: contact_type
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+---
+# =========================================================================== #
+# ContactRole — defines what role a contact plays for an assigned object       #
+# =========================================================================== #
+kind: NodeType
+version: v1
+metadata:
+  name: ContactRole
+  display_name: Contact Role
+  description: "The role a contact or team plays for an assigned object — on-call engineer, escalation contact, billing, site manager, etc. Extensible: users can create custom roles."
+  icon: briefcase
+  color: "#D97706"
+  category: Organization
+  tags: [contact, role, assignment]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 100
+    description: "Role name (e.g., On-Call Engineer, Site Manager, Vendor NOC)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+
+  slug:
+    type: string
+    display_name: Slug
+    required: true
+    unique: true
+    indexed: true
+    max_length: 100
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "What this role means and when to use it"
+    ui:
+      form_order: 3
+
+  color:
+    type: string
+    display_name: Color
+    required: false
+    description: "Hex color for UI badges"
+    ui:
+      form_order: 4
+
+  sort_order:
+    type: integer
+    display_name: Sort Order
+    default: 100
+    ui:
+      form_order: 5
+
+  is_core:
+    type: boolean
+    display_name: Core Role
+    default: false
+    ui:
+      form_order: 6
+
+mixins:
+  - lifecycle_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, slug, description]
+
+api:
+  plural_name: contact-roles
+  filterable_fields: [name, slug, is_core]
+  sortable_fields: [name, sort_order]
+  default_sort: sort_order
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
