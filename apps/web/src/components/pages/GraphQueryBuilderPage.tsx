@@ -85,16 +85,27 @@ export function GraphQueryBuilderPage() {
   const [newRelType, setNewRelType] = useState("");
   const [newRelDir, setNewRelDir] = useState<"outgoing" | "incoming" | "undirected">("outgoing");
 
+  // Parameter values for execution
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
+
   // Copy feedback
   const [copied, setCopied] = useState(false);
 
   // Execute query
   const executeQuery = useCallback(async () => {
+    // Check required parameters
+    for (const p of model.parameters) {
+      if (p.required && !paramValues[p.name]) {
+        setExecError(`Required parameter "${p.label || p.name}" is missing`);
+        return;
+      }
+    }
     setExecuting(true);
     setExecError("");
     const start = Date.now();
     try {
-      const resp = await queryApi.executeCypher(cypher);
+      const params = model.parameters.length > 0 ? paramValues : undefined;
+      const resp = await queryApi.executeCypher(cypher, params);
       setResults(resp.data.data);
       setExecTime(Date.now() - start);
     } catch (err: any) {
@@ -104,7 +115,7 @@ export function GraphQueryBuilderPage() {
     } finally {
       setExecuting(false);
     }
-  }, [cypher]);
+  }, [cypher, model.parameters, paramValues]);
 
   // Copy Cypher
   const copyCypher = useCallback(() => {
@@ -172,6 +183,8 @@ export function GraphQueryBuilderPage() {
               { key: "sites-no-devices", label: "Sites w/o Devices" },
               { key: "count-devices-by-city", label: "Count by City" },
               { key: "circuits-by-provider", label: "Circuits by Provider" },
+              { key: "mac-to-mac-path", label: "MAC-to-MAC Path" },
+              { key: "device-neighbors", label: "Device Neighbors" },
             ].map((t) => (
               <button key={t.key} onClick={() => loadTemplate(t.key)}
                 className="rounded-full border border-gray-200 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-brand-50 hover:border-brand-300 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700">
@@ -180,6 +193,58 @@ export function GraphQueryBuilderPage() {
             ))}
           </div>
         </div>
+
+        {/* Query Mode */}
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <div className="text-[10px] font-semibold text-gray-400 uppercase mb-1.5">Query Mode</div>
+          <div className="flex gap-1">
+            {([
+              { value: "pattern", label: "Pattern Match" },
+              { value: "shortestPath", label: "Shortest Path" },
+              { value: "allPaths", label: "All Paths" },
+            ] as const).map((m) => (
+              <button key={m.value} onClick={() => setModel({ ...model, queryMode: m.value })}
+                className={`flex-1 rounded border px-2 py-1 text-[10px] ${model.queryMode === m.value ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-900/20" : "border-gray-200 text-gray-500 dark:border-gray-600"}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          {(model.queryMode === "shortestPath" || model.queryMode === "allPaths") && (
+            <div className="mt-2 space-y-2">
+              <div>
+                <label className="text-[9px] text-gray-500">Max hops</label>
+                <input type="number" value={model.pathDepthLimit} min={1} max={50}
+                  onChange={(e) => setModel({ ...model, pathDepthLimit: Number(e.target.value) })}
+                  className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              </div>
+              <div>
+                <label className="text-[9px] text-gray-500">Allowed relationship types (comma separated, empty = all)</label>
+                <input value={model.pathRelTypes.join(", ")}
+                  onChange={(e) => setModel({ ...model, pathRelTypes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+                  placeholder="e.g., HAS_INTERFACE, CONNECTED_TO"
+                  className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Parameters */}
+        {model.parameters.length > 0 && (
+          <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/10">
+            <div className="text-[10px] font-semibold text-amber-600 uppercase mb-1.5">Parameters</div>
+            {model.parameters.map((p) => (
+              <div key={p.name} className="mb-2">
+                <label className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                  {p.label || p.name} {p.required && <span className="text-red-400">*</span>}
+                </label>
+                <input value={paramValues[p.name] || ""}
+                  onChange={(e) => setParamValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
+                  placeholder={p.description || p.name}
+                  className="w-full rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Node Patterns */}
         <div className="p-3 border-b border-gray-200 dark:border-gray-700">
@@ -207,6 +272,11 @@ export function GraphQueryBuilderPage() {
                     className="text-red-400 hover:text-red-600">x</button>
                 </div>
               </div>
+              {node.properties.length > 0 && (
+                <div className="mt-1 text-[9px] text-amber-600">
+                  {node.properties.map((p) => `{${p.field}: $${p.paramName}}`).join(", ")}
+                </div>
+              )}
             </div>
           ))}
         </div>

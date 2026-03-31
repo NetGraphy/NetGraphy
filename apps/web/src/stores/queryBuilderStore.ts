@@ -15,12 +15,19 @@ import { create } from "zustand";
 
 export type Direction = "outgoing" | "incoming" | "undirected";
 export type MatchType = "match" | "optional_match";
+export type QueryMode = "pattern" | "shortestPath" | "allPaths";
+
+export interface MatchProperty {
+  field: string;
+  paramName: string; // Uses $paramName in Cypher
+}
 
 export interface QueryNodePattern {
   id: string;
   alias: string;
   labels: string[]; // Node type labels (e.g., ["Device"])
   matchType: MatchType;
+  properties: MatchProperty[]; // MATCH-level constraints: {field: $param}
 }
 
 export interface QueryRelPattern {
@@ -68,6 +75,7 @@ export interface QueryParameter {
 }
 
 export interface VisualQueryModel {
+  queryMode: QueryMode; // pattern (normal), shortestPath, allPaths
   nodes: QueryNodePattern[];
   relationships: QueryRelPattern[];
   filters: QueryFilter[];
@@ -77,6 +85,11 @@ export interface VisualQueryModel {
   limit: number;
   skip: number;
   parameters: QueryParameter[];
+  // Path mode settings
+  pathStartNodeId: string | null; // Node pattern ID for path start
+  pathEndNodeId: string | null; // Node pattern ID for path end
+  pathDepthLimit: number; // Max hops for variable-length path
+  pathRelTypes: string[]; // Allowed relationship types to traverse
 }
 
 export interface SavedQueryMeta {
@@ -92,23 +105,66 @@ export interface SavedQueryMeta {
 // Cypher Generation
 // --------------------------------------------------------------------------
 
+// Helper: build node expression with label and MATCH-level properties
+function nodeExpr(node: QueryNodePattern): string {
+  const label = node.labels.length ? `:${node.labels.join(":")}` : "";
+  const props = node.properties.length
+    ? ` {${node.properties.map((p) => `${p.field}: $${p.paramName}`).join(", ")}}`
+    : "";
+  return `(${node.alias}${label}${props})`;
+}
+
+// Helper: build filter condition
+function buildCondition(f: QueryFilter, paramValues?: Record<string, string>): string {
+  const fieldExpr = `${f.targetAlias}.${f.field}`;
+  let valueExpr: string;
+
+  if (f.isParameter) {
+    valueExpr = `$${f.value}`;
+  } else if (f.operator === "is_null" || f.operator === "is_not_null") {
+    valueExpr = "";
+  } else {
+    const raw = paramValues?.[f.value] || f.value;
+    valueExpr = /^\d+(\.\d+)?$/.test(raw) || raw === "true" || raw === "false"
+      ? raw
+      : `"${raw}"`;
+  }
+
+  switch (f.operator) {
+    case "eq": return `${fieldExpr} = ${valueExpr}`;
+    case "neq": return `${fieldExpr} <> ${valueExpr}`;
+    case "contains": return `${fieldExpr} CONTAINS ${valueExpr}`;
+    case "starts_with": return `${fieldExpr} STARTS WITH ${valueExpr}`;
+    case "ends_with": return `${fieldExpr} ENDS WITH ${valueExpr}`;
+    case "gt": return `${fieldExpr} > ${valueExpr}`;
+    case "gte": return `${fieldExpr} >= ${valueExpr}`;
+    case "lt": return `${fieldExpr} < ${valueExpr}`;
+    case "lte": return `${fieldExpr} <= ${valueExpr}`;
+    case "in": return `${fieldExpr} IN ${valueExpr}`;
+    case "is_null": return `${fieldExpr} IS NULL`;
+    case "is_not_null": return `${fieldExpr} IS NOT NULL`;
+    case "regex": return `${fieldExpr} =~ ${valueExpr}`;
+    default: return `${fieldExpr} = ${valueExpr}`;
+  }
+}
+
 export function generateCypher(model: VisualQueryModel, paramValues?: Record<string, string>): string {
+  // ---------- PATH MODE (shortestPath / allPaths) ----------
+  if (model.queryMode === "shortestPath" || model.queryMode === "allPaths") {
+    return generatePathCypher(model, paramValues);
+  }
+
+  // ---------- PATTERN MODE (normal) ----------
   const lines: string[] = [];
   const usedAliases = new Set<string>();
 
-  // Group by match type
   const matchNodes = model.nodes.filter((n) => n.matchType === "match");
   const optionalNodes = model.nodes.filter((n) => n.matchType === "optional_match");
 
-  // Build MATCH clauses
   const buildPatterns = (nodes: QueryNodePattern[], matchKeyword: string) => {
-    // Find relationships involving these nodes
-    const nodeIds = new Set(nodes.map((n) => n.id));
     const rels = model.relationships.filter(
       (r) => r.matchType === (matchKeyword === "MATCH" ? "match" : "optional_match")
     );
-
-    // Track which nodes have been included in a relationship pattern
     const coveredNodes = new Set<string>();
 
     for (const rel of rels) {
@@ -116,41 +172,28 @@ export function generateCypher(model: VisualQueryModel, paramValues?: Record<str
       const toNode = model.nodes.find((n) => n.id === rel.toNodeId);
       if (!fromNode || !toNode) continue;
 
-      const fromLabel = fromNode.labels.length ? `:${fromNode.labels.join(":")}` : "";
-      const toLabel = toNode.labels.length ? `:${toNode.labels.join(":")}` : "";
       const relType = rel.types.length ? `:${rel.types.join("|")}` : "";
-
-      const relAlias = rel.alias ? rel.alias : "";
+      const relAlias = rel.alias || "";
       let hops = "";
       if (rel.minHops !== null || rel.maxHops !== null) {
-        const min = rel.minHops ?? "";
-        const max = rel.maxHops ?? "";
-        hops = `*${min}..${max}`;
+        hops = `*${rel.minHops ?? ""}..${rel.maxHops ?? ""}`;
       }
-
       const relInner = `[${relAlias}${relType}${hops}]`;
 
-      let arrow: string;
-      if (rel.direction === "outgoing") {
-        arrow = `-${relInner}->`;
-      } else if (rel.direction === "incoming") {
-        arrow = `<-${relInner}-`;
-      } else {
-        arrow = `-${relInner}-`;
-      }
+      const arrow = rel.direction === "outgoing" ? `-${relInner}->`
+        : rel.direction === "incoming" ? `<-${relInner}-`
+        : `-${relInner}-`;
 
-      lines.push(`${matchKeyword} (${fromNode.alias}${fromLabel})${arrow}(${toNode.alias}${toLabel})`);
+      lines.push(`${matchKeyword} ${nodeExpr(fromNode)}${arrow}${nodeExpr(toNode)}`);
       coveredNodes.add(rel.fromNodeId);
       coveredNodes.add(rel.toNodeId);
       usedAliases.add(fromNode.alias);
       usedAliases.add(toNode.alias);
     }
 
-    // Standalone nodes not in any relationship
     for (const node of nodes) {
       if (!coveredNodes.has(node.id)) {
-        const label = node.labels.length ? `:${node.labels.join(":")}` : "";
-        lines.push(`${matchKeyword} (${node.alias}${label})`);
+        lines.push(`${matchKeyword} ${nodeExpr(node)}`);
         usedAliases.add(node.alias);
       }
     }
@@ -159,86 +202,86 @@ export function generateCypher(model: VisualQueryModel, paramValues?: Record<str
   buildPatterns(matchNodes, "MATCH");
   buildPatterns(optionalNodes, "OPTIONAL MATCH");
 
-  // WHERE clause
+  // WHERE
   const activeFilters = model.filters.filter((f) => f.field && f.operator);
   if (activeFilters.length > 0) {
-    const conditions: string[] = [];
-    for (const f of activeFilters) {
-      const fieldExpr = `${f.targetAlias}.${f.field}`;
-      let valueExpr: string;
-
-      if (f.isParameter) {
-        valueExpr = `$${f.value}`;
-      } else if (f.operator === "is_null" || f.operator === "is_not_null") {
-        valueExpr = "";
-      } else if (f.operator === "in") {
-        valueExpr = paramValues?.[f.value] || f.value;
-      } else {
-        // Quote string values
-        const raw = paramValues?.[f.value] || f.value;
-        valueExpr = /^\d+(\.\d+)?$/.test(raw) || raw === "true" || raw === "false"
-          ? raw
-          : `"${raw}"`;
-      }
-
-      let condition: string;
-      switch (f.operator) {
-        case "eq": condition = `${fieldExpr} = ${valueExpr}`; break;
-        case "neq": condition = `${fieldExpr} <> ${valueExpr}`; break;
-        case "contains": condition = `${fieldExpr} CONTAINS ${valueExpr}`; break;
-        case "starts_with": condition = `${fieldExpr} STARTS WITH ${valueExpr}`; break;
-        case "ends_with": condition = `${fieldExpr} ENDS WITH ${valueExpr}`; break;
-        case "gt": condition = `${fieldExpr} > ${valueExpr}`; break;
-        case "gte": condition = `${fieldExpr} >= ${valueExpr}`; break;
-        case "lt": condition = `${fieldExpr} < ${valueExpr}`; break;
-        case "lte": condition = `${fieldExpr} <= ${valueExpr}`; break;
-        case "in": condition = `${fieldExpr} IN ${valueExpr}`; break;
-        case "is_null": condition = `${fieldExpr} IS NULL`; break;
-        case "is_not_null": condition = `${fieldExpr} IS NOT NULL`; break;
-        case "regex": condition = `${fieldExpr} =~ ${valueExpr}`; break;
-        default: condition = `${fieldExpr} = ${valueExpr}`;
-      }
-      conditions.push(condition);
-    }
-
-    // Group by logical group
-    const andConditions = conditions; // Simplified: all AND for now
-    if (andConditions.length > 0) {
-      lines.push(`WHERE ${andConditions.join("\n  AND ")}`);
-    }
+    const conditions = activeFilters.map((f) => buildCondition(f, paramValues));
+    lines.push(`WHERE ${conditions.join("\n  AND ")}`);
   }
 
-  // RETURN clause
+  // RETURN
   if (model.returnFields.length > 0) {
     const distinct = model.distinct ? "DISTINCT " : "";
-    const fields = model.returnFields.map((f) => {
-      if (f.alias && f.alias !== f.expression) {
-        return `${f.expression} AS ${f.alias}`;
-      }
-      return f.expression;
-    });
+    const fields = model.returnFields.map((f) =>
+      f.alias && f.alias !== f.expression ? `${f.expression} AS ${f.alias}` : f.expression
+    );
     lines.push(`RETURN ${distinct}${fields.join(", ")}`);
   } else {
-    // Default: return all used aliases
     const aliases = [...usedAliases];
-    if (aliases.length > 0) {
-      lines.push(`RETURN ${aliases.join(", ")}`);
-    }
+    if (aliases.length > 0) lines.push(`RETURN ${aliases.join(", ")}`);
   }
 
-  // ORDER BY
   if (model.sortFields.length > 0) {
-    const sorts = model.sortFields.map((s) => `${s.field} ${s.direction}`);
-    lines.push(`ORDER BY ${sorts.join(", ")}`);
+    lines.push(`ORDER BY ${model.sortFields.map((s) => `${s.field} ${s.direction}`).join(", ")}`);
+  }
+  if (model.skip > 0) lines.push(`SKIP ${model.skip}`);
+  if (model.limit > 0) lines.push(`LIMIT ${model.limit}`);
+
+  return lines.join("\n");
+}
+
+function generatePathCypher(model: VisualQueryModel, paramValues?: Record<string, string>): string {
+  const lines: string[] = [];
+
+  const startNode = model.pathStartNodeId ? model.nodes.find((n) => n.id === model.pathStartNodeId) : model.nodes[0];
+  const endNode = model.pathEndNodeId ? model.nodes.find((n) => n.id === model.pathEndNodeId) : model.nodes[1];
+
+  if (!startNode || !endNode) {
+    return "// Add at least two node patterns for path query";
   }
 
-  // SKIP / LIMIT
-  if (model.skip > 0) {
-    lines.push(`SKIP ${model.skip}`);
+  // MATCH both endpoints
+  lines.push(`MATCH ${nodeExpr(startNode)}, ${nodeExpr(endNode)}`);
+
+  // Path function
+  const pathFn = model.queryMode === "allPaths" ? "allShortestPaths" : "shortestPath";
+  const depthLimit = model.pathDepthLimit || 15;
+
+  // Relationship type filter in path
+  let relFilter = "";
+  if (model.pathRelTypes.length > 0) {
+    relFilter = `:${model.pathRelTypes.join("|")}`;
   }
-  if (model.limit > 0) {
-    lines.push(`LIMIT ${model.limit}`);
+
+  lines.push(`MATCH path = ${pathFn}((${startNode.alias})-[${relFilter}*..${depthLimit}]-(${endNode.alias}))`);
+
+  // WHERE — path relationship type filter (if types specified and not already in pattern)
+  const whereConditions: string[] = [];
+
+  // Add regular filters
+  const activeFilters = model.filters.filter((f) => f.field && f.operator);
+  for (const f of activeFilters) {
+    whereConditions.push(buildCondition(f, paramValues));
   }
+
+  if (whereConditions.length > 0) {
+    lines.push(`WHERE ${whereConditions.join("\n  AND ")}`);
+  }
+
+  // RETURN
+  if (model.returnFields.length > 0) {
+    const fields = model.returnFields.map((f) =>
+      f.alias && f.alias !== f.expression ? `${f.expression} AS ${f.alias}` : f.expression
+    );
+    lines.push(`RETURN ${fields.join(", ")}`);
+  } else {
+    // Default: return the path + endpoint details
+    lines.push("RETURN path,");
+    lines.push(`  [n IN nodes(path) | labels(n)[0] + ': ' + coalesce(n.hostname, n.name, n.address, n.id)] AS node_labels,`);
+    lines.push(`  length(path) AS hops`);
+  }
+
+  if (model.limit > 0) lines.push(`LIMIT ${model.limit}`);
 
   return lines.join("\n");
 }
@@ -251,6 +294,7 @@ const uuid = () => crypto.randomUUID();
 
 function emptyModel(): VisualQueryModel {
   return {
+    queryMode: "pattern",
     nodes: [],
     relationships: [],
     filters: [],
@@ -260,6 +304,10 @@ function emptyModel(): VisualQueryModel {
     limit: 25,
     skip: 0,
     parameters: [],
+    pathStartNodeId: null,
+    pathEndNodeId: null,
+    pathDepthLimit: 15,
+    pathRelTypes: [],
   };
 }
 
@@ -322,7 +370,7 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
     const id = uuid();
     const existingAliases = get().model.nodes.map((n) => n.alias);
     const defaultAlias = alias || `n${existingAliases.length}`;
-    const node: QueryNodePattern = { id, alias: defaultAlias, labels, matchType: "match" };
+    const node: QueryNodePattern = { id, alias: defaultAlias, labels, matchType: "match", properties: [] };
     set((s) => {
       const model = { ...s.model, nodes: [...s.model.nodes, node] };
       return { model, cypher: regen(model), selectedPatternId: id };
@@ -445,8 +493,8 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
         return {
           ...emptyModel(),
           nodes: [
-            { id: dId, alias: "d", labels: ["Device"], matchType: "match" as const },
-            { id: sId, alias: "s", labels: ["Location"], matchType: "match" as const },
+            { id: dId, alias: "d", labels: ["Device"], matchType: "match" as const, properties: [] },
+            { id: sId, alias: "s", labels: ["Location"], matchType: "match" as const, properties: [] },
           ],
           relationships: [
             { id: rId, alias: "", types: ["LOCATED_IN"], direction: "outgoing" as const, fromNodeId: dId, toNodeId: sId, minHops: null, maxHops: null, matchType: "match" as const },
@@ -466,8 +514,8 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
         return {
           ...emptyModel(),
           nodes: [
-            { id: sId, alias: "s", labels: ["Location"], matchType: "match" as const },
-            { id: dId, alias: "d", labels: ["Device"], matchType: "optional_match" as const },
+            { id: sId, alias: "s", labels: ["Location"], matchType: "match" as const, properties: [] },
+            { id: dId, alias: "d", labels: ["Device"], matchType: "optional_match" as const, properties: [] },
           ],
           relationships: [
             { id: rId, alias: "", types: ["LOCATED_IN"], direction: "incoming" as const, fromNodeId: sId, toNodeId: dId, minHops: null, maxHops: null, matchType: "optional_match" as const },
@@ -487,8 +535,8 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
         return {
           ...emptyModel(),
           nodes: [
-            { id: dId, alias: "d", labels: ["Device"], matchType: "match" as const },
-            { id: sId, alias: "s", labels: ["Location"], matchType: "match" as const },
+            { id: dId, alias: "d", labels: ["Device"], matchType: "match" as const, properties: [] },
+            { id: sId, alias: "s", labels: ["Location"], matchType: "match" as const, properties: [] },
           ],
           relationships: [
             { id: rId, alias: "", types: ["LOCATED_IN"], direction: "outgoing" as const, fromNodeId: dId, toNodeId: sId, minHops: null, maxHops: null, matchType: "match" as const },
@@ -506,8 +554,8 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
         return {
           ...emptyModel(),
           nodes: [
-            { id: cId, alias: "c", labels: ["Circuit"], matchType: "match" as const },
-            { id: pId, alias: "p", labels: ["Provider"], matchType: "match" as const },
+            { id: cId, alias: "c", labels: ["Circuit"], matchType: "match" as const, properties: [] },
+            { id: pId, alias: "p", labels: ["Provider"], matchType: "match" as const, properties: [] },
           ],
           relationships: [
             { id: rId, alias: "", types: ["CIRCUIT_FROM_PROVIDER"], direction: "outgoing" as const, fromNodeId: cId, toNodeId: pId, minHops: null, maxHops: null, matchType: "match" as const },
@@ -517,6 +565,45 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set, get) => ({
             { id: uuid(), expression: "count(c)", alias: "circuit_count", isAggregate: true },
           ],
           sortFields: [{ field: "circuit_count", direction: "DESC" }],
+          limit: 25,
+        };
+      },
+      "mac-to-mac-path": () => {
+        const srcId = uuid(), dstId = uuid();
+        return {
+          ...emptyModel(),
+          queryMode: "shortestPath" as const,
+          nodes: [
+            { id: srcId, alias: "src", labels: ["MACAddress"], matchType: "match" as const, properties: [{ field: "address", paramName: "src_mac" }] },
+            { id: dstId, alias: "dst", labels: ["MACAddress"], matchType: "match" as const, properties: [{ field: "address", paramName: "dst_mac" }] },
+          ],
+          pathStartNodeId: srcId,
+          pathEndNodeId: dstId,
+          pathDepthLimit: 15,
+          pathRelTypes: ["MAC_ON_INTERFACE", "HAS_INTERFACE", "CONNECTED_TO"],
+          parameters: [
+            { name: "src_mac", label: "Source MAC", type: "string", required: true, defaultValue: "", enumValues: [], description: "Source MAC address" },
+            { name: "dst_mac", label: "Destination MAC", type: "string", required: true, defaultValue: "", enumValues: [], description: "Destination MAC address" },
+          ],
+          limit: 5,
+        };
+      },
+      "device-neighbors": () => {
+        const dId = uuid(), nId = uuid();
+        return {
+          ...emptyModel(),
+          queryMode: "shortestPath" as const,
+          nodes: [
+            { id: dId, alias: "d", labels: ["Device"], matchType: "match" as const, properties: [{ field: "hostname", paramName: "hostname" }] },
+            { id: nId, alias: "neighbor", labels: ["Device"], matchType: "match" as const, properties: [] },
+          ],
+          pathStartNodeId: dId,
+          pathEndNodeId: nId,
+          pathDepthLimit: 4,
+          pathRelTypes: ["HAS_INTERFACE", "CONNECTED_TO"],
+          parameters: [
+            { name: "hostname", label: "Device Hostname", type: "string", required: true, defaultValue: "", enumValues: [], description: "Starting device hostname" },
+          ],
           limit: 25,
         };
       },
