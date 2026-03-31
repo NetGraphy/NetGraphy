@@ -88,6 +88,8 @@ export function GraphQueryBuilderPage() {
 
   // Parameter values for execution
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
+  // Search filter for relationship type picker
+  const [relTypeSearch, setRelTypeSearch] = useState("");
 
   // Copy feedback
   const [copied, setCopied] = useState(false);
@@ -219,23 +221,28 @@ export function GraphQueryBuilderPage() {
                   className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
               </div>
               <div>
-                <label className="text-[9px] text-gray-500">Allowed relationship types (click to toggle)</label>
-                <div className="mt-1 max-h-32 overflow-y-auto rounded border border-gray-300 p-1 dark:border-gray-600">
-                  {edgeTypes.map((et) => {
-                    const checked = model.pathRelTypes.includes(et);
-                    return (
-                      <label key={et} className="flex items-center gap-1.5 px-1 py-0.5 text-[10px] hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
-                        <input type="checkbox" checked={checked}
-                          onChange={() => {
-                            const next = checked
-                              ? model.pathRelTypes.filter((t) => t !== et)
-                              : [...model.pathRelTypes, et];
-                            setModel({ ...model, pathRelTypes: next });
-                          }} />
-                        <span className={checked ? "text-brand-600 font-medium" : "text-gray-500"}>{et}</span>
-                      </label>
-                    );
-                  })}
+                <label className="text-[9px] text-gray-500">Allowed relationship types</label>
+                <input value={relTypeSearch} onChange={(e) => setRelTypeSearch(e.target.value)}
+                  placeholder="Type to filter..."
+                  className="w-full mt-1 rounded border border-gray-300 px-2 py-1 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                <div className="mt-1 max-h-28 overflow-y-auto rounded border border-gray-300 p-1 dark:border-gray-600">
+                  {edgeTypes
+                    .filter((et) => !relTypeSearch || et.toLowerCase().includes(relTypeSearch.toLowerCase()))
+                    .map((et) => {
+                      const checked = model.pathRelTypes.includes(et);
+                      return (
+                        <label key={et} className="flex items-center gap-1.5 px-1 py-0.5 text-[10px] hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                          <input type="checkbox" checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? model.pathRelTypes.filter((t) => t !== et)
+                                : [...model.pathRelTypes, et];
+                              setModel({ ...model, pathRelTypes: next });
+                            }} />
+                          <span className={checked ? "text-brand-600 font-medium" : "text-gray-500"}>{et}</span>
+                        </label>
+                      );
+                    })}
                 </div>
                 <div className="text-[9px] text-gray-400 mt-0.5">{model.pathRelTypes.length} selected</div>
               </div>
@@ -434,10 +441,10 @@ export function GraphQueryBuilderPage() {
       {/* CENTER — Cypher + Results */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Cypher view + actions */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-900">
+        <div className="flex-shrink-0">
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500">Generated Cypher (live)</span>
+              <span className="text-xs font-semibold text-gray-500">Generated Cypher</span>
               <button onClick={copyCypher}
                 className="rounded border border-gray-300 px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400">
                 {copied ? "Copied" : "Copy"}
@@ -457,7 +464,7 @@ export function GraphQueryBuilderPage() {
               </button>
             </div>
           </div>
-          <div className="h-[160px] border-t border-gray-200 dark:border-gray-700">
+          <div style={{ height: "150px" }}>
             <Editor
               language="cypher"
               value={cypher || "// Build a query pattern on the left to generate Cypher"}
@@ -466,6 +473,7 @@ export function GraphQueryBuilderPage() {
             />
           </div>
         </div>
+        <div className="border-t border-gray-200 dark:border-gray-700" />
 
         {/* Results */}
         <div className="flex-1 overflow-auto">
