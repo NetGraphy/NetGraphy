@@ -1,0 +1,515 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: AddressObject
+  display_name: Address Object
+  description: "A reusable address object — host, network, range, FQDN, wildcard, or group — referenced by ACLs, firewall policies, and NAT rules."
+  icon: map-pin
+  color: "#6D28D9"
+  category: Security
+  tags: [security, address, object, firewall]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Address object name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  object_type:
+    type: enum
+    display_name: Object Type
+    enum_values: [host, network, range, fqdn, group, wildcard]
+    required: true
+    description: "Type of address object"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        host: blue
+        network: green
+        range: purple
+        fqdn: amber
+        group: cyan
+        wildcard: orange
+
+  address:
+    type: ip_address
+    display_name: Address
+    required: false
+    indexed: true
+    description: "IP address for host or network object types"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      search_weight: 8
+
+  netmask:
+    type: string
+    display_name: Netmask
+    required: false
+    description: "Subnet mask for network type (e.g., 255.255.255.0 or /24)"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  fqdn:
+    type: string
+    display_name: FQDN
+    required: false
+    indexed: true
+    description: "Fully qualified domain name for FQDN object type"
+    ui:
+      form_order: 5
+      search_weight: 5
+
+  range_start:
+    type: ip_address
+    display_name: Range Start
+    required: false
+    description: "Starting IP address for range object type"
+    ui:
+      form_order: 6
+
+  range_end:
+    type: ip_address
+    display_name: Range End
+    required: false
+    description: "Ending IP address for range object type"
+    ui:
+      form_order: 7
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    required: true
+    description: "Operational status of the address object"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 8
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose or context for this address object"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, address, fqdn, description]
+
+graph:
+  default_label_field: name
+  group_by: object_type
+  color: "#6D28D9"
+
+api:
+  plural_name: address-objects
+  filterable_fields: [name, object_type, address, status]
+  sortable_fields: [name, object_type, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, object_type, address, netmask, status]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: ServiceObject
+  display_name: Service Object
+  description: "A reusable service object — TCP, UDP, ICMP, or protocol definition — referenced by firewall policies and ACLs."
+  icon: plug
+  color: "#7C3AED"
+  category: Security
+  tags: [security, service, object, port, firewall]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Service object name (e.g., HTTPS, DNS, Custom_8080)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  object_type:
+    type: enum
+    display_name: Object Type
+    enum_values: [tcp, udp, tcp_udp, icmp, protocol, group]
+    required: true
+    description: "Type of service object"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        tcp: blue
+        udp: green
+        tcp_udp: purple
+        icmp: amber
+        protocol: orange
+        group: cyan
+
+  protocol_number:
+    type: integer
+    display_name: Protocol Number
+    required: false
+    min_value: 0
+    max_value: 255
+    description: "IP protocol number for raw protocol type"
+    ui:
+      form_order: 3
+
+  port:
+    type: integer
+    display_name: Port
+    required: false
+    min_value: 1
+    max_value: 65535
+    description: "Single port number"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 4
+      filter: true
+
+  port_range_start:
+    type: integer
+    display_name: Port Range Start
+    required: false
+    min_value: 1
+    max_value: 65535
+    description: "Starting port for port range"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 5
+
+  port_range_end:
+    type: integer
+    display_name: Port Range End
+    required: false
+    min_value: 1
+    max_value: 65535
+    description: "Ending port for port range"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 6
+
+  icmp_type:
+    type: integer
+    display_name: ICMP Type
+    required: false
+    description: "ICMP message type number"
+    ui:
+      form_order: 7
+
+  icmp_code:
+    type: integer
+    display_name: ICMP Code
+    required: false
+    description: "ICMP message code number"
+    ui:
+      form_order: 8
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    required: true
+    description: "Operational status of the service object"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 9
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose or context for this service object"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: object_type
+  color: "#7C3AED"
+
+api:
+  plural_name: service-objects
+  filterable_fields: [name, object_type, port, status]
+  sortable_fields: [name, object_type, port, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, object_type, port, port_range_start, port_range_end, status]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: NATRule
+  display_name: NAT Rule
+  description: "A network address translation rule — static, dynamic, PAT, or twice NAT — defining how addresses and ports are translated between network boundaries."
+  icon: repeat
+  color: "#0369A1"
+  category: Security
+  tags: [security, nat, translation, firewall]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "NAT rule name or identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  nat_type:
+    type: enum
+    display_name: NAT Type
+    enum_values: [static, dynamic, pat, twice_nat, destination_nat, nat64, nat46]
+    required: true
+    description: "Type of network address translation"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        static: blue
+        dynamic: green
+        pat: purple
+        twice_nat: amber
+        destination_nat: orange
+        nat64: cyan
+        nat46: teal
+
+  sequence_number:
+    type: integer
+    display_name: Sequence
+    required: false
+    min_value: 1
+    description: "Rule evaluation order"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  source_original:
+    type: string
+    display_name: Original Source
+    required: false
+    description: "Original source address/object before translation"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 5
+
+  source_translated:
+    type: string
+    display_name: Translated Source
+    required: false
+    description: "Translated source address/object after translation"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      search_weight: 5
+
+  destination_original:
+    type: string
+    display_name: Original Destination
+    required: false
+    description: "Original destination address/object before translation"
+    ui:
+      form_order: 6
+
+  destination_translated:
+    type: string
+    display_name: Translated Destination
+    required: false
+    description: "Translated destination address/object after translation"
+    ui:
+      form_order: 7
+
+  service_original:
+    type: string
+    display_name: Original Service
+    required: false
+    description: "Original service/port before translation"
+    ui:
+      form_order: 8
+
+  service_translated:
+    type: string
+    display_name: Translated Service
+    required: false
+    description: "Translated service/port after translation"
+    ui:
+      form_order: 9
+
+  source_interface:
+    type: string
+    display_name: Source Interface
+    required: false
+    description: "Ingress interface for NAT matching"
+    ui:
+      form_order: 10
+
+  destination_interface:
+    type: string
+    display_name: Destination Interface
+    required: false
+    description: "Egress interface for NAT matching"
+    ui:
+      form_order: 11
+
+  enabled:
+    type: boolean
+    display_name: Enabled
+    default: true
+    description: "Whether this NAT rule is actively enforced"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 12
+      filter: true
+
+  bi_directional:
+    type: boolean
+    display_name: Bi-Directional
+    default: false
+    description: "Whether translation applies in both directions"
+    ui:
+      form_order: 13
+
+  dns_rewrite:
+    type: boolean
+    display_name: DNS Rewrite
+    default: false
+    description: "Whether DNS responses are rewritten to match translation"
+    ui:
+      form_order: 14
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose or context for this NAT rule"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, source_original, source_translated, description]
+
+graph:
+  default_label_field: name
+  group_by: nat_type
+  color: "#0369A1"
+
+api:
+  plural_name: nat-rules
+  filterable_fields: [name, nat_type, enabled, bi_directional]
+  sortable_fields: [name, nat_type, sequence_number, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, nat_type, sequence_number, source_original, source_translated, enabled]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true

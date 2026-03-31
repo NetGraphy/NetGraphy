@@ -1,0 +1,807 @@
+---
+# =========================================================================== #
+# ACL & FIREWALL POLICY EDGES                                                 #
+# =========================================================================== #
+
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_ACL — Device → ACL (one-to-many)                                #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_ACL
+  display_name: "Has ACL"
+  description: "Device owns this access control list"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [ACL]
+cardinality: one_to_many
+inverse_name: ACL_ON_DEVICE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#DC2626"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_acl
+
+---
+# --------------------------------------------------------------------------- #
+# ACL_HAS_RULE — ACL → ACLRule (one-to-many, ordered)                        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ACL_HAS_RULE
+  display_name: "Has Rule"
+  description: "ACL contains this rule entry (ordered by sequence number)"
+  category: Security
+source:
+  node_types: [ACL]
+target:
+  node_types: [ACLRule]
+cardinality: one_to_many
+inverse_name: RULE_IN_ACL
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#EF4444"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: acl_has_rule
+  supports_count_filter: true
+
+---
+# --------------------------------------------------------------------------- #
+# ACL_APPLIED_TO_INTERFACE — ACL → Interface (many-to-many)                  #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ACL_APPLIED_TO_INTERFACE
+  display_name: "Applied To"
+  description: "ACL is applied to this interface"
+  category: Security
+source:
+  node_types: [ACL]
+target:
+  node_types: [Interface]
+cardinality: many_to_many
+inverse_name: INTERFACE_HAS_ACL
+attributes:
+  direction:
+    type: enum
+    enum_values: [inbound, outbound]
+    required: true
+    description: "Direction the ACL is applied"
+graph:
+  style: dashed
+  color: "#DC2626"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: acl_applied_to_interface
+
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_ZONE — Device → SecurityZone (one-to-many)                      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_ZONE
+  display_name: "Has Zone"
+  description: "Device defines this security zone"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [SecurityZone]
+cardinality: one_to_many
+inverse_name: ZONE_ON_DEVICE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#F59E0B"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_zone
+
+---
+# --------------------------------------------------------------------------- #
+# INTERFACE_IN_ZONE — Interface → SecurityZone (many-to-one)                 #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: INTERFACE_IN_ZONE
+  display_name: "In Zone"
+  description: "Interface is assigned to this security zone"
+  category: Security
+source:
+  node_types: [Interface]
+target:
+  node_types: [SecurityZone]
+cardinality: many_to_one
+inverse_name: ZONE_HAS_INTERFACE
+graph:
+  style: dashed
+  color: "#F59E0B"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: interface_in_zone
+
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_FW_POLICY — Device → FirewallPolicy (one-to-many)              #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_FW_POLICY
+  display_name: "Has Policy"
+  description: "Device has this firewall policy"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [FirewallPolicy]
+cardinality: one_to_many
+inverse_name: POLICY_ON_DEVICE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#B91C1C"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_fw_policy
+
+---
+# --------------------------------------------------------------------------- #
+# POLICY_HAS_RULE — FirewallPolicy → FirewallRule (one-to-many)              #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: POLICY_HAS_RULE
+  display_name: "Has Rule"
+  description: "Policy contains this firewall rule (ordered by sequence)"
+  category: Security
+source:
+  node_types: [FirewallPolicy]
+target:
+  node_types: [FirewallRule]
+cardinality: one_to_many
+inverse_name: RULE_IN_POLICY
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#991B1B"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: policy_has_rule
+  supports_count_filter: true
+
+---
+# --------------------------------------------------------------------------- #
+# POLICY_BETWEEN_ZONES — FirewallPolicy → SecurityZone (many-to-many)        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: POLICY_BETWEEN_ZONES
+  display_name: "Between Zones"
+  description: "Firewall policy applies between security zones"
+  category: Security
+source:
+  node_types: [FirewallPolicy]
+target:
+  node_types: [SecurityZone]
+cardinality: many_to_many
+inverse_name: ZONE_HAS_POLICY
+attributes:
+  zone_role:
+    type: enum
+    enum_values: [source, destination]
+    required: true
+    description: "Whether this zone is source or destination for the policy"
+graph:
+  style: dashed
+  color: "#B91C1C"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: policy_between_zones
+
+---
+# --------------------------------------------------------------------------- #
+# RULE_USES_ADDRESS — FirewallRule → AddressObject (many-to-many)            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: RULE_USES_ADDRESS
+  display_name: "Uses Address"
+  description: "Firewall rule references this address object"
+  category: Security
+source:
+  node_types: [FirewallRule]
+target:
+  node_types: [AddressObject]
+cardinality: many_to_many
+inverse_name: ADDRESS_IN_RULE
+attributes:
+  address_role:
+    type: enum
+    enum_values: [source, destination]
+    required: true
+graph:
+  style: dashed
+  color: "#6D28D9"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: rule_uses_address
+
+---
+# --------------------------------------------------------------------------- #
+# RULE_USES_SERVICE — FirewallRule → ServiceObject (many-to-many)            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: RULE_USES_SERVICE
+  display_name: "Uses Service"
+  description: "Firewall rule references this service object"
+  category: Security
+source:
+  node_types: [FirewallRule]
+target:
+  node_types: [ServiceObject]
+cardinality: many_to_many
+inverse_name: SERVICE_IN_RULE
+graph:
+  style: dashed
+  color: "#7C3AED"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: rule_uses_service
+
+---
+# --------------------------------------------------------------------------- #
+# ADDRESS_GROUP_MEMBER — AddressObject → AddressObject (many-to-many)        #
+# Self-referential for nested groups                                          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ADDRESS_GROUP_MEMBER
+  display_name: "Group Member"
+  description: "Address group contains this address object as a member"
+  category: Security
+source:
+  node_types: [AddressObject]
+target:
+  node_types: [AddressObject]
+cardinality: many_to_many
+inverse_name: MEMBER_OF_ADDRESS_GROUP
+graph:
+  style: dashed
+  color: "#6D28D9"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: address_group_member
+
+---
+# --------------------------------------------------------------------------- #
+# SERVICE_GROUP_MEMBER — ServiceObject → ServiceObject (many-to-many)        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: SERVICE_GROUP_MEMBER
+  display_name: "Group Member"
+  description: "Service group contains this service object as a member"
+  category: Security
+source:
+  node_types: [ServiceObject]
+target:
+  node_types: [ServiceObject]
+cardinality: many_to_many
+inverse_name: MEMBER_OF_SERVICE_GROUP
+graph:
+  style: dashed
+  color: "#7C3AED"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: service_group_member
+
+---
+# --------------------------------------------------------------------------- #
+# ADDRESS_RESOLVES_TO — AddressObject → IPAddress (many-to-many)             #
+# Links address objects to IPAM                                               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: ADDRESS_RESOLVES_TO
+  display_name: "Resolves To"
+  description: "Address object resolves to this IP address in IPAM"
+  category: Security
+source:
+  node_types: [AddressObject]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_many
+inverse_name: IP_IN_ADDRESS_OBJECT
+graph:
+  style: dotted
+  color: "#6D28D9"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: address_resolves_to
+
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_NAT_RULE — Device → NATRule (one-to-many)                      #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_NAT_RULE
+  display_name: "Has NAT Rule"
+  description: "Device has this NAT translation rule"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [NATRule]
+cardinality: one_to_many
+inverse_name: NAT_RULE_ON_DEVICE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#0369A1"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_nat_rule
+
+---
+# --------------------------------------------------------------------------- #
+# NAT_ORIGINAL_IP — NATRule → IPAddress (many-to-one)                        #
+# Links NAT original address to IPAM                                          #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: NAT_ORIGINAL_IP
+  display_name: "Original IP"
+  description: "NAT rule translates from this original IP address"
+  category: Security
+source:
+  node_types: [NATRule]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: IP_NAT_ORIGINAL
+graph:
+  style: solid
+  color: "#0369A1"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: nat_original_ip
+
+---
+# --------------------------------------------------------------------------- #
+# NAT_TRANSLATED_IP — NATRule → IPAddress (many-to-one)                      #
+# Links NAT translated address to IPAM                                        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: NAT_TRANSLATED_IP
+  display_name: "Translated IP"
+  description: "NAT rule translates to this IP address"
+  category: Security
+source:
+  node_types: [NATRule]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: IP_NAT_TRANSLATED
+graph:
+  style: dashed
+  color: "#0369A1"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: nat_translated_ip
+
+---
+# =========================================================================== #
+# VPN & IPSEC EDGES                                                           #
+# =========================================================================== #
+
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_VPN_TUNNEL — Device → IPSecVPNTunnel (one-to-many)             #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_VPN_TUNNEL
+  display_name: "Has VPN Tunnel"
+  description: "Device hosts this IPSec VPN tunnel as local endpoint"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [IPSecVPNTunnel]
+cardinality: one_to_many
+inverse_name: VPN_ON_DEVICE
+graph:
+  style: solid
+  color: "#0D9488"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_vpn_tunnel
+
+---
+# --------------------------------------------------------------------------- #
+# VPN_REMOTE_DEVICE — IPSecVPNTunnel → Device (many-to-one)                  #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPN_REMOTE_DEVICE
+  display_name: "Remote Device"
+  description: "VPN tunnel connects to this remote device"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [Device]
+cardinality: many_to_one
+inverse_name: DEVICE_IS_VPN_REMOTE
+graph:
+  style: dashed
+  color: "#0D9488"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: vpn_remote_device
+
+---
+# --------------------------------------------------------------------------- #
+# TUNNEL_USES_IKE — IPSecVPNTunnel → IKEPolicy (many-to-one)                #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TUNNEL_USES_IKE
+  display_name: "Uses IKE Policy"
+  description: "VPN tunnel uses this IKE (Phase 1) policy"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [IKEPolicy]
+cardinality: many_to_one
+inverse_name: IKE_FOR_TUNNEL
+graph:
+  style: dashed
+  color: "#0F766E"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: tunnel_uses_ike
+
+---
+# --------------------------------------------------------------------------- #
+# TUNNEL_USES_PROPOSAL — IPSecVPNTunnel → IPSecProposal (many-to-one)        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TUNNEL_USES_PROPOSAL
+  display_name: "Uses IPSec Proposal"
+  description: "VPN tunnel uses this IPSec (Phase 2) proposal/transform set"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [IPSecProposal]
+cardinality: many_to_one
+inverse_name: PROPOSAL_FOR_TUNNEL
+graph:
+  style: dashed
+  color: "#134E4A"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: tunnel_uses_proposal
+
+---
+# --------------------------------------------------------------------------- #
+# TUNNEL_USES_CRYPTO_MAP — IPSecVPNTunnel → CryptoMap (many-to-many)        #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TUNNEL_USES_CRYPTO_MAP
+  display_name: "Uses Crypto Map"
+  description: "VPN tunnel uses this crypto map for traffic matching and policy"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [CryptoMap]
+cardinality: many_to_many
+inverse_name: CRYPTO_MAP_FOR_TUNNEL
+graph:
+  style: dashed
+  color: "#065F46"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: tunnel_uses_crypto_map
+
+---
+# --------------------------------------------------------------------------- #
+# TUNNEL_HAS_PEER — IPSecVPNTunnel → VPNPeer (many-to-many)                 #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: TUNNEL_HAS_PEER
+  display_name: "Has Peer"
+  description: "VPN tunnel connects to this remote peer"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [VPNPeer]
+cardinality: many_to_many
+inverse_name: PEER_IN_TUNNEL
+graph:
+  style: solid
+  color: "#047857"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: tunnel_has_peer
+
+---
+# --------------------------------------------------------------------------- #
+# VPN_LOCAL_IP — IPSecVPNTunnel → IPAddress (many-to-one)                    #
+# Links local VPN endpoint to IPAM                                            #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPN_LOCAL_IP
+  display_name: "Local Endpoint IP"
+  description: "VPN tunnel local endpoint IP address in IPAM"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: IP_IS_VPN_LOCAL
+graph:
+  style: solid
+  color: "#0D9488"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: vpn_local_ip
+
+---
+# --------------------------------------------------------------------------- #
+# VPN_REMOTE_IP — IPSecVPNTunnel → IPAddress (many-to-one)                   #
+# Links remote VPN endpoint to IPAM                                           #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: VPN_REMOTE_IP
+  display_name: "Remote Endpoint IP"
+  description: "VPN tunnel remote endpoint IP address in IPAM"
+  category: Security
+source:
+  node_types: [IPSecVPNTunnel]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: IP_IS_VPN_REMOTE
+graph:
+  style: dashed
+  color: "#0D9488"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: vpn_remote_ip
+
+---
+# --------------------------------------------------------------------------- #
+# CRYPTO_MAP_ON_INTERFACE — CryptoMap → Interface (many-to-many)             #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: CRYPTO_MAP_ON_INTERFACE
+  display_name: "Applied To"
+  description: "Crypto map is applied to this interface"
+  category: Security
+source:
+  node_types: [CryptoMap]
+target:
+  node_types: [Interface]
+cardinality: many_to_many
+inverse_name: INTERFACE_HAS_CRYPTO_MAP
+graph:
+  style: dashed
+  color: "#065F46"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: crypto_map_on_interface
+
+---
+# =========================================================================== #
+# TUNNEL EDGES                                                                 #
+# =========================================================================== #
+
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_GRE — Device → GRETunnel (one-to-many)                         #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_GRE
+  display_name: "Has GRE Tunnel"
+  description: "Device has this GRE tunnel"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [GRETunnel]
+cardinality: one_to_many
+inverse_name: GRE_ON_DEVICE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#1D4ED8"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_gre
+
+---
+# --------------------------------------------------------------------------- #
+# GRE_SOURCE_INTERFACE — GRETunnel → Interface (many-to-one)                 #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: GRE_SOURCE_INTERFACE
+  display_name: "Source Interface"
+  description: "GRE tunnel uses this interface as the source"
+  category: Security
+source:
+  node_types: [GRETunnel]
+target:
+  node_types: [Interface]
+cardinality: many_to_one
+inverse_name: INTERFACE_IS_GRE_SOURCE
+graph:
+  style: dashed
+  color: "#1D4ED8"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: gre_source_interface
+
+---
+# --------------------------------------------------------------------------- #
+# GRE_DEST_IP — GRETunnel → IPAddress (many-to-one)                         #
+# Links GRE destination to IPAM                                               #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: GRE_DEST_IP
+  display_name: "Destination IP"
+  description: "GRE tunnel destination IP address in IPAM"
+  category: Security
+source:
+  node_types: [GRETunnel]
+target:
+  node_types: [IPAddress]
+cardinality: many_to_one
+inverse_name: IP_IS_GRE_DEST
+graph:
+  style: dashed
+  color: "#1D4ED8"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: gre_dest_ip
+
+---
+# --------------------------------------------------------------------------- #
+# DEVICE_HAS_IPINIP — Device → IPinIPTunnel (one-to-many)                   #
+# --------------------------------------------------------------------------- #
+kind: EdgeType
+version: v1
+metadata:
+  name: DEVICE_HAS_IPINIP
+  display_name: "Has IP-in-IP Tunnel"
+  description: "Device has this IP-in-IP tunnel"
+  category: Security
+source:
+  node_types: [Device]
+target:
+  node_types: [IPinIPTunnel]
+cardinality: one_to_many
+inverse_name: IPINIP_ON_DEVICE
+constraints:
+  unique_target: true
+graph:
+  style: solid
+  color: "#1E40AF"
+api:
+  exposed: true
+query:
+  traversable: true
+  query_alias: device_has_ipinip

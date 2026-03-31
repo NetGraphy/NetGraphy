@@ -1,0 +1,115 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: SecurityZone
+  display_name: Security Zone
+  description: "A security zone — a logical grouping of interfaces or networks with a common trust level and policy enforcement boundary."
+  icon: shield-check
+  color: "#F59E0B"
+  category: Security
+  tags: [security, zone, firewall, trust]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Security zone name (e.g., trust, untrust, dmz)"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  zone_type:
+    type: enum
+    display_name: Zone Type
+    enum_values: [trust, untrust, dmz, internal, external, management, guest, custom]
+    required: true
+    description: "Classification of the security zone"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        trust: green
+        untrust: red
+        dmz: amber
+        internal: blue
+        external: orange
+        management: purple
+        guest: cyan
+        custom: gray
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    required: true
+    description: "Operational status of the security zone"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  is_default:
+    type: boolean
+    display_name: Default Zone
+    default: false
+    description: "Whether this is the default zone for unassigned interfaces"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose and scope of this security zone"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: zone_type
+  color: "#F59E0B"
+
+api:
+  plural_name: security-zones
+  filterable_fields: [name, zone_type, status, is_default]
+  sortable_fields: [name, zone_type, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, zone_type, status, is_default]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true

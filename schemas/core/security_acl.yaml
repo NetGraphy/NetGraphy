@@ -1,0 +1,348 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: ACL
+  display_name: Access Control List
+  description: "An access control list — standard, extended, named, or numbered — used to filter traffic on network devices."
+  icon: shield
+  color: "#DC2626"
+  category: Security
+  tags: [security, acl, access-control, firewall]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "ACL name or identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  acl_type:
+    type: enum
+    display_name: ACL Type
+    enum_values: [standard, extended, named, numbered, reflexive]
+    required: true
+    description: "Type of access control list"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        standard: blue
+        extended: purple
+        named: green
+        numbered: amber
+        reflexive: cyan
+
+  acl_number:
+    type: integer
+    display_name: ACL Number
+    required: false
+    min_value: 1
+    max_value: 2699
+    description: "Numeric identifier for numbered ACLs"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  address_family:
+    type: enum
+    display_name: Address Family
+    enum_values: [ipv4, ipv6, both]
+    default: ipv4
+    description: "IP address family this ACL applies to"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled, deprecated]
+    default: active
+    required: true
+    description: "Operational status of the ACL"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+        deprecated: red
+
+  rule_count:
+    type: integer
+    display_name: Rule Count
+    required: false
+    default: 0
+    description: "Number of rules in this ACL (auto-computed)"
+    ui:
+      list_column: true
+      list_column_order: 6
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description of the ACL purpose"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: Rules
+    edge_type: ACL_HAS_RULE
+    target_type: ACLRule
+    columns: [sequence_number, action, protocol, source_address, destination_address, destination_port, logging, hit_count, status]
+    filters: [action, protocol, status]
+    default_sort: sequence_number
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: acl_type
+  color: "#DC2626"
+
+api:
+  plural_name: acls
+  filterable_fields: [name, acl_type, acl_number, address_family, status]
+  sortable_fields: [name, acl_type, acl_number, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, acl_type, address_family, status, rule_count]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: ACLRule
+  display_name: ACL Rule
+  description: "An individual rule (ACE) within an access control list — defines match criteria and permit/deny action."
+  icon: list
+  color: "#EF4444"
+  category: Security
+  tags: [security, acl, rule, ace]
+
+attributes:
+  sequence_number:
+    type: integer
+    display_name: Sequence
+    required: true
+    min_value: 1
+    description: "Rule sequence number determining evaluation order"
+    ui:
+      list_column: true
+      list_column_order: 1
+      form_order: 1
+      filter: true
+
+  action:
+    type: enum
+    display_name: Action
+    enum_values: [permit, deny, remark]
+    required: true
+    description: "Action to take when traffic matches this rule"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        permit: green
+        deny: red
+        remark: gray
+
+  protocol:
+    type: enum
+    display_name: Protocol
+    enum_values: [ip, tcp, udp, icmp, gre, esp, ahp, eigrp, ospf, any]
+    required: true
+    description: "IP protocol to match"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  source_address:
+    type: string
+    display_name: Source Address
+    required: true
+    description: "Source IP, CIDR, any, or host x.x.x.x"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 5
+
+  source_port:
+    type: string
+    display_name: Source Port
+    required: false
+    description: "Source port, range, or any"
+    ui:
+      form_order: 5
+
+  destination_address:
+    type: string
+    display_name: Destination Address
+    required: true
+    description: "Destination IP, CIDR, any, or host x.x.x.x"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 6
+      search_weight: 5
+
+  destination_port:
+    type: string
+    display_name: Destination Port
+    required: false
+    description: "Destination port, range, or any"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 7
+
+  tcp_flags:
+    type: list[string]
+    display_name: TCP Flags
+    required: false
+    description: "TCP flags: established, syn, ack, fin, rst"
+    ui:
+      form_order: 8
+
+  icmp_type:
+    type: string
+    display_name: ICMP Type
+    required: false
+    description: "ICMP message type (for ICMP protocol rules)"
+    ui:
+      form_order: 9
+
+  logging:
+    type: boolean
+    display_name: Logging
+    default: false
+    description: "Whether matches are logged"
+    ui:
+      list_column: true
+      list_column_order: 7
+      form_order: 10
+
+  log_input:
+    type: boolean
+    display_name: Log Input
+    default: false
+    description: "Include input interface in log entries"
+    ui:
+      form_order: 11
+
+  hit_count:
+    type: integer
+    display_name: Hit Count
+    required: false
+    default: 0
+    description: "Number of packets matched by this rule"
+    ui:
+      list_column: true
+      list_column_order: 8
+
+  last_hit:
+    type: datetime
+    display_name: Last Hit
+    required: false
+    description: "Timestamp of the last packet match"
+    ui:
+      form_visible: false
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    required: true
+    description: "Operational status of the rule"
+    ui:
+      list_column: true
+      list_column_order: 9
+      form_order: 12
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Remark or description for this rule"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: sequence_number
+  search_fields: [source_address, destination_address, description]
+
+graph:
+  default_label_field: sequence_number
+  group_by: action
+  color: "#EF4444"
+
+api:
+  plural_name: acl-rules
+  filterable_fields: [sequence_number, action, protocol, source_address, destination_address, status, logging]
+  sortable_fields: [sequence_number, action, protocol, status, hit_count]
+  default_sort: sequence_number
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [sequence_number, action, protocol, source_address, destination_address, destination_port, hit_count, status]
+  default_sort_field: sequence_number
+  default_page_size: 50
+  max_page_size: 500
+  relationship_filters_enabled: true

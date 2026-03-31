@@ -1,0 +1,349 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: GRETunnel
+  display_name: GRE Tunnel
+  description: >
+    A GRE (Generic Routing Encapsulation) tunnel providing unencrypted
+    point-to-point or multipoint overlay connectivity. Often combined
+    with IPSec for encrypted transport.
+  icon: route
+  color: "#1D4ED8"
+  category: Security
+  tags: [security, tunnel, gre, overlay]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "GRE tunnel name or interface identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  tunnel_source:
+    type: string
+    display_name: Tunnel Source
+    required: true
+    description: "Source IP or interface name"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  tunnel_destination:
+    type: ip_address
+    display_name: Tunnel Destination
+    required: true
+    indexed: true
+    description: "Remote tunnel endpoint IP address"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      search_weight: 8
+      filter: true
+
+  tunnel_key:
+    type: integer
+    display_name: Tunnel Key
+    required: false
+    min_value: 0
+    max_value: 4294967295
+    description: "GRE key for demultiplexing"
+    ui:
+      form_order: 4
+
+  tunnel_mode:
+    type: enum
+    display_name: Tunnel Mode
+    enum_values: [gre_ip, gre_ipv6, mgre, gre_multipoint]
+    default: gre_ip
+    description: "GRE tunnel mode"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 5
+      filter: true
+      badge_colors:
+        gre_ip: blue
+        gre_ipv6: purple
+        mgre: teal
+        gre_multipoint: cyan
+
+  keepalive_interval:
+    type: integer
+    display_name: Keepalive Interval
+    default: 10
+    description: "Keepalive period in seconds"
+    ui:
+      form_order: 6
+
+  keepalive_retries:
+    type: integer
+    display_name: Keepalive Retries
+    default: 3
+    description: "Keepalive retry count before declaring tunnel down"
+    ui:
+      form_order: 7
+
+  mtu:
+    type: integer
+    display_name: MTU
+    default: 1476
+    description: "Maximum transmission unit in bytes"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 8
+
+  ip_mtu:
+    type: integer
+    display_name: IP MTU
+    default: 1400
+    description: "IP maximum transmission unit in bytes"
+    ui:
+      form_order: 9
+
+  tos:
+    type: string
+    display_name: ToS / DSCP
+    required: false
+    description: "Type of Service / DSCP marking"
+    ui:
+      form_order: 10
+
+  ttl:
+    type: integer
+    display_name: TTL
+    default: 255
+    min_value: 1
+    max_value: 255
+    description: "Time to live for encapsulated packets"
+    ui:
+      form_order: 11
+
+  enabled:
+    type: boolean
+    display_name: Enabled
+    default: true
+    description: "Administrative enabled state"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 12
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled, degraded]
+    default: active
+    description: "Operational status of the GRE tunnel"
+    ui:
+      list_column: true
+      list_column_order: 7
+      form_order: 13
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+        degraded: red
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, tunnel_source, tunnel_destination, description]
+
+graph:
+  default_label_field: name
+  group_by: tunnel_mode
+  color: "#1D4ED8"
+
+api:
+  plural_name: gre-tunnels
+  filterable_fields: [name, tunnel_destination, tunnel_mode, status, enabled]
+  sortable_fields: [name, tunnel_mode, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, tunnel_source, tunnel_destination, tunnel_mode, mtu, status, enabled]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  primary_search_fields: [name, tunnel_source, tunnel_destination]
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: IPinIPTunnel
+  display_name: IP-in-IP Tunnel
+  description: >
+    An IP-in-IP encapsulation tunnel (RFC 2003/2473). Provides simple
+    IP encapsulation without additional headers, supporting IPv4/IPv6
+    transition mechanisms such as 6to4, 6in4, and ISATAP.
+  icon: arrow-right-left
+  color: "#1E40AF"
+  category: Security
+  tags: [security, tunnel, ipip, encapsulation]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "IP-in-IP tunnel name or interface identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  tunnel_source:
+    type: string
+    display_name: Tunnel Source
+    required: true
+    description: "Source IP or interface name"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+
+  tunnel_destination:
+    type: ip_address
+    display_name: Tunnel Destination
+    required: true
+    indexed: true
+    description: "Remote tunnel endpoint IP address"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      search_weight: 8
+      filter: true
+
+  tunnel_mode:
+    type: enum
+    display_name: Tunnel Mode
+    enum_values: [ipip, ipip6, 6to4, 6in4, isatap]
+    default: ipip
+    description: "IP-in-IP tunnel encapsulation mode"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+      badge_colors:
+        ipip: blue
+        ipip6: purple
+        6to4: teal
+        6in4: cyan
+        isatap: amber
+
+  mtu:
+    type: integer
+    display_name: MTU
+    default: 1480
+    description: "Maximum transmission unit in bytes"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+
+  enabled:
+    type: boolean
+    display_name: Enabled
+    default: true
+    description: "Administrative enabled state"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 6
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    description: "Operational status of the tunnel"
+    ui:
+      list_column: true
+      list_column_order: 7
+      form_order: 7
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, tunnel_source, tunnel_destination, description]
+
+graph:
+  default_label_field: name
+  group_by: tunnel_mode
+  color: "#1E40AF"
+
+api:
+  plural_name: ipip-tunnels
+  filterable_fields: [name, tunnel_destination, tunnel_mode, status, enabled]
+  sortable_fields: [name, tunnel_mode, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, tunnel_source, tunnel_destination, tunnel_mode, mtu, status, enabled]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  primary_search_fields: [name, tunnel_source, tunnel_destination]
+  relationship_filters_enabled: true

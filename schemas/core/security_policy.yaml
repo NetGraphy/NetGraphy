@@ -1,0 +1,358 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: FirewallPolicy
+  display_name: Firewall Policy
+  description: "A firewall policy — a collection of ordered rules that define how traffic is inspected, permitted, or denied between security zones or interfaces."
+  icon: shield-alert
+  color: "#B91C1C"
+  category: Security
+  tags: [security, firewall, policy, zone-based]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Firewall policy name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  policy_type:
+    type: enum
+    display_name: Policy Type
+    enum_values: [zone_based, interface_based, global, context_based]
+    required: true
+    description: "How the policy is applied to network traffic"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        zone_based: blue
+        interface_based: purple
+        global: amber
+        context_based: cyan
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled, deprecated, staged]
+    default: active
+    required: true
+    description: "Operational status of the firewall policy"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+        deprecated: red
+        staged: yellow
+
+  default_action:
+    type: enum
+    display_name: Default Action
+    enum_values: [permit, deny, drop, reject]
+    default: deny
+    required: true
+    description: "Action for traffic that matches no explicit rule"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+      badge_colors:
+        permit: green
+        deny: red
+        drop: orange
+        reject: red
+
+  rule_count:
+    type: integer
+    display_name: Rule Count
+    required: false
+    default: 0
+    description: "Number of rules in this policy (auto-computed)"
+    ui:
+      list_column: true
+      list_column_order: 5
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose and scope of this firewall policy"
+    ui:
+      form_order: 10
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: Rules
+    edge_type: POLICY_HAS_RULE
+    target_type: FirewallRule
+    columns: [sequence_number, name, action, source_zones, destination_zones, source_addresses, destination_addresses, services, enabled, hit_count]
+    filters: [action, enabled]
+    default_sort: sequence_number
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: policy_type
+  color: "#B91C1C"
+
+api:
+  plural_name: firewall-policies
+  filterable_fields: [name, policy_type, status, default_action]
+  sortable_fields: [name, policy_type, status, default_action, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, policy_type, status, default_action, rule_count]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: FirewallRule
+  display_name: Firewall Rule
+  description: "An individual rule within a firewall policy — defines match criteria, zones, services, and the action to take on matching traffic."
+  icon: list-checks
+  color: "#991B1B"
+  category: Security
+  tags: [security, firewall, rule, policy]
+
+attributes:
+  sequence_number:
+    type: integer
+    display_name: Sequence
+    required: true
+    min_value: 1
+    description: "Rule sequence number determining evaluation order"
+    ui:
+      list_column: true
+      list_column_order: 1
+      form_order: 1
+      filter: true
+
+  name:
+    type: string
+    display_name: Rule Name
+    required: false
+    indexed: true
+    max_length: 255
+    description: "Optional descriptive name for the rule"
+    ui:
+      list_column: true
+      list_column_order: 2
+      search_weight: 8
+      form_order: 2
+      filter: true
+
+  action:
+    type: enum
+    display_name: Action
+    enum_values: [permit, deny, drop, reject, log, inspect]
+    required: true
+    description: "Action to take on matching traffic"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        permit: green
+        deny: red
+        drop: orange
+        reject: red
+        log: blue
+        inspect: purple
+
+  source_zones:
+    type: list[string]
+    display_name: Source Zones
+    required: false
+    description: "Source security zones for zone-based rules"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  destination_zones:
+    type: list[string]
+    display_name: Destination Zones
+    required: false
+    description: "Destination security zones for zone-based rules"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+
+  source_addresses:
+    type: list[string]
+    display_name: Source Addresses
+    required: false
+    description: "Source IPs, CIDRs, object names, or any"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 6
+
+  destination_addresses:
+    type: list[string]
+    display_name: Destination Addresses
+    required: false
+    description: "Destination IPs, CIDRs, object names, or any"
+    ui:
+      list_column: true
+      list_column_order: 7
+      form_order: 7
+
+  services:
+    type: list[string]
+    display_name: Services
+    required: false
+    description: "Service names, ports, or any"
+    ui:
+      list_column: true
+      list_column_order: 8
+      form_order: 8
+
+  application:
+    type: string
+    display_name: Application
+    required: false
+    description: "Application identification for NGFW (e.g., ssl, http, dns)"
+    ui:
+      form_order: 9
+      filter: true
+
+  enabled:
+    type: boolean
+    display_name: Enabled
+    default: true
+    description: "Whether this rule is actively enforced"
+    ui:
+      list_column: true
+      list_column_order: 9
+      form_order: 10
+      filter: true
+
+  logging:
+    type: boolean
+    display_name: Logging
+    default: false
+    description: "Whether matches are logged"
+    ui:
+      form_order: 11
+
+  log_start:
+    type: boolean
+    display_name: Log at Start
+    default: false
+    description: "Log when session begins"
+    ui:
+      form_order: 12
+
+  log_end:
+    type: boolean
+    display_name: Log at End
+    default: true
+    description: "Log when session ends"
+    ui:
+      form_order: 13
+
+  schedule:
+    type: string
+    display_name: Schedule
+    required: false
+    description: "Time-based schedule name for rule activation"
+    ui:
+      form_order: 14
+
+  hit_count:
+    type: integer
+    display_name: Hit Count
+    required: false
+    default: 0
+    description: "Number of sessions matched by this rule"
+    ui:
+      list_column: true
+      list_column_order: 10
+
+  last_hit:
+    type: datetime
+    display_name: Last Hit
+    required: false
+    description: "Timestamp of the last session match"
+    ui:
+      form_visible: false
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Purpose or context for this rule"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, application, description]
+
+graph:
+  default_label_field: name
+  group_by: action
+  color: "#991B1B"
+
+api:
+  plural_name: firewall-rules
+  filterable_fields: [sequence_number, name, action, application, enabled, logging]
+  sortable_fields: [sequence_number, name, action, hit_count]
+  default_sort: sequence_number
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [sequence_number, name, action, source_zones, destination_zones, services, enabled, hit_count]
+  default_sort_field: sequence_number
+  default_page_size: 50
+  max_page_size: 500
+  relationship_filters_enabled: true

@@ -1,0 +1,817 @@
+---
+kind: NodeType
+version: v1
+metadata:
+  name: IPSecVPNTunnel
+  display_name: IPSec VPN Tunnel
+  description: >
+    An IPSec VPN tunnel — site-to-site, remote access, DMVPN, FlexVPN, or GETVPN.
+    Defines the encrypted overlay between two endpoints with associated policies.
+  icon: lock
+  color: "#0D9488"
+  category: Security
+  tags: [security, vpn, ipsec, tunnel]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "VPN tunnel name or identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  tunnel_type:
+    type: enum
+    display_name: Tunnel Type
+    enum_values: [site_to_site, remote_access, hub_and_spoke, dmvpn, flexvpn, getvpn]
+    required: false
+    description: "VPN tunnel architecture type"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        site_to_site: blue
+        remote_access: purple
+        hub_and_spoke: amber
+        dmvpn: teal
+        flexvpn: cyan
+        getvpn: green
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled, staged, degraded]
+    default: active
+    description: "Operational status of the VPN tunnel"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+        staged: blue
+        degraded: red
+
+  local_endpoint:
+    type: ip_address
+    display_name: Local Endpoint
+    required: true
+    indexed: true
+    description: "Local tunnel endpoint IP"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      search_weight: 8
+      filter: true
+
+  remote_endpoint:
+    type: ip_address
+    display_name: Remote Endpoint
+    required: true
+    indexed: true
+    description: "Remote tunnel endpoint IP"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      search_weight: 8
+      filter: true
+
+  local_networks:
+    type: list[string]
+    display_name: Local Networks
+    required: false
+    description: "Protected local subnets in CIDR"
+    ui:
+      form_order: 6
+
+  remote_networks:
+    type: list[string]
+    display_name: Remote Networks
+    required: false
+    description: "Protected remote subnets in CIDR"
+    ui:
+      form_order: 7
+
+  tunnel_interface:
+    type: string
+    display_name: Tunnel Interface
+    required: false
+    description: "Associated tunnel interface name"
+    ui:
+      form_order: 8
+
+  encapsulation:
+    type: enum
+    display_name: Encapsulation Mode
+    enum_values: [tunnel, transport]
+    default: tunnel
+    description: "IPSec encapsulation mode"
+    ui:
+      form_order: 9
+      filter: true
+
+  dpd_interval:
+    type: integer
+    display_name: DPD Interval
+    default: 10
+    description: "Dead Peer Detection interval seconds"
+    ui:
+      form_order: 10
+
+  dpd_retries:
+    type: integer
+    display_name: DPD Retries
+    default: 3
+    description: "Dead Peer Detection retry count"
+    ui:
+      form_order: 11
+
+  anti_replay:
+    type: boolean
+    display_name: Anti-Replay
+    default: true
+    description: "Enable anti-replay protection"
+    ui:
+      form_order: 12
+
+  enabled:
+    type: boolean
+    display_name: Enabled
+    default: true
+    description: "Administrative enabled state"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 13
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+detail_tabs:
+  - label: IKE Policy
+    edge_type: TUNNEL_USES_IKE
+    target_type: IKEPolicy
+    columns: [name, ike_version, encryption, hash, dh_group, authentication, lifetime, status]
+    default_sort: name
+
+  - label: Transform Set
+    edge_type: TUNNEL_USES_TRANSFORM
+    target_type: IPSecProposal
+    columns: [name, encryption, integrity, pfs_group, lifetime_seconds, protocol, status]
+    default_sort: name
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, local_endpoint, remote_endpoint, tunnel_interface, description]
+
+graph:
+  default_label_field: name
+  group_by: tunnel_type
+  color: "#0D9488"
+
+api:
+  plural_name: ipsec-vpn-tunnels
+  filterable_fields: [name, tunnel_type, status, local_endpoint, remote_endpoint, encapsulation, enabled]
+  sortable_fields: [name, tunnel_type, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, tunnel_type, status, local_endpoint, remote_endpoint, enabled]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  primary_search_fields: [name, local_endpoint, remote_endpoint]
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: IKEPolicy
+  display_name: IKE Policy
+  description: >
+    An IKE (Internet Key Exchange) Phase 1 policy defining the parameters
+    for establishing a secure, authenticated channel between VPN peers.
+  icon: key
+  color: "#0F766E"
+  category: Security
+  tags: [security, vpn, ike, crypto]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "IKE policy name or identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  ike_version:
+    type: enum
+    display_name: IKE Version
+    enum_values: [ikev1, ikev2]
+    required: true
+    default: ikev2
+    description: "IKE protocol version"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        ikev1: amber
+        ikev2: green
+
+  encryption:
+    type: enum
+    display_name: Encryption
+    enum_values: [des, 3des, aes128, aes192, aes256, aes256gcm, chacha20]
+    required: true
+    description: "Phase 1 encryption algorithm"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  hash:
+    type: enum
+    display_name: Hash
+    enum_values: [md5, sha1, sha256, sha384, sha512]
+    required: true
+    description: "Phase 1 hash/integrity algorithm"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  dh_group:
+    type: enum
+    display_name: DH Group
+    enum_values: ["1", "2", "5", "14", "15", "16", "19", "20", "21", "24"]
+    required: true
+    description: "Diffie-Hellman group"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      filter: true
+
+  authentication:
+    type: enum
+    display_name: Authentication
+    enum_values: [pre_shared_key, rsa_sig, ecdsa_sig, eap]
+    required: false
+    description: "Peer authentication method"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 6
+      filter: true
+      badge_colors:
+        pre_shared_key: blue
+        rsa_sig: purple
+        ecdsa_sig: teal
+        eap: amber
+
+  lifetime:
+    type: integer
+    display_name: Lifetime (seconds)
+    default: 86400
+    description: "Phase 1 SA lifetime in seconds"
+    ui:
+      form_order: 7
+
+  dpd_enabled:
+    type: boolean
+    display_name: DPD Enabled
+    default: true
+    description: "Enable Dead Peer Detection"
+    ui:
+      form_order: 8
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    description: "Policy status"
+    ui:
+      list_column: true
+      list_column_order: 7
+      form_order: 9
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: ike_version
+  color: "#0F766E"
+
+api:
+  plural_name: ike-policies
+  filterable_fields: [name, ike_version, encryption, hash, dh_group, authentication, status]
+  sortable_fields: [name, ike_version, encryption, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, ike_version, encryption, hash, dh_group, authentication, status]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: IPSecProposal
+  display_name: IPSec Proposal
+  description: >
+    An IPSec Phase 2 proposal (transform set) defining encryption, integrity,
+    and PFS parameters for protecting data traffic within an SA.
+  icon: shield-lock
+  color: "#134E4A"
+  category: Security
+  tags: [security, vpn, ipsec, crypto, transform-set]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "IPSec proposal / transform set name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  encryption:
+    type: enum
+    display_name: Encryption
+    enum_values: [des, 3des, aes128, aes192, aes256, aes256gcm, "null"]
+    required: true
+    description: "Phase 2 encryption algorithm"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+
+  integrity:
+    type: enum
+    display_name: Integrity
+    enum_values: [md5, sha1, sha256, sha384, sha512, aes_xcbc]
+    required: true
+    description: "Phase 2 integrity/authentication algorithm"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      filter: true
+
+  pfs_group:
+    type: enum
+    display_name: PFS Group
+    enum_values: [none, "1", "2", "5", "14", "15", "16", "19", "20", "21"]
+    default: none
+    description: "Perfect Forward Secrecy DH group"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+
+  lifetime_seconds:
+    type: integer
+    display_name: Lifetime (seconds)
+    default: 3600
+    description: "Phase 2 SA lifetime in seconds"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+
+  lifetime_kilobytes:
+    type: integer
+    display_name: Lifetime (KB)
+    required: false
+    description: "SA lifetime in KB, 0=unlimited"
+    ui:
+      form_order: 6
+
+  protocol:
+    type: enum
+    display_name: Protocol
+    enum_values: [esp, ah, esp_ah]
+    default: esp
+    description: "IPSec security protocol"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 7
+      filter: true
+      badge_colors:
+        esp: green
+        ah: blue
+        esp_ah: purple
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    description: "Proposal status"
+    ui:
+      list_column: true
+      list_column_order: 7
+      form_order: 8
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, description]
+
+graph:
+  default_label_field: name
+  group_by: protocol
+  color: "#134E4A"
+
+api:
+  plural_name: ipsec-proposals
+  filterable_fields: [name, encryption, integrity, pfs_group, protocol, status]
+  sortable_fields: [name, encryption, protocol, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, encryption, integrity, pfs_group, lifetime_seconds, protocol, status]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: CryptoMap
+  display_name: Crypto Map
+  description: >
+    A crypto map entry binding interesting traffic (ACL), peer address,
+    and transform set together for IPSec policy application on an interface.
+  icon: map
+  color: "#065F46"
+  category: Security
+  tags: [security, vpn, ipsec, crypto-map]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "Crypto map name"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  map_type:
+    type: enum
+    display_name: Map Type
+    enum_values: [ipsec_isakmp, ipsec_manual, gdoi]
+    default: ipsec_isakmp
+    description: "Crypto map type"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      filter: true
+      badge_colors:
+        ipsec_isakmp: blue
+        ipsec_manual: amber
+        gdoi: purple
+
+  sequence_number:
+    type: integer
+    display_name: Sequence Number
+    required: true
+    min_value: 1
+    description: "Crypto map sequence number"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+
+  match_acl:
+    type: string
+    display_name: Match ACL
+    required: false
+    description: "ACL name/number defining interesting traffic"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+
+  peer_address:
+    type: ip_address
+    display_name: Peer Address
+    required: false
+    indexed: true
+    description: "Remote peer IP address"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 5
+      search_weight: 8
+      filter: true
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, disabled]
+    default: active
+    description: "Crypto map entry status"
+    ui:
+      list_column: true
+      list_column_order: 6
+      form_order: 6
+      filter: true
+      badge_colors:
+        active: green
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, match_acl, description]
+
+graph:
+  default_label_field: name
+  group_by: map_type
+  color: "#065F46"
+
+api:
+  plural_name: crypto-maps
+  filterable_fields: [name, map_type, sequence_number, peer_address, status]
+  sortable_fields: [name, map_type, sequence_number, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, map_type, sequence_number, match_acl, peer_address, status]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  relationship_filters_enabled: true
+
+---
+kind: NodeType
+version: v1
+metadata:
+  name: VPNPeer
+  display_name: VPN Peer
+  description: >
+    A VPN peer endpoint — hub, spoke, branch, headend, or remote user.
+    Represents the remote side of a VPN relationship.
+  icon: users
+  color: "#047857"
+  category: Security
+  tags: [security, vpn, peer]
+
+attributes:
+  name:
+    type: string
+    display_name: Name
+    required: true
+    unique: true
+    indexed: true
+    max_length: 255
+    description: "VPN peer name or identifier"
+    ui:
+      list_column: true
+      list_column_order: 1
+      search_weight: 10
+      form_order: 1
+      filter: true
+
+  peer_address:
+    type: ip_address
+    display_name: Peer Address
+    required: true
+    indexed: true
+    description: "Remote peer IP address"
+    ui:
+      list_column: true
+      list_column_order: 2
+      form_order: 2
+      search_weight: 8
+      filter: true
+
+  peer_hostname:
+    type: string
+    display_name: Peer Hostname
+    required: false
+    indexed: true
+    description: "Remote peer hostname if known"
+    ui:
+      list_column: true
+      list_column_order: 3
+      form_order: 3
+      search_weight: 5
+
+  peer_type:
+    type: enum
+    display_name: Peer Type
+    enum_values: [hub, spoke, branch, headend, remote_user, partner]
+    required: false
+    description: "Role of the remote peer in the VPN topology"
+    ui:
+      list_column: true
+      list_column_order: 4
+      form_order: 4
+      filter: true
+      badge_colors:
+        hub: blue
+        spoke: cyan
+        branch: teal
+        headend: purple
+        remote_user: amber
+        partner: green
+
+  peer_asn:
+    type: integer
+    display_name: Peer ASN
+    required: false
+    description: "Remote peer BGP ASN if applicable"
+    ui:
+      form_order: 5
+
+  status:
+    type: enum
+    display_name: Status
+    enum_values: [active, inactive, disabled]
+    default: active
+    description: "Peer status"
+    ui:
+      list_column: true
+      list_column_order: 5
+      form_order: 6
+      filter: true
+      badge_colors:
+        active: green
+        inactive: amber
+        disabled: gray
+
+  description:
+    type: text
+    display_name: Description
+    required: false
+    description: "Free-form description"
+    ui:
+      form_order: 20
+      form_widget: textarea
+
+mixins:
+  - lifecycle_mixin
+  - provenance_mixin
+
+search:
+  enabled: true
+  primary_field: name
+  search_fields: [name, peer_address, peer_hostname, description]
+
+graph:
+  default_label_field: name
+  group_by: peer_type
+  color: "#047857"
+
+api:
+  plural_name: vpn-peers
+  filterable_fields: [name, peer_address, peer_hostname, peer_type, status]
+  sortable_fields: [name, peer_type, status, created_at]
+  default_sort: name
+
+permissions:
+  default_read: authenticated
+  default_write: editor
+  default_delete: admin
+
+query:
+  default_list_fields: [name, peer_address, peer_hostname, peer_type, status]
+  default_sort_field: name
+  default_page_size: 50
+  max_page_size: 200
+  primary_search_fields: [name, peer_address, peer_hostname]
+  relationship_filters_enabled: true
