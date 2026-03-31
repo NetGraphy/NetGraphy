@@ -27,6 +27,7 @@ import { AIConfigPage } from "@/components/pages/AIConfigPage";
 import { DocsPage } from "@/components/pages/DocsPage";
 import { ReportBuilderPage } from "@/components/pages/ReportBuilderPage";
 import { SchemaDesignerPage } from "@/components/pages/SchemaDesignerPage";
+import { GraphQueryBuilderPage } from "@/components/pages/GraphQueryBuilderPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -65,6 +66,7 @@ export function App() {
                 <Route path="/objects/:nodeType/:id" element={<DynamicDetailPage />} />
                 <Route path="/objects/:nodeType/:id/edit" element={<DynamicFormPage />} />
                 <Route path="/query" element={<QueryWorkbench />} />
+                <Route path="/query/builder" element={<GraphQueryBuilderPage />} />
                 <Route path="/reports" element={<ReportBuilderPage />} />
                 <Route path="/schema" element={<SchemaExplorer />} />
                 <Route path="/schema-designer" element={<SchemaDesignerPage />} />

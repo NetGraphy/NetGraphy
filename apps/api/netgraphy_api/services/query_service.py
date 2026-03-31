@@ -237,10 +237,12 @@ class QueryService:
         props = {
             "id": query_id,
             "name": data["name"],
-            "cypher": data["cypher"],
+            "cypher": data.get("cypher", data.get("query", "")),
             "description": data.get("description", ""),
             "parameters": str(data.get("parameters", {})),
+            "query_model": data.get("query_model", ""),
             "tags": data.get("tags", []),
+            "visibility": data.get("visibility", "personal"),
             "created_by": actor.user_id,
             "created_at": now,
             "updated_at": now,
