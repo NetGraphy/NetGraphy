@@ -183,12 +183,21 @@ class Neo4jDriver:
             if eid in seen_edge_ids:
                 return
             seen_edge_ids.add(eid)
+
+            # Source/target IDs must match node IDs used above.
+            # Nodes use props["id"] (application UUID) with element_id as fallback.
+            # We must resolve the same way here.
+            src_eid = str(rel.start_node.element_id) if rel.start_node else ""
+            tgt_eid = str(rel.end_node.element_id) if rel.end_node else ""
+            src_id = dict(rel.start_node).get("id", src_eid) if rel.start_node else src_eid
+            tgt_id = dict(rel.end_node).get("id", tgt_eid) if rel.end_node else tgt_eid
+
             edges.append({
                 "id": dict(rel).get("id", eid),
                 "element_id": eid,
                 "edge_type": rel.type,
-                "source_id": str(rel.start_node.element_id) if rel.start_node else "",
-                "target_id": str(rel.end_node.element_id) if rel.end_node else "",
+                "source_id": src_id,
+                "target_id": tgt_id,
                 "properties": dict(rel),
             })
 
