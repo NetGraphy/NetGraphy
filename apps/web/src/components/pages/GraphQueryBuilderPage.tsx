@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, queryApi } from "@/api/client";
 import Editor from "@monaco-editor/react";
 import { useQueryBuilderStore } from "@/stores/queryBuilderStore";
+import { GraphCanvas } from "@/components/graph/GraphCanvas";
 
 const OPERATORS = [
   { value: "eq", label: "=" },
@@ -218,11 +219,25 @@ export function GraphQueryBuilderPage() {
                   className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
               </div>
               <div>
-                <label className="text-[9px] text-gray-500">Allowed relationship types (comma separated, empty = all)</label>
-                <input value={model.pathRelTypes.join(", ")}
-                  onChange={(e) => setModel({ ...model, pathRelTypes: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-                  placeholder="e.g., HAS_INTERFACE, CONNECTED_TO"
-                  className="w-full rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                <label className="text-[9px] text-gray-500">Allowed relationship types (click to toggle)</label>
+                <div className="mt-1 max-h-32 overflow-y-auto rounded border border-gray-300 p-1 dark:border-gray-600">
+                  {edgeTypes.map((et) => {
+                    const checked = model.pathRelTypes.includes(et);
+                    return (
+                      <label key={et} className="flex items-center gap-1.5 px-1 py-0.5 text-[10px] hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                        <input type="checkbox" checked={checked}
+                          onChange={() => {
+                            const next = checked
+                              ? model.pathRelTypes.filter((t) => t !== et)
+                              : [...model.pathRelTypes, et];
+                            setModel({ ...model, pathRelTypes: next });
+                          }} />
+                        <span className={checked ? "text-brand-600 font-medium" : "text-gray-500"}>{et}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="text-[9px] text-gray-400 mt-0.5">{model.pathRelTypes.length} selected</div>
               </div>
             </div>
           )}
@@ -342,13 +357,21 @@ export function GraphQueryBuilderPage() {
           {model.filters.map((f) => (
             <div key={f.id} className="mb-2 rounded border border-gray-200 bg-gray-50 p-2 dark:border-gray-600 dark:bg-gray-700/50">
               <div className="flex gap-1 mb-1">
-                <select value={f.targetAlias} onChange={(e) => updateFilter(f.id, { targetAlias: e.target.value })}
+                <select value={f.targetAlias} onChange={(e) => updateFilter(f.id, { targetAlias: e.target.value, field: "" })}
                   className="w-14 rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                   {aliases.map((a) => <option key={a} value={a}>{a}</option>)}
                 </select>
-                <input value={f.field} onChange={(e) => updateFilter(f.id, { field: e.target.value })}
-                  placeholder="field"
-                  className="flex-1 rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+                <select value={f.field} onChange={(e) => updateFilter(f.id, { field: e.target.value })}
+                  className="flex-1 rounded border border-gray-300 px-1 py-0.5 text-[10px] dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                  <option value="">Select field...</option>
+                  {(() => {
+                    const aliasNode = model.nodes.find((n) => n.alias === f.targetAlias);
+                    const label = aliasNode?.labels[0];
+                    const nt = label ? (nodeTypesData?.data?.data || []).find((t: any) => (t.metadata?.name || t.name) === label) : null;
+                    const attrs = nt ? Object.keys(nt.attributes || {}) : [];
+                    return [...attrs, "id"].map((a) => <option key={a} value={a}>{a}</option>);
+                  })()}
+                </select>
                 <button onClick={() => removeFilter(f.id)} className="text-red-400 text-[10px]">x</button>
               </div>
               <div className="flex gap-1">
@@ -434,12 +457,12 @@ export function GraphQueryBuilderPage() {
               </button>
             </div>
           </div>
-          <div className="h-[180px]">
+          <div className="h-[160px] border-t border-gray-200 dark:border-gray-700">
             <Editor
               language="cypher"
-              value={cypher}
+              value={cypher || "// Build a query pattern on the left to generate Cypher"}
               theme="vs-light"
-              options={{ minimap: { enabled: false }, fontSize: 13, lineNumbers: "on", scrollBeyondLastLine: false, readOnly: true, wordWrap: "on" }}
+              options={{ minimap: { enabled: false }, fontSize: 12, lineNumbers: "on", scrollBeyondLastLine: false, readOnly: true, wordWrap: "on" }}
             />
           </div>
         </div>
@@ -501,8 +524,18 @@ export function GraphQueryBuilderPage() {
             )}
 
             {results && resultView === "graph" && (
-              <div className="text-center text-gray-400 py-12 text-sm">
-                Graph visualization available in the Graph Explorer. Click a result row to navigate.
+              <div className="h-[500px] rounded border border-gray-200 dark:border-gray-700">
+                {(results.nodes?.length || 0) > 0 ? (
+                  <GraphCanvas
+                    nodes={results.nodes || []}
+                    edges={results.edges || []}
+                    maxNodes={500}
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+                    No graph data. Return full nodes (e.g., RETURN path) instead of scalar fields for graph visualization.
+                  </div>
+                )}
               </div>
             )}
           </div>
