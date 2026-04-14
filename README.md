@@ -30,7 +30,7 @@ NetGraphy is **not another CRUD inventory tool**. It is:
 - A **reporting platform** where you can filter and export across nodes, edges, and multi-hop relationships in a single query
 - An **extensible framework** where adding a new data model is a YAML file, not a development project
 
-![NetGraphy Schema Explorer](docs/assets/screenshots/schema-explorer.png)
+![NetGraphy Schema Explorer](docs/assets/screenshots/network_graph.png)
 
 ---
 
